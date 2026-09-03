@@ -1,5 +1,7 @@
 # Gambit — 3D Chess
 
+**Live: https://chess-3d-dusky.vercel.app**
+
 A complete game of chess in the browser: full FIDE rules, a built-in engine, and a
 Staunton piece set rendered in 3D from procedural geometry — no model files, no
 textures on disk, no external assets of any kind.
