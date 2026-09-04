@@ -36,9 +36,19 @@ exact. 3D and 2D board views.
 
 ### Legible — [apps/legible](apps/legible)
 
-Paste a palette and get every foreground/background pair graded against WCAG
-2.2, with APCA alongside as a second opinion. Failing pairs are moved in OKLCH
-to the nearest passing value — lightness shifts while hue holds, so the brand
-survives the fix. Colour conversion, sRGB gamut mapping and the fix search are
-implemented from the specs rather than imported, and checked against published
-reference values on every build.
+Checks whether the colours in a product are readable, for people who do not
+have a tokens file to hand. Three ways in:
+
+- **A screenshot** — pixels are clustered in OKLab to recover the palette
+  actually on screen. Runs entirely in the browser; the image is never uploaded.
+- **A web address** — a server route reads the colours declared in the page's
+  stylesheets. Fenced against SSRF: http(s) only, and nothing resolving to
+  loopback, link-local or private ranges.
+- **Colour codes** — hex, CSS custom properties, Sass variables, or JSON.
+
+Every foreground/background pair is graded against WCAG 2.2, with APCA
+alongside as a second opinion. Failing pairs are moved in OKLCH to the nearest
+passing value — lightness shifts while hue holds, so the brand survives the
+fix. Colour conversion, sRGB gamut mapping and the fix search are implemented
+from the specs rather than imported, and checked against published reference
+values on every build.

@@ -18,13 +18,13 @@
   --paper: #fbfaf8;
   --card: #ffffff;
   --sunk: #f2f0eb;
-  --rule: #e0ddd4;
+  --rule: #e6e3db;
   --rule-strong: #cbc7ba;
   --ink: #16150f;
   --muted: #5c5a50;
   --faint: #77746a;
   --accent: #8a5a00;
-  --accent-wash: rgba(138, 90, 0, 0.08);
+  --accent-wash: rgba(138, 90, 0, 0.07);
   --pass: #1c6b47;
   --fail: #a32c1e;
   --warn: #8a5a00;
@@ -34,14 +34,14 @@
 :root[data-theme='dark'] {
   --paper: #111110;
   --card: #191817;
-  --sunk: #1f1e1c;
-  --rule: #2e2c29;
+  --sunk: #201f1d;
+  --rule: #2b2926;
   --rule-strong: #45423d;
   --ink: #f0ede4;
   --muted: #a5a196;
   --faint: #8a8679;
   --accent: #e0a93a;
-  --accent-wash: rgba(224, 169, 58, 0.12);
+  --accent-wash: rgba(224, 169, 58, 0.1);
   --pass: #57c795;
   --fail: #ef7f70;
   --warn: #e0a93a;
@@ -61,10 +61,14 @@ body {
 
 body {
   font-family: var(--font-ui), ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
 }
 
 .serif {
   font-family: var(--font-display), Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.01em;
 }
 
 .mono {
@@ -72,32 +76,41 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.label {
+/* Section eyebrow: the small caps label above each step. */
+.eyebrow {
   font-family: var(--font-mono), monospace;
-  font-size: 10px;
-  letter-spacing: 0.14em;
+  font-size: 11px;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--faint);
+}
+
+.prose-note {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--muted);
+  max-width: 62ch;
 }
 
 .card {
   background: var(--card);
   border: 1px solid var(--rule);
+  border-radius: 4px;
 }
 
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
-  min-height: 36px;
-  padding: 0 0.8rem;
-  font-size: 12.5px;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 1.1rem;
+  font-size: 14px;
   color: var(--ink);
   background: var(--card);
   border: 1px solid var(--rule-strong);
-  border-radius: 2px;
-  transition: background 0.14s ease, border-color 0.14s ease;
+  border-radius: 3px;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .btn:hover:not(:disabled) {
@@ -121,21 +134,28 @@ body {
   background: var(--accent);
 }
 
+.btn-sm {
+  min-height: 34px;
+  padding: 0 0.7rem;
+  font-size: 13px;
+}
+
 .seg {
   display: inline-flex;
   border: 1px solid var(--rule-strong);
-  border-radius: 2px;
+  border-radius: 3px;
   overflow: hidden;
 }
 
 .seg > button {
-  min-height: 32px;
-  padding: 0 0.6rem;
-  font-size: 11.5px;
+  min-height: 38px;
+  padding: 0 0.85rem;
+  font-size: 13px;
   color: var(--muted);
   background: var(--card);
   border-right: 1px solid var(--rule);
   white-space: nowrap;
+  transition: background 0.15s ease;
 }
 
 .seg > button:last-child {
@@ -158,8 +178,14 @@ textarea,
 input[type='text'] {
   background: var(--card);
   border: 1px solid var(--rule-strong);
-  border-radius: 2px;
+  border-radius: 3px;
   color: var(--ink);
+  font-size: 14px;
+}
+
+textarea::placeholder,
+input::placeholder {
+  color: var(--faint);
 }
 
 textarea:focus,
@@ -174,25 +200,20 @@ input[type='text']:focus {
   outline-offset: 2px;
 }
 
-/* A hairline that survives on both grounds without drawing attention. */
-.rule-x {
-  border-bottom: 1px solid var(--rule);
-}
-
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--rule-strong);
-  border-radius: 5px;
-  border: 3px solid var(--paper);
+  border-radius: 6px;
+  border: 4px solid var(--paper);
 }
 
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -201,7 +222,7 @@ input[type='text']:focus {
 }
 
 .rise {
-  animation: rise 0.32s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  animation: rise 0.36s cubic-bezier(0.2, 0.9, 0.3, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {

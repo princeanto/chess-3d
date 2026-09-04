@@ -1,17 +1,14 @@
 'use client';
 
 import { formatRatio } from '@/lib/color/srgb';
-import type { TierId } from '@/lib/color/wcag';
+import { TIERS, type TierId } from '@/lib/color/wcag';
 import { canBeSurface, canBeText, type Pair, type Swatch } from '@/lib/palette';
 
 /**
- * The matrix is the product.
- *
- * Each cell is drawn in the pairing it describes — the foreground's own text on
- * the background's own colour — because a table of numbers is not evidence. The
- * ratio sits on top so the judgement and the number are read in one movement,
- * and cells that fail carry a hatch so the grid stays parseable without relying
- * on colour, which would be an odd thing for this tool to get wrong.
+ * The grid is the product, and it used to arrive unexplained: a wall of numbers
+ * with "Lc 104" under each one and no key. Now every cell carries a plain
+ * verdict, the APCA figure has moved to the detail panel where there is room to
+ * say what it means, and there is a legend directly above.
  */
 export default function Matrix({
   swatches,
@@ -31,131 +28,154 @@ export default function Matrix({
 
   if (rows.length === 0 || cols.length === 0) {
     return (
-      <p className="p-6 text-[12.5px] text-[var(--muted)]">
-        Every colour is marked {rows.length === 0 ? '"surface"' : '"text"'}, so there are no
-        pairs to grade. Set at least one the other way.
+      <p className="prose-note">
+        Every colour is currently marked &ldquo;
+        {rows.length === 0 ? 'behind' : 'on top'}&rdquo;, so there are no pairs to check. Set
+        at least one colour the other way above.
       </p>
     );
   }
 
   return (
-    <div className="overflow-auto">
-      <table className="border-collapse" style={{ minWidth: 'max-content' }}>
-        <caption className="sr-only">
-          Contrast of every foreground colour (rows) against every background colour
-          (columns)
-        </caption>
-        <thead>
-          <tr>
-            <th className="sticky left-0 top-0 z-30 bg-[var(--paper)] p-2 text-left">
-              <span className="label">fg &darr; / bg &rarr;</span>
-            </th>
-            {cols.map((bg) => (
-              <th
-                key={bg.id}
-                scope="col"
-                className="sticky top-0 z-20 bg-[var(--paper)] p-1.5 align-bottom"
-              >
-                <span className="flex flex-col items-center gap-1">
-                  <span
-                    className="h-4 w-12 rounded-[2px] border border-[var(--rule-strong)]"
-                    style={{ background: bg.hex }}
-                    aria-hidden
-                  />
-                  <span className="mono max-w-[86px] truncate text-[10px] text-[var(--muted)]">
-                    {bg.name}
-                  </span>
-                </span>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((fg, r) => (
-            <tr key={fg.id}>
-              <th scope="row" className="sticky left-0 z-20 bg-[var(--paper)] p-1.5 text-left">
-                <span className="flex items-center gap-1.5">
-                  <span
-                    className="h-4 w-4 shrink-0 rounded-[2px] border border-[var(--rule-strong)]"
-                    style={{ background: fg.hex }}
-                    aria-hidden
-                  />
-                  <span className="mono max-w-[104px] truncate text-[10px] text-[var(--muted)]">
-                    {fg.name}
-                  </span>
-                </span>
-              </th>
-              {cols.map((bg, c) => {
-                const pair = matrix[r][c];
-                const same = fg.id === bg.id;
-                const ok = pair.grade.results[tier];
-                const isSelected = selected?.fg.id === fg.id && selected?.bg.id === bg.id;
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+        <Key swatchStyle={{ background: 'var(--card)', color: 'var(--ink)' }} label="Passes" />
+        <Key
+          swatchStyle={{
+            background: 'var(--card)',
+            color: 'var(--ink)',
+            backgroundImage:
+              'repeating-linear-gradient(135deg, var(--rule-strong) 0 1px, transparent 1px 6px)',
+          }}
+          label={`Fails — under ${TIERS[tier].ratio}:1`}
+        />
+        <p className="text-[13px] text-[var(--muted)]">
+          Each square is one colour <em>on</em> another. The number is the contrast ratio —
+          bigger is easier to read. Click any square for detail.
+        </p>
+      </div>
 
-                if (same) {
+      <div className="-mx-1 overflow-x-auto px-1 pb-1">
+        <table className="border-separate" style={{ borderSpacing: '4px', minWidth: 'max-content' }}>
+          <caption className="sr-only">
+            Contrast of every foreground colour (rows) against every background colour
+            (columns)
+          </caption>
+          <thead>
+            <tr>
+              <th className="sticky left-0 z-30 bg-[var(--paper)] p-2 text-left align-bottom">
+                <span className="eyebrow !text-[10px]">on &darr; / behind &rarr;</span>
+              </th>
+              {cols.map((bg) => (
+                <th key={bg.id} scope="col" className="p-1 align-bottom">
+                  <span className="flex flex-col items-center gap-1.5">
+                    <span
+                      className="h-5 w-16 rounded-[2px] border border-[var(--rule-strong)]"
+                      style={{ background: bg.hex }}
+                      aria-hidden
+                    />
+                    <span className="mono max-w-[100px] truncate text-[11px] text-[var(--muted)]">
+                      {bg.name}
+                    </span>
+                  </span>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((fg, r) => (
+              <tr key={fg.id}>
+                <th scope="row" className="sticky left-0 z-20 bg-[var(--paper)] p-2 text-left">
+                  <span className="flex items-center gap-2">
+                    <span
+                      className="h-5 w-5 shrink-0 rounded-[2px] border border-[var(--rule-strong)]"
+                      style={{ background: fg.hex }}
+                      aria-hidden
+                    />
+                    <span className="mono max-w-[120px] truncate text-[11px] text-[var(--muted)]">
+                      {fg.name}
+                    </span>
+                  </span>
+                </th>
+                {cols.map((bg, c) => {
+                  const pair = matrix[r][c];
+                  const ok = pair.grade.results[tier];
+                  const isSelected = selected?.fg.id === fg.id && selected?.bg.id === bg.id;
+
+                  if (fg.id === bg.id) {
+                    return (
+                      <td key={bg.id}>
+                        <div
+                          className="flex h-[68px] w-[104px] items-center justify-center rounded-[3px] border border-dashed border-[var(--rule)]"
+                          title="The same colour on itself"
+                        >
+                          <span className="mono text-[11px] text-[var(--faint)]">—</span>
+                        </div>
+                      </td>
+                    );
+                  }
+
                   return (
-                    <td key={bg.id} className="p-0.5">
-                      <div
-                        className="flex h-[52px] w-[92px] items-center justify-center border border-dashed border-[var(--rule)] text-[var(--faint)]"
-                        aria-label="Same colour"
+                    <td key={bg.id}>
+                      <button
+                        onClick={() => onSelect(pair)}
+                        aria-label={`${fg.name} on ${bg.name}. Contrast ${formatRatio(pair.ratio)} to 1. ${ok ? 'Passes' : 'Fails'}.`}
+                        aria-pressed={isSelected}
+                        className="relative flex h-[68px] w-[104px] flex-col items-center justify-center gap-0.5 overflow-hidden rounded-[3px] transition-transform hover:scale-[1.04] focus:outline-none"
+                        style={{
+                          background: bg.hex,
+                          color: fg.hex,
+                          boxShadow: isSelected
+                            ? '0 0 0 2px var(--accent)'
+                            : 'inset 0 0 0 1px var(--rule)',
+                        }}
                       >
-                        <span className="mono text-[10px]">—</span>
-                      </div>
-                    </td>
-                  );
-                }
-
-                return (
-                  <td key={bg.id} className="p-0.5">
-                    <button
-                      onClick={() => onSelect(pair)}
-                      aria-label={`${fg.name} on ${bg.name}, ratio ${formatRatio(pair.ratio)} to 1, ${ok ? 'passes' : 'fails'}`}
-                      aria-pressed={isSelected}
-                      className="relative flex h-[52px] w-[92px] items-center justify-center overflow-hidden rounded-[2px] transition-[outline] focus:outline-none"
-                      style={{
-                        background: bg.hex,
-                        color: fg.hex,
-                        outline: isSelected
-                          ? '2px solid var(--accent)'
-                          : '1px solid var(--rule)',
-                        outlineOffset: isSelected ? '1px' : '-1px',
-                      }}
-                    >
-                      {!ok && (
-                        // Failure is marked by texture as well as by the number,
-                        // so the grid does not depend on colour perception.
-                        <span
-                          aria-hidden
-                          className="pointer-events-none absolute inset-0 opacity-[0.28]"
-                          style={{
-                            backgroundImage:
-                              'repeating-linear-gradient(135deg, currentColor 0 1px, transparent 1px 6px)',
-                          }}
-                        />
-                      )}
-                      <span className="relative flex flex-col items-center leading-none">
-                        <span className="mono text-[13px] font-semibold">
+                        {!ok && (
+                          // Failure is carried by texture as well as by the number,
+                          // so the grid never depends on colour perception alone.
+                          <span
+                            aria-hidden
+                            className="pointer-events-none absolute inset-0 opacity-30"
+                            style={{
+                              backgroundImage:
+                                'repeating-linear-gradient(135deg, currentColor 0 1px, transparent 1px 7px)',
+                            }}
+                          />
+                        )}
+                        <span className="relative mono text-[16px] font-semibold leading-none">
                           {formatRatio(pair.ratio)}
                         </span>
-                        <span className="mono mt-0.5 text-[9px] opacity-80">
-                          Lc {Math.round(Math.abs(pair.lc))}
+                        <span className="relative text-[10px] font-semibold uppercase tracking-wider opacity-85">
+                          {ok ? 'passes' : 'fails'}
                         </span>
-                      </span>
-                      {pair.contested && (
-                        <span
-                          aria-hidden
-                          title="WCAG and APCA disagree here"
-                          className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full"
-                          style={{ background: 'var(--accent)' }}
-                        />
-                      )}
-                    </button>
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                      </button>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
+  );
+}
+
+function Key({
+  swatchStyle,
+  label,
+}: {
+  swatchStyle: React.CSSProperties;
+  label: string;
+}) {
+  return (
+    <span className="flex items-center gap-2">
+      <span
+        aria-hidden
+        className="h-6 w-9 rounded-[2px] border border-[var(--rule-strong)]"
+        style={swatchStyle}
+      />
+      <span className="text-[13px] text-[var(--muted)]">{label}</span>
+    </span>
   );
 }

@@ -1,28 +1,26 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { TIERS, TIER_ORDER, type TierId } from '@/lib/color/wcag';
-import { parsePalette, SAMPLE_PALETTE } from '@/lib/parse';
-import {
-  buildMatrix,
-  makeSwatch,
-  summarise,
-  type Pair,
-  type Swatch,
-} from '@/lib/palette';
+import { TIERS } from '@/lib/color/wcag';
+import { type Role } from '@/lib/palette';
+import { buildMatrix, makeSwatch, summarise, type Pair, type Swatch } from '@/lib/palette';
 import FixReview from './FixReview';
+import LevelPicker, { toTier, type Level, type Size } from './LevelPicker';
 import Matrix from './Matrix';
 import PairDetail from './PairDetail';
-import PaletteInput from './PaletteInput';
+import SourcePicker, { type Incoming } from './SourcePicker';
+import SwatchList from './SwatchList';
+import Step from './Step';
 
 export default function Legible() {
-  const [swatches, setSwatches] = useState<Swatch[]>(() =>
-    parsePalette(SAMPLE_PALETTE).map((s) => makeSwatch(s.name, s.hex)),
-  );
-  const [tier, setTier] = useState<TierId>('body-aa');
+  const [swatches, setSwatches] = useState<Swatch[]>([]);
+  const [size, setSize] = useState<Size>('normal');
+  const [level, setLevel] = useState<Level>('aa');
   const [selected, setSelected] = useState<Pair | null>(null);
   const [reviewing, setReviewing] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
+  const tier = toTier(size, level);
 
   useEffect(() => {
     const current = document.documentElement.getAttribute('data-theme');
@@ -54,8 +52,8 @@ export default function Legible() {
     return null;
   }, [selected, matrix]);
 
-  const replace = useCallback((parsed: Array<{ name: string; hex: string }>) => {
-    setSwatches(parsed.map((s) => makeSwatch(s.name, s.hex)));
+  const load = useCallback((incoming: Incoming[]) => {
+    setSwatches(incoming.map((c) => makeSwatch(c.name, c.hex, c.role)));
     setSelected(null);
   }, []);
 
@@ -74,20 +72,22 @@ export default function Legible() {
     setReviewing(false);
   }, []);
 
+  const hasColours = swatches.length > 0;
   const pct = summary.total === 0 ? 0 : Math.round((summary.passing / summary.total) * 100);
 
   return (
-    <main className="mx-auto flex min-h-[100dvh] max-w-[1500px] flex-col gap-4 p-4 lg:p-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="serif text-[34px] leading-none">Legible</h1>
-          <p className="mt-1.5 max-w-[54ch] text-[12.5px] leading-relaxed text-[var(--muted)]">
-            Every foreground and background pair in your palette, graded against WCAG 2.2.
-            Failing pairs are moved in OKLCH to the nearest passing value — lightness shifts,
-            hue holds, so the brand survives the fix.
+    <main className="mx-auto w-full max-w-[1180px] px-6 py-12 lg:px-10 lg:py-16">
+      <header className="flex flex-wrap items-start justify-between gap-6">
+        <div className="max-w-[62ch]">
+          <h1 className="serif text-[44px] leading-[1.05] lg:text-[54px]">Legible</h1>
+          <p className="mt-4 text-[17px] leading-relaxed text-[var(--muted)]">
+            Checks whether the colours in your product are readable. Show it a screenshot, a
+            web address, or a list of colour codes — it grades every combination against the
+            accessibility standard, then fixes the ones that fail without changing the colour
+            you chose.
           </p>
         </div>
-        <div className="seg">
+        <div className="seg shrink-0">
           <button aria-pressed={theme === 'light'} onClick={() => setMode('light')}>
             Light
           </button>
@@ -97,88 +97,93 @@ export default function Legible() {
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[300px_minmax(0,1fr)_300px]">
-        <PaletteInput
-          swatches={swatches}
-          onReplace={replace}
-          onUpdate={update}
-          onRemove={remove}
-        />
+      <div className="mt-14 flex flex-col gap-14">
+        <Step
+          number={1}
+          title="Show it your colours"
+          description="Any of these works. A screenshot is usually the quickest, and never leaves your computer."
+        >
+          <SourcePicker onLoad={load} />
+        </Step>
 
-        <section className="flex min-h-0 flex-col gap-2.5">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <div className="seg">
-              {TIER_ORDER.map((id) => (
-                <button key={id} aria-pressed={tier === id} onClick={() => setTier(id)}>
-                  {TIERS[id].short}
-                </button>
-              ))}
-            </div>
-            <p className="text-[11.5px] text-[var(--muted)]">
-              needs {TIERS[tier].ratio}:1 · {TIERS[tier].note}
-            </p>
-          </div>
-
-          <div className="card flex flex-wrap items-center gap-x-5 gap-y-2 px-3 py-2">
-            <Figure value={`${pct}%`} label={`${summary.passing} of ${summary.total} pairs pass`} />
-            {summary.failing > 0 && (
-              <Figure value={String(summary.failing)} label="failing" tone="fail" />
-            )}
-            {summary.contested > 0 && (
-              <Figure
-                value={String(summary.contested)}
-                label="WCAG and APCA disagree"
-                tone="warn"
-              />
-            )}
-            <button
-              className="btn btn-primary ml-auto"
-              disabled={summary.failing === 0}
-              onClick={() => setReviewing(true)}
+        {hasColours && (
+          <>
+            <Step
+              number={2}
+              title="Say where each one is used"
+              description="A colour used as a background is never tested as text, and the other way round. Getting this right keeps the results to the combinations you would actually ship."
             >
-              Fix all
-            </button>
-          </div>
+              <SwatchList swatches={swatches} onUpdate={update} onRemove={remove} />
+            </Step>
 
-          <div className="card min-h-0 flex-1 overflow-hidden">
-            <Matrix
-              swatches={swatches}
-              matrix={matrix}
-              tier={tier}
-              selected={livePair}
-              onSelect={setSelected}
-            />
-          </div>
-        </section>
+            <Step
+              number={3}
+              title="Choose what you're checking"
+              description="The standard asks for different contrast depending on how big the text is, because larger type is easier to read at lower contrast."
+            >
+              <LevelPicker size={size} level={level} onSize={setSize} onLevel={setLevel} />
+            </Step>
 
-        <div className="min-h-0">
-          {livePair ? (
-            <PairDetail
-              pair={livePair}
-              tier={tier}
-              onApply={(id, hex) => update(id, { hex })}
-              onClose={() => setSelected(null)}
-            />
-          ) : (
-            <aside className="card flex h-full flex-col justify-center gap-2 p-4 text-center">
-              <p className="label">Pick a cell</p>
-              <p className="text-[12px] leading-relaxed text-[var(--muted)]">
-                Every cell is drawn in the pairing it grades. Select one to see which criteria
-                it meets, what APCA makes of it, and the nearest passing colour.
-              </p>
-            </aside>
-          )}
-        </div>
+            <Step
+              number={4}
+              title="The results"
+              aside={
+                <button
+                  className="btn btn-primary"
+                  disabled={summary.failing === 0}
+                  onClick={() => setReviewing(true)}
+                >
+                  {summary.failing === 0 ? 'Nothing to fix' : `Fix the ${summary.failing} failures`}
+                </button>
+              }
+            >
+              <div className="flex flex-col gap-6">
+                <div className="card flex flex-wrap items-center gap-x-10 gap-y-4 p-5">
+                  <Figure
+                    value={`${pct}%`}
+                    caption={`${summary.passing} of ${summary.total} combinations are readable`}
+                  />
+                  {summary.failing > 0 && (
+                    <Figure value={String(summary.failing)} caption="need attention" tone="fail" />
+                  )}
+                  <p className="max-w-[40ch] text-[13px] leading-snug text-[var(--faint)]">
+                    Measured against {TIERS[tier].ratio}:1, the level {TIERS[tier].criterion}{' '}
+                    asks for.
+                  </p>
+                </div>
+
+                <Matrix
+                  swatches={swatches}
+                  matrix={matrix}
+                  tier={tier}
+                  selected={livePair}
+                  onSelect={setSelected}
+                />
+              </div>
+            </Step>
+          </>
+        )}
       </div>
 
-      <footer className="rule-x border-b-0 border-t pt-3 text-[11px] leading-relaxed text-[var(--faint)]">
-        WCAG 2.2 is the verdict — it is what audits and procurement reference. APCA is shown
-        alongside because WCAG is blind to polarity and misjudges dark themes; where the two
-        disagree the cell is marked, and that is a prompt to look, not a failure. Colour
-        conversion, gamut mapping and the fix search are implemented here rather than
-        imported, and are checked against published reference values on every build.
-        Legible&rsquo;s own interface passes AA against both of its grounds.
+      <footer className="mt-20 border-t border-[var(--rule)] pt-6">
+        <p className="prose-note !max-w-[76ch] !text-[13px]">
+          Grading follows WCAG 2.2, the standard accessibility audits reference. Fixes move a
+          colour&rsquo;s lightness in OKLCH, a colour space built so that changing lightness
+          does not drag hue along with it — which is why a fixed blue is still your blue.
+          Colour conversion, gamut mapping and the fix search are implemented here rather than
+          imported, and checked against published reference values on every build. Legible
+          passes its own audit in both light and dark.
+        </p>
       </footer>
+
+      {livePair && (
+        <PairDetail
+          pair={livePair}
+          tier={tier}
+          onApply={(id, hex) => update(id, { hex })}
+          onClose={() => setSelected(null)}
+        />
+      )}
 
       {reviewing && (
         <FixReview
@@ -194,22 +199,24 @@ export default function Legible() {
 
 function Figure({
   value,
-  label,
+  caption,
   tone,
 }: {
   value: string;
-  label: string;
-  tone?: 'fail' | 'warn';
+  caption: string;
+  tone?: 'fail';
 }) {
   return (
-    <div className="flex items-baseline gap-1.5">
-      <span
-        className="mono text-[19px] leading-none"
-        style={{ color: tone ? `var(--${tone})` : 'var(--ink)' }}
+    <div>
+      <p
+        className="mono text-[30px] leading-none"
+        style={{ color: tone ? 'var(--fail)' : 'var(--ink)' }}
       >
         {value}
-      </span>
-      <span className="text-[11px] text-[var(--muted)]">{label}</span>
+      </p>
+      <p className="mt-1.5 text-[13.5px] text-[var(--muted)]">{caption}</p>
     </div>
   );
 }
+
+export type { Role };
