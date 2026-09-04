@@ -6,7 +6,7 @@ subdirectories.
 | | | |
 | --- | --- | --- |
 | **[Gambit](apps/chess)** | 3D chess with a built-in engine | [chess-3d-dusky.vercel.app](https://chess-3d-dusky.vercel.app) |
-| **[Legible](apps/legible)** | WCAG contrast auditor for design systems | — |
+| **[Legible](apps/legible)** | WCAG contrast auditor for design systems | [legible-eight.vercel.app](https://legible-eight.vercel.app) |
 
 Each app is standalone: its own `package.json`, its own lockfile, its own
 `node_modules`. There is no workspace tooling, because there is nothing to
