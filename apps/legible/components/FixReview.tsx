@@ -65,10 +65,10 @@ export default function FixReview({
       aria-modal="true"
       aria-labelledby="fix-title"
     >
-      <div className="card rise my-auto w-[min(96vw,900px)] p-5">
+      <div className="card rise my-auto w-[min(96vw,900px)] p-7 sm:p-9">
         <header className="flex items-start justify-between gap-3">
           <div>
-            <h2 id="fix-title" className="serif text-[24px] leading-none">
+            <h2 id="fix-title" className="display text-[30px]">
               Fixed palette
             </h2>
             <p className="mt-1.5 text-[12px] text-[var(--muted)]">
@@ -83,7 +83,7 @@ export default function FixReview({
 
         <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_320px]">
           <div>
-            <div className="label mb-1.5 grid grid-cols-[1fr_auto_1fr] gap-2">
+            <div className="eyebrow mb-2 grid grid-cols-[1fr_auto_1fr] gap-2">
               <span>before</span>
               <span />
               <span>after</span>
@@ -95,11 +95,11 @@ export default function FixReview({
                 return (
                   <li
                     key={s.id}
-                    className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-[2px] border border-[var(--rule)] p-1.5"
+                    className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-[14px] bg-[var(--sunk)] p-2.5"
                   >
                     <span className="flex items-center gap-2">
                       <span
-                        className="h-7 w-7 shrink-0 rounded-[2px] border border-[var(--rule-strong)]"
+                        className="h-8 w-8 shrink-0 rounded-[9px]"
                         style={{ background: s.hex }}
                         aria-hidden
                       />
@@ -117,7 +117,7 @@ export default function FixReview({
 
                     <span className="flex items-center gap-2">
                       <span
-                        className="h-7 w-7 shrink-0 rounded-[2px] border border-[var(--rule-strong)]"
+                        className="h-8 w-8 shrink-0 rounded-[9px]"
                         style={{ background: after }}
                         aria-hidden
                       />
@@ -149,8 +149,8 @@ export default function FixReview({
             </ul>
 
             {conflicts.length > 0 && (
-              <div className="mt-3 rounded-[2px] border border-[var(--rule-strong)] p-2.5">
-                <p className="label" style={{ color: 'var(--fail)' }}>
+              <div className="mt-4 rounded-[16px] bg-[var(--sunk)] p-4">
+                <p className="eyebrow" style={{ color: 'var(--fail)' }}>
                   Needs a decision, not a nudge
                 </p>
                 <ul className="mt-1.5 flex flex-col gap-1.5">
@@ -182,7 +182,7 @@ export default function FixReview({
                 </button>
               ))}
             </div>
-            <pre className="mono mt-2 max-h-[300px] flex-1 overflow-auto rounded-[2px] border border-[var(--rule)] bg-[var(--sunk)] p-2.5 text-[10.5px] leading-relaxed">
+            <pre className="mono mt-3 max-h-[300px] flex-1 overflow-auto rounded-[16px] bg-[var(--sunk)] p-4 text-[11px] leading-relaxed">
               {exported}
             </pre>
             <div className="mt-2 flex gap-2">

@@ -26,9 +26,9 @@ export default function SwatchList({
   return (
     <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {swatches.map((s) => (
-        <li key={s.id} className="card flex items-start gap-3 p-3.5">
+        <li key={s.id} className="flex items-start gap-3 rounded-[18px] bg-[var(--sunk)] p-3.5">
           <span
-            className="mt-0.5 h-12 w-12 shrink-0 rounded-[3px] border border-[var(--rule-strong)]"
+            className="mt-0.5 h-12 w-12 shrink-0 rounded-[12px]" 
             style={{ background: s.hex }}
             aria-hidden
           />

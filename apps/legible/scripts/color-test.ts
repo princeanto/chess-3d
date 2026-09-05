@@ -233,19 +233,30 @@ if (keep.status === 'ok') {
 
 console.log("\nLEGIBLE'S OWN PALETTE");
 const OWN = {
-  light: { paper: '#FBFAF8', card: '#FFFFFF', ink: '#16150F', muted: '#5C5A50', faint: '#77746A', accent: '#8A5A00' },
-  dark: { paper: '#111110', card: '#191817', ink: '#F0EDE4', muted: '#A5A196', faint: '#8A8679', accent: '#E0A93A' },
+  light: {
+    ground: '#efeeec',
+    card: '#ffffff',
+    ink: '#111111',
+    muted: '#605d59',
+    faint: '#85827e',
+  },
+  dark: {
+    ground: '#131312',
+    card: '#1c1c1b',
+    ink: '#f2f1ee',
+    muted: '#a3a09b',
+    faint: '#8b8884',
+  },
 };
 for (const [mode, p] of Object.entries(OWN)) {
-  for (const ground of [p.paper, p.card]) {
+  for (const ground of [p.ground, p.card]) {
     check(contrastHex(p.ink, ground) >= 7, `${mode}: ink on ${ground} reaches AAA`,
       contrastHex(p.ink, ground).toFixed(2));
     check(contrastHex(p.muted, ground) >= 4.5, `${mode}: muted on ${ground} reaches AA`,
       contrastHex(p.muted, ground).toFixed(2));
-    check(contrastHex(p.faint, ground) >= 3, `${mode}: faint on ${ground} reaches 3:1`,
+    // 3:1 is the floor for non-text and for the large captions this grey carries.
+    check(contrastHex(p.faint, ground) >= 3, `${mode}: faint on ${ground} clears 3:1`,
       contrastHex(p.faint, ground).toFixed(2));
-    check(contrastHex(p.accent, ground) >= 4.5, `${mode}: accent on ${ground} reaches AA`,
-      contrastHex(p.accent, ground).toFixed(2));
   }
 }
 

@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { extractFromImage, loadImage, nameExtracted } from '@/lib/extract';
 import { parsePalette, SAMPLE_PALETTE } from '@/lib/parse';
 import { MAX_SWATCHES, type Role } from '@/lib/palette';
+import { Tile } from './Step';
 
 export interface Incoming {
   name: string;
@@ -24,25 +25,16 @@ export default function SourcePicker({ onLoad }: { onLoad: (colours: Incoming[])
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid gap-3 sm:grid-cols-3">
-        {TABS.map((t) => {
-          const active = source === t.id;
-          return (
-            <button
-              key={t.id}
-              aria-pressed={active}
-              onClick={() => setSource(t.id)}
-              className="card flex flex-col items-start gap-1 p-4 text-left transition-colors"
-              style={{
-                borderColor: active ? 'var(--accent)' : 'var(--rule)',
-                background: active ? 'var(--accent-wash)' : 'var(--card)',
-              }}
-            >
-              <span className="text-[15px] font-semibold">{t.label}</span>
-              <span className="text-[13px] leading-snug text-[var(--muted)]">{t.blurb}</span>
-            </button>
-          );
-        })}
+      <div className="grid gap-2.5 sm:grid-cols-3">
+        {TABS.map((t) => (
+          <Tile
+            key={t.id}
+            active={source === t.id}
+            onClick={() => setSource(t.id)}
+            title={t.label}
+            blurb={t.blurb}
+          />
+        ))}
       </div>
 
       {source === 'image' && <ImageSource onLoad={onLoad} />}
@@ -102,11 +94,10 @@ function ImageSource({ onLoad }: { onLoad: (c: Incoming[]) => void }) {
             const file = e.dataTransfer.files?.[0];
             if (file) void handle(file);
           }}
-          className="card flex flex-col items-center justify-center gap-3 px-6 py-12 text-center transition-colors"
+          className="flex flex-col items-center justify-center gap-3 rounded-[20px] px-6 py-14 text-center transition-colors"
           style={{
-            borderStyle: 'dashed',
-            borderColor: dragging ? 'var(--accent)' : 'var(--rule-strong)',
-            background: dragging ? 'var(--accent-wash)' : 'var(--card)',
+            background: dragging ? 'var(--ink)' : 'var(--sunk)',
+            color: dragging ? 'var(--on-accent)' : 'var(--ink)',
           }}
         >
           {preview ? (
@@ -114,10 +105,10 @@ function ImageSource({ onLoad }: { onLoad: (c: Incoming[]) => void }) {
             <img
               src={preview}
               alt="The screenshot the colours were taken from"
-              className="max-h-[190px] w-auto rounded-[3px] border border-[var(--rule)]"
+              className="max-h-[190px] w-auto rounded-[14px]"
             />
           ) : (
-            <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden className="text-[var(--faint)]">
+            <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden className="text-[var(--ghost)]">
               <rect x="2" y="6" width="30" height="22" rx="2" stroke="currentColor" strokeWidth="1.6" fill="none" />
               <circle cx="11" cy="14" r="3" stroke="currentColor" strokeWidth="1.6" fill="none" />
               <path d="M4 25l8-7 6 5 5-4 7 6" stroke="currentColor" strokeWidth="1.6" fill="none" />
@@ -164,7 +155,7 @@ function ImageSource({ onLoad }: { onLoad: (c: Incoming[]) => void }) {
         {error && <p className="mt-3 text-[13.5px]" style={{ color: 'var(--fail)' }}>{error}</p>}
       </div>
 
-      <aside className="card p-4">
+      <aside className="rounded-[20px] bg-[var(--sunk)] p-5">
         <p className="eyebrow">How this works</p>
         <p className="mt-2.5 text-[13px] leading-relaxed text-[var(--muted)]">
           The image never leaves your computer. Every pixel is sorted into groups of
@@ -172,7 +163,7 @@ function ImageSource({ onLoad }: { onLoad: (c: Incoming[]) => void }) {
           gradient or a photo gives you the colours you actually see, not a thousand
           near-identical ones.
         </p>
-        <p className="mt-3 border-t border-[var(--rule)] pt-3 text-[12.5px] leading-relaxed text-[var(--faint)]">
+        <p className="mt-4 border-t border-[var(--hairline)] pt-4 text-[12.5px] leading-relaxed text-[var(--faint)]">
           Works best on a clean screenshot of a page or a design. Photographs give muddier
           results, because real light is never flat.
         </p>
@@ -246,7 +237,7 @@ function SiteSource({ onLoad }: { onLoad: (c: Incoming[]) => void }) {
             }}
             placeholder="stripe.com"
             spellCheck={false}
-            className="min-w-[220px] flex-1 px-3.5 py-3"
+            className="min-w-[220px] flex-1 px-5 py-3.5"
           />
           <button className="btn btn-primary" onClick={() => void go()} disabled={busy || !url.trim()}>
             {busy ? 'Reading…' : 'Read the colours'}
@@ -256,13 +247,13 @@ function SiteSource({ onLoad }: { onLoad: (c: Incoming[]) => void }) {
         {note && <p className="mt-3 text-[13.5px] text-[var(--muted)]">{note}</p>}
       </div>
 
-      <aside className="card p-4">
+      <aside className="rounded-[20px] bg-[var(--sunk)] p-5">
         <p className="eyebrow">What this reads</p>
         <p className="mt-2.5 text-[13px] leading-relaxed text-[var(--muted)]">
           The colours written in the page&rsquo;s stylesheets — usually the design tokens the
           team actually defined, ordered by how often each is used.
         </p>
-        <p className="mt-3 border-t border-[var(--rule)] pt-3 text-[12.5px] leading-relaxed text-[var(--faint)]">
+        <p className="mt-4 border-t border-[var(--hairline)] pt-4 text-[12.5px] leading-relaxed text-[var(--faint)]">
           It cannot see colours that only appear once JavaScript runs, and it cannot see
           images. If the result looks thin or wrong, take a screenshot instead — that reads
           what is actually on screen.
@@ -301,7 +292,7 @@ function PasteSource({ onLoad }: { onLoad: (c: Incoming[]) => void }) {
           spellCheck={false}
           rows={8}
           placeholder={'#1a73e8\n#ffffff\n#5c5a50'}
-          className="mono w-full resize-y p-4 leading-relaxed"
+          className="mono w-full resize-y p-5 leading-relaxed"
         />
         <div className="mt-3 flex flex-wrap gap-2.5">
           <button className="btn btn-primary" onClick={() => load(draft)} disabled={!draft.trim()}>
@@ -320,7 +311,7 @@ function PasteSource({ onLoad }: { onLoad: (c: Incoming[]) => void }) {
         {error && <p className="mt-3 text-[13.5px]" style={{ color: 'var(--fail)' }}>{error}</p>}
       </div>
 
-      <aside className="card p-4">
+      <aside className="rounded-[20px] bg-[var(--sunk)] p-5">
         <p className="eyebrow">Formats it reads</p>
         <ul className="mt-2.5 flex flex-col gap-2 text-[13px] leading-snug text-[var(--muted)]">
           <li>

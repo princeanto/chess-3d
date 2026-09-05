@@ -47,13 +47,13 @@ export default function PairDetail({
       onClick={onClose}
     >
       <div
-        className="card rise my-auto w-[min(96vw,720px)] p-6 sm:p-8"
+        className="card rise my-auto w-[min(96vw,720px)] p-7 sm:p-9"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex items-start justify-between gap-4">
           <div>
             <p className="eyebrow">The pairing</p>
-            <h2 id="pair-title" className="serif mt-1 text-[26px] leading-tight">
+            <h2 id="pair-title" className="display mt-1.5 text-[28px]">
               {pair.fg.name} on {pair.bg.name}
             </h2>
           </div>
@@ -63,7 +63,7 @@ export default function PairDetail({
         </header>
 
         <div
-          className="mt-6 flex flex-col items-center justify-center gap-2 rounded-[3px] px-6 py-10"
+          className="mt-6 flex flex-col items-center justify-center gap-2 rounded-[20px] px-6 py-12"
           style={{ background: pair.bg.hex, color: pair.fg.hex }}
         >
           <span className="text-[24px] font-semibold leading-tight">This is a heading</span>
@@ -96,8 +96,8 @@ export default function PairDetail({
 
         {pair.contested && (
           <p
-            className="mt-4 rounded-[3px] border p-3 text-[13.5px] leading-relaxed"
-            style={{ borderColor: 'var(--accent)', background: 'var(--accent-wash)' }}
+            className="mt-5 rounded-[16px] p-4 text-[13.5px] leading-relaxed"
+            style={{ background: 'var(--sunk)' }}
           >
             These two measures disagree about this pair. WCAG treats light-on-dark and
             dark-on-light identically; APCA does not, and it is usually closer to what the eye
@@ -130,7 +130,7 @@ export default function PairDetail({
         </div>
 
         {failing && (
-          <div className="mt-6 border-t border-[var(--rule)] pt-6">
+          <div className="mt-6 border-t border-[var(--hairline)] pt-7">
             <p className="eyebrow">The nearest colour that works</p>
             {fix ? (
               <>
@@ -189,7 +189,7 @@ function Sample({
   return (
     <div>
       <div
-        className="flex h-20 items-center justify-center rounded-[3px] border border-[var(--rule)]"
+        className="flex h-20 items-center justify-center rounded-[16px]"
         style={{ background: bg, color: hex }}
       >
         <span className="text-[17px] font-semibold">Sample text</span>

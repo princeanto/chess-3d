@@ -1,6 +1,7 @@
 'use client';
 
 import { TIERS, type TierId } from '@/lib/color/wcag';
+import { Tile } from './Step';
 
 /**
  * Five tier buttons labelled "Body AA / Body AAA / Large AA / Large AAA / UI
@@ -39,25 +40,16 @@ export default function LevelPicker({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="grid gap-3 sm:grid-cols-3">
-        {SIZES.map((s) => {
-          const active = size === s.id;
-          return (
-            <button
-              key={s.id}
-              aria-pressed={active}
-              onClick={() => onSize(s.id)}
-              className="card flex flex-col items-start gap-1 p-4 text-left transition-colors"
-              style={{
-                borderColor: active ? 'var(--accent)' : 'var(--rule)',
-                background: active ? 'var(--accent-wash)' : 'var(--card)',
-              }}
-            >
-              <span className="text-[15px] font-semibold">{s.label}</span>
-              <span className="text-[13px] leading-snug text-[var(--muted)]">{s.blurb}</span>
-            </button>
-          );
-        })}
+      <div className="grid gap-2.5 sm:grid-cols-3">
+        {SIZES.map((s) => (
+          <Tile
+            key={s.id}
+            active={size === s.id}
+            onClick={() => onSize(s.id)}
+            title={s.label}
+            blurb={s.blurb}
+          />
+        ))}
       </div>
 
       <div className="flex flex-wrap items-center gap-x-5 gap-y-3">

@@ -39,13 +39,12 @@ export default function Matrix({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-        <Key swatchStyle={{ background: 'var(--card)', color: 'var(--ink)' }} label="Passes" />
+        <Key swatchStyle={{ background: 'var(--sunk)' }} label="Passes" />
         <Key
           swatchStyle={{
-            background: 'var(--card)',
-            color: 'var(--ink)',
+            background: 'var(--sunk)',
             backgroundImage:
-              'repeating-linear-gradient(135deg, var(--rule-strong) 0 1px, transparent 1px 6px)',
+              'repeating-linear-gradient(135deg, var(--ghost) 0 1.5px, transparent 1.5px 7px)',
           }}
           label={`Fails — under ${TIERS[tier].ratio}:1`}
         />
@@ -63,14 +62,14 @@ export default function Matrix({
           </caption>
           <thead>
             <tr>
-              <th className="sticky left-0 z-30 bg-[var(--paper)] p-2 text-left align-bottom">
-                <span className="eyebrow !text-[10px]">on &darr; / behind &rarr;</span>
+              <th className="sticky left-0 z-30 bg-[var(--card)] p-2 text-left align-bottom">
+                <span className="eyebrow !text-[10.5px]">on &darr; / behind &rarr;</span>
               </th>
               {cols.map((bg) => (
                 <th key={bg.id} scope="col" className="p-1 align-bottom">
                   <span className="flex flex-col items-center gap-1.5">
                     <span
-                      className="h-5 w-16 rounded-[2px] border border-[var(--rule-strong)]"
+                      className="h-5 w-16 rounded-[6px]"
                       style={{ background: bg.hex }}
                       aria-hidden
                     />
@@ -85,10 +84,10 @@ export default function Matrix({
           <tbody>
             {rows.map((fg, r) => (
               <tr key={fg.id}>
-                <th scope="row" className="sticky left-0 z-20 bg-[var(--paper)] p-2 text-left">
+                <th scope="row" className="sticky left-0 z-20 bg-[var(--card)] p-2 text-left">
                   <span className="flex items-center gap-2">
                     <span
-                      className="h-5 w-5 shrink-0 rounded-[2px] border border-[var(--rule-strong)]"
+                      className="h-5 w-5 shrink-0 rounded-[6px]"
                       style={{ background: fg.hex }}
                       aria-hidden
                     />
@@ -106,10 +105,10 @@ export default function Matrix({
                     return (
                       <td key={bg.id}>
                         <div
-                          className="flex h-[68px] w-[104px] items-center justify-center rounded-[3px] border border-dashed border-[var(--rule)]"
+                          className="flex h-[68px] w-[104px] items-center justify-center rounded-[12px] bg-[var(--sunk)]"
                           title="The same colour on itself"
                         >
-                          <span className="mono text-[11px] text-[var(--faint)]">—</span>
+                          <span className="mono text-[11px] text-[var(--ghost)]">—</span>
                         </div>
                       </td>
                     );
@@ -121,13 +120,11 @@ export default function Matrix({
                         onClick={() => onSelect(pair)}
                         aria-label={`${fg.name} on ${bg.name}. Contrast ${formatRatio(pair.ratio)} to 1. ${ok ? 'Passes' : 'Fails'}.`}
                         aria-pressed={isSelected}
-                        className="relative flex h-[68px] w-[104px] flex-col items-center justify-center gap-0.5 overflow-hidden rounded-[3px] transition-transform hover:scale-[1.04] focus:outline-none"
+                        className="relative flex h-[70px] w-[106px] flex-col items-center justify-center gap-0.5 overflow-hidden rounded-[14px] transition-transform hover:scale-[1.04] focus:outline-none"
                         style={{
                           background: bg.hex,
                           color: fg.hex,
-                          boxShadow: isSelected
-                            ? '0 0 0 2px var(--accent)'
-                            : 'inset 0 0 0 1px var(--rule)',
+                          boxShadow: isSelected ? '0 0 0 3px var(--ink)' : 'none',
                         }}
                       >
                         {!ok && (
@@ -172,7 +169,7 @@ function Key({
     <span className="flex items-center gap-2">
       <span
         aria-hidden
-        className="h-6 w-9 rounded-[2px] border border-[var(--rule-strong)]"
+        className="h-6 w-9 rounded-[7px]"
         style={swatchStyle}
       />
       <span className="text-[13px] text-[var(--muted)]">{label}</span>
