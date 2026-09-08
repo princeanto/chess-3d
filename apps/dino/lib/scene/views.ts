@@ -30,8 +30,8 @@ export const VIEWS: View[] = [
   {
     id: 'screen',
     label: 'Screen',
-    position: [0, 1.72, 5.5],
-    target: [0, 1.5, 0.2],
+    position: [0, 1.6, 5.5],
+    target: [0, 1.36, 0.2],
     fov: 34,
   },
   {
@@ -53,6 +53,13 @@ export const VIEWS: View[] = [
     label: 'Right',
     position: [6.6, 3.1, 5.4],
     target: [0.1, 1.2, -0.7],
+    fov: 36,
+  },
+  {
+    id: 'back',
+    label: 'Back',
+    position: [-3.4, 2.6, -5.6],
+    target: [0, 1.2, -1.2],
     fov: 36,
   },
   {

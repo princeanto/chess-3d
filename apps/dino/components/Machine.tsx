@@ -6,6 +6,137 @@ import { useFrame } from '@react-three/fiber';
 import { LIVE_CODES, layoutKeys, type PlacedKey } from '@/lib/scene/keys';
 
 /**
+ * Half-width of the machine at a given depth. 0 is the face, 1 is the tail.
+ *
+ * Widest just behind the face, then a long taper closing to nothing at the very
+ * back — the rear of the shell is a rounded end, so in a sweep like this the
+ * last section is a point, the same way a sphere's is.
+ */
+const HALF_W = 1.125;
+
+function halfWidthAt(t: number): number {
+  const nose = 0.93 + 0.07 * Math.min(1, t / 0.14);
+  return HALF_W * nose * Math.pow(Math.max(0, 1 - Math.pow(t, 2.4)), 0.4);
+}
+
+/**
+ * Superellipse exponent of the cross-section at a given depth.
+ *
+ * The face is nearly a rounded square and the tail is nearly an ellipse, so the
+ * exponent falls off going back. This one parameter carries most of the
+ * character of the shell.
+ */
+function sectionExponent(t: number): number {
+  return 3.9 - 1.6 * t;
+}
+
+/**
+ * The shell, as a cross-section swept front to back.
+ *
+ * It used to be the side profile extruded sideways with a bevel, and that can
+ * only ever produce a prism: the flanks came out as two big flat planes meeting
+ * the top along a hard crease, which is why the machine kept reading as a boxy
+ * loaf however carefully the profile itself was fitted. Sweeping a superellipse
+ * whose width, height and squareness all vary with depth gives a genuinely
+ * domed body with no crease in it anywhere.
+ *
+ * Built indexed so shared vertices average their normals. The extruded version
+ * was non-indexed, so every triangle was flat-shaded and the shell faceted.
+ */
+function bodySurface(): THREE.BufferGeometry {
+  const pts = bodyProfile().getPoints(900);
+  const X0 = Math.min(...pts.map((p) => p.x));
+  const X1 = Math.max(...pts.map((p) => p.x));
+  const NZ = 112;
+  const NA = 128;
+  const eps = (X1 - X0) / 240;
+
+  /** Vertical extent of the side profile at a given depth. */
+  const spanAt = (x: number): [number, number] => {
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const q of pts) {
+      if (Math.abs(q.x - x) <= eps) {
+        lo = Math.min(lo, q.y);
+        hi = Math.max(hi, q.y);
+      }
+    }
+    return lo === Infinity ? [0, 0] : [lo, hi];
+  };
+
+  const position: number[] = [];
+  for (let i = 0; i <= NZ; i += 1) {
+    // Biased toward the front, where the slanted face needs the resolution.
+    const t = Math.pow(i / NZ, 1.5);
+    const x = X0 + t * (X1 - X0);
+    const [lo, hi] = spanAt(x);
+    const cy = (lo + hi) / 2;
+    const ry = (hi - lo) / 2;
+    const rx = halfWidthAt(t);
+    const z = 0.11 - (x - X0);
+    for (let j = 0; j < NA; j += 1) {
+      const a = (j / NA) * Math.PI * 2;
+      const c = Math.cos(a);
+      const sn = Math.sin(a);
+      /*
+       * The underside is flatter than the crown: the machine stands on a desk.
+       * A symmetric section rounded the belly as much as the top and left the
+       * shell balanced on a curve with its feet dangling below it. Blended
+       * rather than switched at the equator — swapping exponents abruptly there
+       * put a crease around the machine and sliced the bottom off square.
+       */
+      const w = 0.5 + 0.5 * sn;
+      const ease = w * w * (3 - 2 * w);
+      const k = 2 / (5 + (sectionExponent(t) - 5) * ease);
+      position.push(
+        Math.sign(c) * Math.pow(Math.abs(c), k) * rx,
+        cy + Math.sign(sn) * Math.pow(Math.abs(sn), k) * ry,
+        z,
+      );
+    }
+  }
+
+  const index: number[] = [];
+  for (let i = 0; i < NZ; i += 1) {
+    for (let j = 0; j < NA; j += 1) {
+      const a = i * NA + j;
+      const b = i * NA + ((j + 1) % NA);
+      const c = (i + 1) * NA + j;
+      const d = (i + 1) * NA + ((j + 1) % NA);
+      index.push(a, c, b, b, c, d);
+    }
+  }
+
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(position, 3));
+  g.setIndex(index);
+  g.computeVertexNormals();
+
+  /*
+   * The two plastics as vertex colours rather than as two material groups.
+   *
+   * Splitting triangles between two materials made the seam a visible row of
+   * saw teeth, because a triangle can only be wholly one plastic or the other.
+   * Colouring per vertex lets the boundary fall inside a quad, and at this mesh
+   * density that is a clean line a couple of pixels wide.
+   */
+  const pos = g.attributes.position;
+  const nor = g.attributes.normal;
+  const frost = new THREE.Color(FROST);
+  const hood = new THREE.Color(BONDI);
+  const colour: number[] = [];
+  for (let v = 0; v < pos.count; v += 1) {
+    const y = pos.getY(v);
+    const z = pos.getZ(v);
+    const isFrost = z > frontSeamZ(nor.getY(v)) || y < baseSeamY(z);
+    const c = isFrost ? frost : hood;
+    colour.push(c.r, c.g, c.b);
+  }
+  g.setAttribute('color', new THREE.Float32BufferAttribute(colour, 3));
+  return g;
+}
+
+/**
  * A 1998 iMac G3, on a black studio sweep.
  *
  * Built against the machine's published dimensions — 15.2 wide by 15.8 high by
@@ -23,7 +154,6 @@ import { LIVE_CODES, layoutKeys, type PlacedKey } from '@/lib/scene/keys';
 const BONDI = '#3f96a8';
 const BONDI_DEEP = '#1d5a67';
 const FROST = '#d5dddf';
-const CHASSIS = '#14343b';
 const KEYCAP = '#e9ece9';
 const KEYCAP_LIVE = '#bcd6dc';
 
@@ -36,7 +166,7 @@ const KEYCAP_LIVE = '#bcd6dc';
  */
 export const SCREEN_SIZE = { w: 1.68, h: 1.26 };
 /** World height of the tube's centre. */
-export const SCREEN_Y = 1.56;
+export const SCREEN_Y = 1.42;
 /**
  * How far the face leans back, in radians.
  *
@@ -48,9 +178,6 @@ export const SCREEN_Y = 1.56;
 export const FACE_TILT = -0.077;
 
 /* ------------------------------ body shell ------------------------------ */
-
-const BODY_W = 2.26;
-const BEVEL = 0.19;
 
 /**
  * Shape X is measured *backwards* from the front face.
@@ -95,7 +222,7 @@ function crownAt(shapeX: number): number {
   for (const v of pts) {
     if (Math.abs(v.x - shapeX) < 0.06) best = Math.max(best, v.y);
   }
-  return best + BEVEL;
+  return best;
 }
 
 /**
@@ -109,52 +236,16 @@ function crownAt(shapeX: number): number {
  */
 function widthAt(t: number): number {
   const front = Math.min(1, 0.94 + t * 0.3);
-  const tail = 1 - 0.5 * Math.pow(t, 1.7);
+  /*
+   * The tail draws in, but nowhere near as far as it used to.
+   *
+   * Taking it to half width turned the back into a wedge with a vertical edge
+   * down it — from behind the machine read as a cylinder lying on its side. In
+   * plan the real shell stays broad most of the way back and finishes as a
+   * rounded end, not a point.
+   */
+  const tail = 1 - 0.22 * Math.pow(t, 2.1);
   return front * tail;
-}
-
-/**
- * How wide the machine is at a given height.
- *
- * This is what stops the sides being flat. An extrusion scaled only by depth is
- * a ruled surface — curved front to back, dead straight up and down — so each
- * flank rendered as one enormous facet with a hard crease where the bevel
- * started, which read as a lighting bug rather than as a machine. Pulling the
- * width in toward the crown and the base domes them, and puts the widest point
- * where the real shell's part line sits, a little below halfway.
- */
-function narrowAt(y: number): number {
-  const t = (y - 0.18) / 2.34; // 0 at the base, 1 at the crown
-  const dome = 1 - 0.26 * Math.pow(Math.min(1, Math.abs(t - 0.42) / 0.58), 2.2);
-  // A last gentle draw-in at the very bottom, where it meets the feet.
-  const foot = 0.9 + 0.1 * Math.min(1, Math.max(0, (y - 0.02) / 0.42));
-  return dome * foot;
-}
-
-function extrudedBody(inset: number): THREE.BufferGeometry {
-  const depth = BODY_W - inset * 2;
-  const g = new THREE.ExtrudeGeometry(bodyProfile(), {
-    depth,
-    bevelEnabled: true,
-    bevelThickness: BEVEL,
-    bevelSize: BEVEL,
-    bevelSegments: 12,
-    curveSegments: 32,
-  });
-  // Centre across the width, then turn the extrusion axis into world X.
-  g.translate(0, 0, -depth / 2);
-  g.rotateY(Math.PI / 2);
-
-  g.computeBoundingBox();
-  const { min, max } = g.boundingBox!;
-  const pos = g.attributes.position;
-  for (let i = 0; i < pos.count; i += 1) {
-    const t = (max.z - pos.getZ(i)) / (max.z - min.z);
-    pos.setX(i, pos.getX(i) * widthAt(t) * narrowAt(pos.getY(i)));
-  }
-
-  g.computeVertexNormals();
-  return g;
 }
 
 /**
@@ -184,53 +275,6 @@ function baseSeamY(z: number): number {
 }
 
 /**
- * Sorts the shell's triangles into frosted and coloured runs.
- *
- * The two plastics are one moulding as far as the silhouette is concerned, so
- * they are one geometry with two material groups rather than two meshes — that
- * keeps the seam exactly on the surface instead of leaving a hairline where two
- * separately bevelled solids almost meet.
- */
-function twoTone(g: THREE.BufferGeometry): THREE.BufferGeometry {
-  const pos = g.attributes.position;
-  const nor = g.attributes.normal;
-  const tris = pos.count / 3;
-  const frost: number[] = [];
-  const hood: number[] = [];
-
-  for (let t = 0; t < tris; t += 1) {
-    const i = t * 3;
-    const cz = (pos.getZ(i) + pos.getZ(i + 1) + pos.getZ(i + 2)) / 3;
-    const cy = (pos.getY(i) + pos.getY(i + 1) + pos.getY(i + 2)) / 3;
-    const ny = (nor.getY(i) + nor.getY(i + 1) + nor.getY(i + 2)) / 3;
-    (cz > frontSeamZ(ny) || cy < baseSeamY(cz) ? frost : hood).push(t);
-  }
-
-  const order = [...frost, ...hood];
-  const p = new Float32Array(order.length * 9);
-  const n = new Float32Array(order.length * 9);
-  order.forEach((t, k) => {
-    for (let v = 0; v < 3; v += 1) {
-      const src = t * 3 + v;
-      const dst = k * 3 + v;
-      p[dst * 3] = pos.getX(src);
-      p[dst * 3 + 1] = pos.getY(src);
-      p[dst * 3 + 2] = pos.getZ(src);
-      n[dst * 3] = nor.getX(src);
-      n[dst * 3 + 1] = nor.getY(src);
-      n[dst * 3 + 2] = nor.getZ(src);
-    }
-  });
-
-  const out = new THREE.BufferGeometry();
-  out.setAttribute('position', new THREE.BufferAttribute(p, 3));
-  out.setAttribute('normal', new THREE.BufferAttribute(n, 3));
-  out.addGroup(0, frost.length * 3, 0);
-  out.addGroup(frost.length * 3, hood.length * 3, 1);
-  return out;
-}
-
-/**
  * World Z of the shell's front surface at the tube's height, plus a hair.
  *
  * The face slopes, so this is only correct at one height — which is why the
@@ -239,43 +283,18 @@ function twoTone(g: THREE.BufferGeometry): THREE.BufferGeometry {
 const FRONT_Z = 0.03;
 
 function Body() {
-  const shell = useMemo(() => twoTone(extrudedBody(0)), []);
-  const chassis = useMemo(() => extrudedBody(0.34), []);
+  const shell = useMemo(() => bodySurface(), []);
   const handleY = useMemo(() => crownAt(1.75), []);
 
   return (
-    <group position={[0, 0.04, 0]}>
-      {/*
-        Dark internals, seen through the tinted hood. Scaled in about the body's
-        own centre rather than merely nudged — offsetting it alone pushed the
-        crown of the chassis out through the top of the shell, which showed up
-        as a beige slab lying across the machine's back.
-      */}
-      <mesh geometry={chassis} position={[0, 0.1, -0.1]} scale={[1, 0.93, 0.93]}>
-        <meshStandardMaterial color={CHASSIS} roughness={0.6} metalness={0.08} />
-      </mesh>
-
+    <group position={[0, -0.1, 0]}>
       <mesh geometry={shell} castShadow receiveShadow>
-        {/* Group 0: the frosted front and base. */}
         <meshPhysicalMaterial
-          attach="material-0"
-          color={FROST}
-          transparent
-          opacity={0.9}
-          roughness={0.34}
-          clearcoat={0.7}
-          clearcoatRoughness={0.12}
-        />
-        {/* Group 1: the coloured hood over the back. */}
-        <meshPhysicalMaterial
-          attach="material-1"
-          color={BONDI}
-          transparent
-          opacity={0.93}
-          roughness={0.18}
+          vertexColors
+          roughness={0.3}
           metalness={0}
-          clearcoat={1}
-          clearcoatRoughness={0.05}
+          clearcoat={0.65}
+          clearcoatRoughness={0.12}
         />
       </mesh>
 
@@ -285,19 +304,21 @@ function Body() {
         profile rather than by a guessed height — guessing left it hovering over
         the case like a lunchbox lid.
       */}
-      <mesh position={[0, handleY - 0.05, -1.75]} rotation={[0.52, 0, 0]}>
-        <boxGeometry args={[0.62, 0.03, 0.26]} />
-        <meshStandardMaterial color="#0a2429" roughness={0.9} />
-      </mesh>
+      <group position={[0, handleY - 0.14, -1.72]} rotation={[0.5, 0, 0]}>
+        <mesh>
+          <boxGeometry args={[0.46, 0.1, 0.22]} />
+          <meshStandardMaterial color="#0a2429" roughness={0.95} />
+        </mesh>
+      </group>
 
       {/* Four small clear feet. */}
       {[
-        [-0.62, -0.35],
-        [0.62, -0.35],
-        [-0.5, -2.1],
-        [0.5, -2.1],
+        [-0.72, -0.3],
+        [0.72, -0.3],
+        [-0.56, -1.85],
+        [0.56, -1.85],
       ].map(([x, z]) => (
-        <mesh key={`${x},${z}`} position={[x, -0.02, z]}>
+        <mesh key={`${x},${z}`} position={[x, 0.14, z]}>
           <cylinderGeometry args={[0.07, 0.08, 0.08, 14]} />
           <meshPhysicalMaterial color="#cfd8da" roughness={0.5} transparent opacity={0.8} />
         </mesh>
