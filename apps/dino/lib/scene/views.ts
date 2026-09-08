@@ -17,6 +17,23 @@ export interface View {
 }
 
 export const VIEWS: View[] = [
+  /*
+   * The default, and the only one framed on the picture rather than the object.
+   *
+   * Any shot wide enough to include the keyboard puts the screen at about a
+   * fifth of the frame height, which leaves the runner around fifteen pixels
+   * tall — too small to read. The keyboard sits two units below the screen and
+   * well forward of it, so no framing holds both and still shows the game: this
+   * one gives up the keyboard to make the game legible, and the other four are
+   * there to show the machine.
+   */
+  {
+    id: 'screen',
+    label: 'Screen',
+    position: [0, 1.46, 4.65],
+    target: [0, 1.14, 0.2],
+    fov: 34,
+  },
   {
     id: 'front',
     label: 'Front',
