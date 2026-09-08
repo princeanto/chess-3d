@@ -12,74 +12,308 @@ import { WORLD, constants, type Obstacle, type State } from './engine';
 interface Palette {
   skyTop: string;
   skyBottom: string;
-  sun: string;
-  sunGlow: string;
+  body: string;
+  glow: string;
+  /** Mid stop, so the falloff is not a hard ring. */
+  glowMid: string;
   duneFar: string;
   duneNear: string;
   ground: string;
   groundLine: string;
+  /** Scene ink: the runner and obstacles. Chosen against the ground, not
+   *  interpolated — ground and ink cross from light to dark at the same moment,
+   *  so blending both leaves the silhouette invisible for the whole dawn. */
   ink: string;
+  /**
+   * HUD ink, chosen per screen region rather than once for the whole overlay.
+   * At dawn the sky's top is dark violet while its bottom is pale peach, so no
+   * single ink is readable at both ends of the screen.
+   */
+  hudTop: string;
+  hudMid: string;
+  hudBottom: string;
+  /** Reads against `hudMid` when that is used as a button fill. */
+  onHudMid: string;
+  cloud: string;
   dust: string;
+  /** How much of the star field shows, 0..1. */
   star: number;
 }
 
-const DAY: Palette = {
-  skyTop: '#dbe6f0',
-  skyBottom: '#f6e7d4',
-  sun: '#ffd9a0',
-  sunGlow: 'rgba(255, 198, 128, 0.55)',
-  duneFar: '#c9cfd8',
-  duneNear: '#e3d3bb',
-  ground: '#efe3cd',
-  groundLine: '#b9a892',
-  ink: '#26272b',
-  dust: 'rgba(150, 132, 108, 0.55)',
-  star: 0,
-};
+/**
+ * Four times of day, not two.
+ *
+ * The first version lerped between one day palette and one night palette in
+ * sRGB. Blending a warm light scheme to a cool dark one that way passes
+ * straight through desaturated grey, so the halfway point — which is most of
+ * what a player sees, because it is the transition — looked washed out and
+ * muddy. Keyframing dawn and dusk gives those minutes their own colour, and
+ * mixing in OKLab keeps saturation up across every crossing.
+ */
+type Key = Omit<Palette, 'hudTop' | 'hudMid' | 'hudBottom' | 'onHudMid' | 'ink'>;
 
-const NIGHT: Palette = {
-  skyTop: '#10131f',
-  skyBottom: '#232a3d',
-  sun: '#e8eef7',
-  sunGlow: 'rgba(190, 210, 240, 0.28)',
-  duneFar: '#1b2030',
-  duneNear: '#252c3e',
-  ground: '#2b3145',
-  groundLine: '#414a63',
-  ink: '#e8eaf0',
-  dust: 'rgba(180, 190, 210, 0.4)',
-  star: 1,
-};
+const KEYS: Array<{ at: number; p: Key }> = [
+  {
+    at: 0,
+    p: {
+      skyTop: '#9ec6ea',
+      skyBottom: '#f4e2c6',
+      body: '#ffd77f',
+      glow: 'rgba(255, 196, 110, 0.5)',
+      glowMid: 'rgba(255, 176, 90, 0.14)',
+      duneFar: '#aebfd4',
+      duneNear: '#e2cfae',
+      ground: '#eddfc2',
+      groundLine: '#b09a7c',
+      cloud: '#ffffff',
+      dust: 'rgba(150, 132, 108, 0.55)',
+      star: 0,
+    },
+  },
+  {
+    at: 0.34,
+    p: {
+      skyTop: '#4c4a8f',
+      skyBottom: '#f0855c',
+      body: '#ffb257',
+      glow: 'rgba(255, 140, 80, 0.55)',
+      glowMid: 'rgba(255, 110, 70, 0.16)',
+      duneFar: '#5a5288',
+      duneNear: '#a86a72',
+      ground: '#96626a',
+      groundLine: '#b8828b',
+      cloud: '#f2a98d',
+      dust: 'rgba(220, 160, 130, 0.5)',
+      star: 0.25,
+    },
+  },
+  {
+    at: 0.52,
+    p: {
+      skyTop: '#070b1c',
+      skyBottom: '#1c2547',
+      body: '#e4ecfb',
+      glow: 'rgba(180, 205, 255, 0.3)',
+      glowMid: 'rgba(150, 180, 240, 0.09)',
+      duneFar: '#121a33',
+      duneNear: '#1e2748',
+      ground: '#232c4e',
+      groundLine: '#3d497a',
+      cloud: '#2f3a63',
+      dust: 'rgba(170, 185, 220, 0.42)',
+      star: 1,
+    },
+  },
+  {
+    at: 0.72,
+    p: {
+      skyTop: '#161a3a',
+      skyBottom: '#4b3566',
+      body: '#cdb9e8',
+      glow: 'rgba(150, 120, 200, 0.3)',
+      glowMid: 'rgba(130, 100, 180, 0.1)',
+      duneFar: '#1d2044',
+      duneNear: '#33284f',
+      ground: '#33294f',
+      groundLine: '#4d3f6d',
+      cloud: '#3b3160',
+      dust: 'rgba(180, 160, 210, 0.42)',
+      star: 0.75,
+    },
+  },
+  {
+    at: 0.86,
+    p: {
+      skyTop: '#6d7fc0',
+      skyBottom: '#f7c9a4',
+      body: '#ffe0ae',
+      glow: 'rgba(255, 210, 165, 0.45)',
+      glowMid: 'rgba(255, 185, 145, 0.13)',
+      duneFar: '#7f8cba',
+      duneNear: '#cfae99',
+      ground: '#dfc9b0',
+      groundLine: '#a3897a',
+      cloud: '#ffd9c2',
+      dust: 'rgba(180, 150, 130, 0.5)',
+      star: 0.3,
+    },
+  },
+];
 
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+/* ------------------------ colour, blended in OKLab ----------------------- */
 
 function hexToRgb(hex: string) {
   const n = parseInt(hex.slice(1), 16);
-  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  return { r: ((n >> 16) & 255) / 255, g: ((n >> 8) & 255) / 255, b: (n & 255) / 255 };
 }
 
-function mixHex(a: string, b: string, t: number): string {
-  const x = hexToRgb(a);
-  const y = hexToRgb(b);
-  const c = (k: 'r' | 'g' | 'b') => Math.round(lerp(x[k], y[k], t));
-  return `rgb(${c('r')}, ${c('g')}, ${c('b')})`;
-}
+const toLinear = (c: number) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+const fromLinear = (c: number) =>
+  c <= 0.0031308 ? c * 12.92 : 1.055 * Math.pow(Math.max(c, 0), 1 / 2.4) - 0.055;
 
-function blend(t: number): Palette {
+function toOklab(hex: string) {
+  const { r, g, b } = hexToRgb(hex);
+  const lr = toLinear(r);
+  const lg = toLinear(g);
+  const lb = toLinear(b);
+  const l = Math.cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb);
+  const m = Math.cbrt(0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb);
+  const s2 = Math.cbrt(0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb);
   return {
-    skyTop: mixHex(DAY.skyTop, NIGHT.skyTop, t),
-    skyBottom: mixHex(DAY.skyBottom, NIGHT.skyBottom, t),
-    sun: mixHex(DAY.sun, NIGHT.sun, t),
-    sunGlow: t > 0.5 ? NIGHT.sunGlow : DAY.sunGlow,
-    duneFar: mixHex(DAY.duneFar, NIGHT.duneFar, t),
-    duneNear: mixHex(DAY.duneNear, NIGHT.duneNear, t),
-    ground: mixHex(DAY.ground, NIGHT.ground, t),
-    groundLine: mixHex(DAY.groundLine, NIGHT.groundLine, t),
-    ink: mixHex(DAY.ink, NIGHT.ink, t),
-    dust: t > 0.5 ? NIGHT.dust : DAY.dust,
-    star: t,
+    L: 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s2,
+    a: 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s2,
+    b: 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s2,
   };
 }
+
+function fromOklab(L: number, a: number, b: number): string {
+  const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+  const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+  const s_ = L - 0.0894841775 * a - 1.291485548 * b;
+  const l = l_ * l_ * l_;
+  const m = m_ * m_ * m_;
+  const s2 = s_ * s_ * s_;
+  const to255 = (v: number) => Math.round(Math.min(1, Math.max(0, fromLinear(v))) * 255);
+  return `rgb(${to255(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s2)}, ${to255(
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s2,
+  )}, ${to255(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s2)})`;
+}
+
+const cache = new Map<string, ReturnType<typeof toOklab>>();
+function lab(hex: string) {
+  let v = cache.get(hex);
+  if (!v) {
+    v = toOklab(hex);
+    cache.set(hex, v);
+  }
+  return v;
+}
+
+function mix(a: string, b: string, t: number): string {
+  const x = lab(a);
+  const y = lab(b);
+  return fromOklab(
+    x.L + (y.L - x.L) * t,
+    x.a + (y.a - x.a) * t,
+    x.b + (y.b - x.b) * t,
+  );
+}
+
+/** Smoothstep, so a keyframe is approached and left gently. */
+const ease = (t: number) => t * t * (3 - 2 * t);
+
+const HUD_DARK = '#1a1b22';
+const HUD_LIGHT = '#f4f6ff';
+const INK_DARK = '#1f2027';
+const INK_LIGHT = '#f0f3ff';
+
+/**
+ * Accepts both `#rrggbb` and `rgb(...)`. The ink constants are hex while every
+ * blended colour comes back as rgb(), and a version that only understood the
+ * latter scraped the digits out of a hex string as if they were channels —
+ * which silently picked the wrong ink for half the cycle.
+ */
+function relLuminance(css: string): number {
+  const text = css.trim();
+  let r: number;
+  let g: number;
+  let b: number;
+
+  if (text.startsWith('#')) {
+    let hex = text.slice(1);
+    if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('');
+    const n = parseInt(hex.slice(0, 6), 16);
+    r = (n >> 16) & 255;
+    g = (n >> 8) & 255;
+    b = n & 255;
+  } else {
+    const m = text.match(/-?\d+(\.\d+)?/g);
+    if (!m || m.length < 3) return 0.5;
+    r = +m[0];
+    g = +m[1];
+    b = +m[2];
+  }
+
+  const lin = (v: number) => {
+    const c = v / 255;
+    return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+const ratio = (a: number, b: number) =>
+  (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+
+/**
+ * HUD ink is chosen, not blended.
+ *
+ * Interpolating it from dark to light across the cycle drags it through mid
+ * grey, and at dusk — where the sky is also mid-toned — the overlay drops to
+ * about 1:1 and vanishes. Picking whichever of a fixed dark and a fixed light
+ * has more contrast right now keeps it maximally readable, and the swap happens
+ * exactly where the two are equal, so it is invisible.
+ */
+function inkForLum(bg: number): string {
+  return ratio(relLuminance(HUD_DARK), bg) >= ratio(relLuminance(HUD_LIGHT), bg)
+    ? HUD_DARK
+    : HUD_LIGHT;
+}
+
+const inkFor = (background: string) => inkForLum(relLuminance(background));
+
+/** Same reasoning as the HUD, but measured against the ground the runner is on. */
+function sceneInk(ground: string): string {
+  const g = relLuminance(ground);
+  return ratio(relLuminance(INK_DARK), g) >= ratio(relLuminance(INK_LIGHT), g)
+    ? INK_DARK
+    : INK_LIGHT;
+}
+
+function climate(cycle: number): Palette {
+  const c = ((cycle % 1) + 1) % 1;
+  let i = 0;
+  for (let k = 0; k < KEYS.length; k += 1) if (c >= KEYS[k].at) i = k;
+  const from = KEYS[i];
+  const to = KEYS[(i + 1) % KEYS.length];
+  const span = (to.at > from.at ? to.at : to.at + 1) - from.at;
+  const t = ease(Math.min(1, Math.max(0, (c - from.at) / span)));
+
+  const a = from.p;
+  const b = to.p;
+  const skyTop = mix(a.skyTop, b.skyTop, t);
+  const skyBottom = mix(a.skyBottom, b.skyBottom, t);
+  const ground = mix(a.ground, b.ground, t);
+  const hudMid = inkForLum(
+    (relLuminance(skyTop) + relLuminance(skyBottom)) / 2,
+  );
+  return {
+    hudTop: inkFor(skyTop),
+    hudMid,
+    hudBottom: inkFor(skyBottom),
+    onHudMid: hudMid === HUD_DARK ? HUD_LIGHT : HUD_DARK,
+    ink: sceneInk(ground),
+    ground,
+    skyTop,
+    skyBottom,
+    body: mix(a.body, b.body, t),
+    glow: t < 0.5 ? a.glow : b.glow,
+    glowMid: t < 0.5 ? a.glowMid : b.glowMid,
+    duneFar: mix(a.duneFar, b.duneFar, t),
+    duneNear: mix(a.duneNear, b.duneNear, t),
+    groundLine: mix(a.groundLine, b.groundLine, t),
+    cloud: mix(a.cloud, b.cloud, t),
+    dust: t < 0.5 ? a.dust : b.dust,
+    star: a.star + (b.star - a.star) * t,
+  };
+}
+
+/** What the HUD needs to stay readable against a sky that keeps changing. */
+export function hudInk(cycle: number): string {
+  return climate(cycle).hudTop;
+}
+
+/** Exposed for the palette test; the game itself never calls this directly. */
+export const paletteAt = climate;
 
 export function render(
   ctx: CanvasRenderingContext2D,
@@ -87,23 +321,31 @@ export function render(
   width: number,
   height: number,
   frameTime: number,
-) {
-  const p = blend(state.night);
-  const scale = Math.min(width / WORLD.width, height / WORLD.height);
-  const offsetX = (width - WORLD.width * scale) / 2;
-  const offsetY = (height - WORLD.height * scale) / 2;
+  dpr: number,
+): Palette {
+  const p = climate(state.cycle);
 
+  // Scale from height so the world is always the same "tall", then let the
+  // width follow the viewport. Clamped so an extremely wide window does not
+  // shrink the runner to nothing.
+  const scale = Math.min(height / WORLD.height, width / WORLD.minWidth);
+  const viewWidth = width / scale;
+
+  // The device-pixel-ratio transform is re-established every frame rather than
+  // set once on resize. Anything that reassigns canvas.width silently resets the
+  // context to identity, and the scene then renders at half size in the corner
+  // of a retina backing store — which also covers a window being dragged to a
+  // display with a different pixel ratio.
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.save();
   ctx.clearRect(0, 0, width, height);
 
-  // Sky fills the whole canvas so letterboxing never shows through.
   const sky = ctx.createLinearGradient(0, 0, 0, height);
   sky.addColorStop(0, p.skyTop);
   sky.addColorStop(1, p.skyBottom);
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, width, height);
 
-  ctx.translate(offsetX, offsetY);
   ctx.scale(scale, scale);
 
   if (state.shake > 0) {
@@ -111,27 +353,27 @@ export function render(
     ctx.translate((Math.random() - 0.5) * k, (Math.random() - 0.5) * k);
   }
 
-  drawStars(ctx, p, state);
-  drawSun(ctx, p, state);
-  drawDunes(ctx, p, state);
+  drawStars(ctx, p, state, viewWidth);
+  drawBody(ctx, p, state, viewWidth);
+  drawDunes(ctx, p, state, viewWidth);
   drawClouds(ctx, p, state);
-  drawGround(ctx, p, state);
+  drawGround(ctx, p, state, viewWidth, height / scale);
   drawParticles(ctx, p, state);
   for (const o of state.obstacles) drawObstacle(ctx, p, o, state);
   drawRunner(ctx, p, state, frameTime);
 
   ctx.restore();
+  return p;
 }
 
-function drawStars(ctx: CanvasRenderingContext2D, p: Palette, s: State) {
+function drawStars(ctx: CanvasRenderingContext2D, p: Palette, s: State, viewWidth: number) {
   if (p.star < 0.02) return;
   ctx.save();
-  ctx.globalAlpha = p.star;
   ctx.fillStyle = '#ffffff';
-  for (let i = 0; i < 46; i += 1) {
+  for (let i = 0; i < 64; i += 1) {
     // Fixed pseudo-random field, drifting slowly with the world.
-    const x = (((i * 137.5) % WORLD.width) - (s.distance * 0.02) % WORLD.width + WORLD.width) % WORLD.width;
-    const y = 14 + ((i * 53) % 150);
+    const x = ((((i * 137.5) % viewWidth) - (s.distance * 0.02)) % viewWidth + viewWidth) % viewWidth;
+    const y = 12 + ((i * 53) % 160);
     const twinkle = 0.5 + 0.5 * Math.sin(s.time * 2 + i);
     ctx.globalAlpha = p.star * (0.25 + twinkle * 0.6);
     ctx.beginPath();
@@ -141,27 +383,46 @@ function drawStars(ctx: CanvasRenderingContext2D, p: Palette, s: State) {
   ctx.restore();
 }
 
-function drawSun(ctx: CanvasRenderingContext2D, p: Palette, s: State) {
-  const x = WORLD.width * 0.78;
-  const y = 74;
-  const r = p.star > 0.5 ? 26 : 34;
+/**
+ * One body that rises, crosses and sets — sun through the day half of the
+ * cycle, moon through the night half. Previously a fixed disc that had a
+ * crescent bitten out of it when night arrived, which read as a light being
+ * switched rather than time passing.
+ */
+function drawBody(ctx: CanvasRenderingContext2D, p: Palette, s: State, viewWidth: number) {
+  const c = ((s.cycle % 1) + 1) % 1;
+  // Two arcs offset by half a cycle: while one body is above the horizon the
+  // other is below it, so exactly one is ever visible.
+  const isNight = c > 0.43 && c < 0.95;
+  const t = isNight ? (c - 0.43) / 0.52 : (c < 0.43 ? c + 0.05 : c - 0.95) / 0.53;
 
-  const glow = ctx.createRadialGradient(x, y, r * 0.4, x, y, r * 3.4);
-  glow.addColorStop(0, p.sunGlow);
+  const x = viewWidth * (0.08 + 0.84 * t);
+  const arc = Math.sin(Math.min(1, Math.max(0, t)) * Math.PI);
+  const y = WORLD.groundY - 30 - arc * 190;
+  const r = isNight ? 24 : 32;
+
+  // Additive, not painted over. A translucent warm gradient laid on top of a
+  // blue sky greys it out and reads as a smudge; 'lighter' adds light, which is
+  // what a glow physically is.
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const glow = ctx.createRadialGradient(x, y, r * 0.25, x, y, r * 3.8);
+  glow.addColorStop(0, p.glow);
+  glow.addColorStop(0.45, p.glowMid);
   glow.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = glow;
-  ctx.fillRect(x - r * 4, y - r * 4, r * 8, r * 8);
+  ctx.fillRect(x - r * 4.2, y - r * 4.2, r * 8.4, r * 8.4);
+  ctx.restore();
 
-  ctx.fillStyle = p.sun;
+  ctx.fillStyle = p.body;
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.fill();
 
-  // A crescent bite turns the sun into a moon without a second asset.
-  if (p.star > 0.5) {
+  if (isNight) {
     ctx.globalCompositeOperation = 'destination-out';
     ctx.beginPath();
-    ctx.arc(x + 11, y - 7, r * 0.92, 0, Math.PI * 2);
+    ctx.arc(x + 10, y - 7, r * 0.9, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalCompositeOperation = 'source-over';
   }
@@ -176,7 +437,7 @@ function duneHeight(seed: number, t: number): number {
   );
 }
 
-function drawDunes(ctx: CanvasRenderingContext2D, p: Palette, s: State) {
+function drawDunes(ctx: CanvasRenderingContext2D, p: Palette, s: State, viewWidth: number) {
   const layers: Array<{ colour: string; parallax: number; base: number; scaleY: number }> = [
     { colour: p.duneFar, parallax: 0.35, base: WORLD.groundY - 6, scaleY: 1 },
     { colour: p.duneNear, parallax: 0.62, base: WORLD.groundY + 4, scaleY: 0.66 },
@@ -185,13 +446,13 @@ function drawDunes(ctx: CanvasRenderingContext2D, p: Palette, s: State) {
   for (const layer of layers) {
     ctx.fillStyle = layer.colour;
     ctx.beginPath();
-    ctx.moveTo(0, WORLD.height);
+    ctx.moveTo(0, WORLD.height * 2);
     const shift = (s.distance * layer.parallax * 0.08) % 200;
-    for (let x = -20; x <= WORLD.width + 20; x += 10) {
+    for (let x = -20; x <= viewWidth + 20; x += 10) {
       const t = (x + shift) / 90;
       ctx.lineTo(x, layer.base - duneHeight(layer.parallax * 10, t) * layer.scaleY);
     }
-    ctx.lineTo(WORLD.width + 20, WORLD.height);
+    ctx.lineTo(viewWidth + 20, WORLD.height * 2);
     ctx.closePath();
     ctx.fill();
   }
@@ -199,8 +460,8 @@ function drawDunes(ctx: CanvasRenderingContext2D, p: Palette, s: State) {
 
 function drawClouds(ctx: CanvasRenderingContext2D, p: Palette, s: State) {
   ctx.save();
-  ctx.globalAlpha = 0.85 - p.star * 0.55;
-  ctx.fillStyle = p.star > 0.5 ? '#3a4560' : '#ffffff';
+  ctx.globalAlpha = 0.9 - p.star * 0.45;
+  ctx.fillStyle = p.cloud;
   for (const c of s.clouds) {
     const w = 54 * c.scale;
     const h = 15 * c.scale;
@@ -213,23 +474,31 @@ function drawClouds(ctx: CanvasRenderingContext2D, p: Palette, s: State) {
   ctx.restore();
 }
 
-function drawGround(ctx: CanvasRenderingContext2D, p: Palette, s: State) {
+function drawGround(
+  ctx: CanvasRenderingContext2D,
+  p: Palette,
+  s: State,
+  viewWidth: number,
+  viewHeight: number,
+) {
+  // Extends past the bottom of the viewport so a full-bleed canvas never shows
+  // the page behind it, whatever the window aspect happens to be.
   ctx.fillStyle = p.ground;
-  ctx.fillRect(0, WORLD.groundY, WORLD.width, WORLD.height - WORLD.groundY);
+  ctx.fillRect(0, WORLD.groundY, viewWidth, Math.max(viewHeight, WORLD.height) - WORLD.groundY);
 
   ctx.strokeStyle = p.groundLine;
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(0, WORLD.groundY + 1);
-  ctx.lineTo(WORLD.width, WORLD.groundY + 1);
+  ctx.lineTo(viewWidth, WORLD.groundY + 1);
   ctx.stroke();
 
   // Speckle that scrolls with the world, so speed is legible even on flat ground.
   ctx.fillStyle = p.groundLine;
   ctx.globalAlpha = 0.5;
   const shift = s.distance % 60;
-  for (let i = 0; i < 40; i += 1) {
-    const x = ((i * 71) % (WORLD.width + 60)) - shift;
+  for (let i = 0; i < 56; i += 1) {
+    const x = ((i * 71) % (viewWidth + 60)) - shift;
     const y = WORLD.groundY + 12 + ((i * 29) % 46);
     const w = i % 5 === 0 ? 14 : 6;
     ctx.fillRect(x, y, w, 2);
@@ -346,43 +615,73 @@ function drawObstacle(
 }
 
 /**
- * The runner, as one continuous silhouette.
+ * The runner.
  *
- * The first version stacked rounded rectangles for head, body and tail. At
- * playing size that reads as a blob: there is no neck, the head merges into the
- * shoulders and the tail looks detached. A single closed path, authored in a
- * 100x100 local space and scaled, gives the profile a real neck and a tail with
- * weight — which is the whole silhouette a player actually recognises.
+ * Authored in a 100x100 local box and scaled, so the proportions hold at any
+ * size. Two earlier attempts failed for the same reason in different ways:
+ * stacked rounded rectangles gave a blob with no neck, and a single blunt path
+ * gave a neck but no jaw or knee. What actually makes it read as a tyrannosaur
+ * at a glance is the profile of the skull — brow, deep jaw, blunt snout — and
+ * legs that bend, so the run cycle has a knee to move.
  */
-function dinoBody(
+function dinoSilhouette(
   ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
+  X: (l: number) => number,
+  Y: (l: number) => number,
 ) {
-  const px = (l: number) => x + (l / 100) * w;
-  const py = (l: number) => y + (l / 100) * h;
-
   ctx.beginPath();
-  ctx.moveTo(px(97), py(19));
-  ctx.lineTo(px(75), py(9)); // brow
-  ctx.bezierCurveTo(px(64), py(2), px(51), py(7), px(49), py(20)); // skull
-  ctx.bezierCurveTo(px(47), py(30), px(43), py(35), px(35), py(39)); // nape into neck
-  ctx.bezierCurveTo(px(25), py(43), px(15), py(43), px(7), py(45)); // back
-  ctx.bezierCurveTo(px(-3), py(41), px(-13), py(39), px(-19), py(43)); // tail, sweeping up
-  ctx.bezierCurveTo(px(-8), py(51), px(2), py(55), px(12), py(57)); // tail underside
-  ctx.bezierCurveTo(px(20), py(61), px(24), py(67), px(27), py(75)); // haunch
-  ctx.lineTo(px(59), py(75)); // belly
-  ctx.bezierCurveTo(px(65), py(67), px(67), py(57), px(65), py(47)); // chest
-  ctx.bezierCurveTo(px(65), py(38), px(71), py(32), px(79), py(30)); // throat to jaw
-  ctx.lineTo(px(97), py(28)); // muzzle underside
+  ctx.moveTo(X(99), Y(15));
+  ctx.lineTo(X(82), Y(10)); // top of the snout
+  ctx.quadraticCurveTo(X(73), Y(3), X(63), Y(6)); // brow ridge
+  ctx.quadraticCurveTo(X(54), Y(9), X(53), Y(19)); // back of the skull
+  ctx.bezierCurveTo(X(51), Y(29), X(45), Y(33), X(37), Y(37)); // nape into the neck
+  ctx.bezierCurveTo(X(27), Y(41), X(17), Y(42), X(9), Y(45)); // along the back
+  ctx.bezierCurveTo(X(-5), Y(41), X(-18), Y(36), X(-30), Y(32)); // tail, tapering
+  ctx.bezierCurveTo(X(-17), Y(44), X(-4), Y(50), X(9), Y(55)); // tail underside
+  ctx.bezierCurveTo(X(17), Y(60), X(23), Y(67), X(27), Y(75)); // haunch
+  ctx.lineTo(X(53), Y(77)); // belly
+  ctx.bezierCurveTo(X(61), Y(71), X(64), Y(60), X(62), Y(50)); // chest
+  ctx.bezierCurveTo(X(61), Y(41), X(63), Y(34), X(69), Y(30)); // throat
+  ctx.lineTo(X(85), Y(29)); // jaw line
+  ctx.lineTo(X(99), Y(25)); // blunt snout
   ctx.closePath();
   ctx.fill();
+}
 
-  // The little arm. Small, but it is the one detail that says tyrannosaur.
-  roundRect(ctx, px(56), py(48), w * 0.14, h * 0.07, h * 0.035);
-  ctx.fill();
+/** Thigh, shin and foot, so the run cycle has a knee rather than a sliding stump. */
+function dinoLeg(
+  ctx: CanvasRenderingContext2D,
+  X: (l: number) => number,
+  Y: (l: number) => number,
+  unit: number,
+  hipX: number,
+  kneeX: number,
+  kneeY: number,
+  footX: number,
+  footY: number,
+) {
+  const limb = unit * 9;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  ctx.lineWidth = limb * 1.25;
+  ctx.beginPath();
+  ctx.moveTo(X(hipX), Y(62));
+  ctx.lineTo(X(kneeX), Y(kneeY));
+  ctx.stroke();
+
+  ctx.lineWidth = limb * 0.85;
+  ctx.beginPath();
+  ctx.moveTo(X(kneeX), Y(kneeY));
+  ctx.lineTo(X(footX), Y(footY));
+  ctx.stroke();
+
+  // Foot, pointing forward.
+  ctx.lineWidth = limb * 0.7;
+  ctx.beginPath();
+  ctx.moveTo(X(footX - 2), Y(footY));
+  ctx.lineTo(X(footX + 9), Y(footY));
+  ctx.stroke();
 }
 
 function drawRunner(
@@ -394,11 +693,10 @@ function drawRunner(
   const r = s.runner;
   const ducking = r.ducking && r.onGround;
   const h = ducking ? constants.DUCK_H : constants.RUNNER_H;
-  const w = ducking ? constants.RUNNER_W + 14 : constants.RUNNER_W;
+  const w = ducking ? constants.RUNNER_W + 16 : constants.RUNNER_W;
   const x = constants.RUNNER_X;
   const baseY = r.y;
 
-  // Squash and stretch, conserving area so the silhouette stays believable.
   const sy = r.squash;
   const sx = 1 / Math.sqrt(Math.max(0.35, sy));
 
@@ -416,54 +714,62 @@ function drawRunner(
   ctx.scale(sx, sy);
   ctx.translate(-(x + w / 2), -baseY);
 
+  // Ducking squashes the whole profile and stretches it forward, rather than
+  // swapping in a second drawing that would not match.
+  const squat = ducking ? 0.74 : 1;
+  const stretch = ducking ? 1.2 : 1;
+  const boxH = h / squat;
+  const top = baseY - h;
+
+  const X = (l: number) => x + (l / 100) * w * stretch - (stretch - 1) * w * 0.28;
+  const Y = (l: number) => top + (l / 100) * boxH * squat;
+  const unit = (w / 100) * 1.35;
+
   ctx.fillStyle = p.ink;
+  ctx.strokeStyle = p.ink;
 
-  // Legs first, so the body overlaps them at the hip.
-  const running = s.phase === 'running' && r.onGround;
+  // Back leg first so the body overlaps it, then the front leg on top.
+  const grounded = r.onGround;
   const cycle = Math.floor(frameTime * 15) % 2;
-  const hipY = baseY - h * 0.3;
-  const legW = w * 0.13;
-  const thigh = h * 0.3;
+  const airPose = !grounded;
 
-  const leg = (lx: number, drop: number, len: number) => {
-    roundRect(ctx, lx, hipY + drop, legW, len, legW * 0.5);
-    ctx.fill();
-    // Foot
-    roundRect(ctx, lx - legW * 0.15, hipY + drop + len - legW * 0.4, legW * 1.7, legW * 0.62, legW * 0.3);
-    ctx.fill();
-  };
-
-  if (!r.onGround) {
-    leg(x + w * 0.3, -h * 0.02, thigh * 0.62);
-    leg(x + w * 0.52, -h * 0.08, thigh * 0.6);
-  } else if (running && cycle === 0) {
-    leg(x + w * 0.26, 0, thigh);
-    leg(x + w * 0.54, h * 0.08, thigh * 0.72);
+  if (airPose) {
+    // Tucked, both legs forward.
+    dinoLeg(ctx, X, Y, unit, 34, 40, 74, 44, 86);
+    dinoLeg(ctx, X, Y, unit, 46, 54, 72, 58, 84);
+  } else if (cycle === 0) {
+    dinoLeg(ctx, X, Y, unit, 34, 30, 80, 26, 96); // back leg, extended
+    dinoLeg(ctx, X, Y, unit, 46, 54, 76, 50, 96); // front leg, planted
   } else {
-    leg(x + w * 0.28, h * 0.08, thigh * 0.72);
-    leg(x + w * 0.52, 0, thigh);
+    dinoLeg(ctx, X, Y, unit, 34, 38, 78, 44, 96);
+    dinoLeg(ctx, X, Y, unit, 46, 50, 74, 58, 88);
   }
 
-  // Ducking flattens and stretches the profile forward rather than swapping in
-  // a separate crouched drawing.
-  const bodyTop = baseY - h;
-  if (ducking) {
-    ctx.save();
-    ctx.translate(x + w / 2, bodyTop + h * 0.5);
-    ctx.scale(1.16, 0.78);
-    ctx.translate(-(x + w / 2), -(bodyTop + h * 0.5));
-    dinoBody(ctx, x, bodyTop, w, h * 1.24);
-    ctx.restore();
-  } else {
-    dinoBody(ctx, x, bodyTop, w, h);
-  }
+  dinoSilhouette(ctx, X, Y);
 
-  // Eye, punched out so it works whatever colour the body is.
-  const eyeX = x + w * (ducking ? 0.84 : 0.78);
-  const eyeY = bodyTop + h * (ducking ? 0.2 : 0.16);
+  // The little arm, tucked under the chest.
+  ctx.lineCap = 'round';
+  ctx.lineWidth = unit * 5.5;
+  ctx.beginPath();
+  ctx.moveTo(X(58), Y(48));
+  ctx.lineTo(X(66), Y(54));
+  ctx.stroke();
+
+  // Eye and nostril, punched out so they work whatever colour the body is.
   ctx.globalCompositeOperation = 'destination-out';
   ctx.beginPath();
-  ctx.arc(eyeX, eyeY, Math.max(2.4, w * 0.062), 0, Math.PI * 2);
+  ctx.arc(X(72), Y(15), unit * 2.6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(X(93), Y(18), unit * 1.1, 0, Math.PI * 2);
+  ctx.fill();
+  // Mouth: a thin wedge back from the snout, which is what gives it a jaw.
+  ctx.beginPath();
+  ctx.moveTo(X(99), Y(21.5));
+  ctx.lineTo(X(80), Y(23));
+  ctx.lineTo(X(80), Y(25));
+  ctx.lineTo(X(99), Y(24));
+  ctx.closePath();
   ctx.fill();
   ctx.globalCompositeOperation = 'source-over';
 

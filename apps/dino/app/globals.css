@@ -2,38 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --ground: #f2efe9;
-  --card: #ffffff;
-  --sunk: #e9e5dc;
-  --ink: #26272b;
-  --ghost: #c7c2b8;
-  --muted: #5f5c55;
-  --faint: #837f77;
-  --accent: #26272b;
-  --on-accent: #ffffff;
-  --shadow: 0 1px 2px rgba(38, 39, 43, 0.05), 0 12px 34px -16px rgba(38, 39, 43, 0.22);
-  color-scheme: light;
-}
-
 html,
 body {
-  background: var(--ground);
-  color: var(--ink);
+  margin: 0;
+  height: 100%;
+  background: #0b0e18;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
+  /* The canvas is the whole page; nothing should scroll or rubber-band. */
+  overflow: hidden;
 }
 
 body {
   font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
   font-size: 15px;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 .display {
   font-weight: 700;
   letter-spacing: -0.03em;
-  line-height: 0.98;
 }
 
 .mono {
@@ -41,64 +29,65 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.eyebrow {
-  font-size: 11.5px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  color: var(--faint);
+/*
+ * A soft halo in the opposing ink. There is one moment each cycle — the dusk
+ * crossover — where the sky passes through mid luminance and no flat colour
+ * reaches 4.5:1 against it. Rather than paint a box behind the text, which the
+ * full-bleed layout is specifically avoiding, the glyphs carry their own
+ * separation.
+ */
+.hud-text {
+  text-shadow:
+    0 0 3px var(--hud-halo, rgba(255, 255, 255, 0.55)),
+    0 1px 2px var(--hud-halo, rgba(255, 255, 255, 0.55));
 }
 
-.card {
-  background: var(--card);
-  border-radius: 26px;
-  box-shadow: var(--shadow);
-}
-
-/* The play area. Rounded and clipped so the canvas corners follow the card. */
-.stage {
-  border-radius: 24px;
-  background: var(--card);
-  box-shadow: var(--shadow);
-  touch-action: manipulation;
-  cursor: pointer;
-}
-
-.btn {
+/*
+ * HUD controls sit directly on the sky, which changes colour all run. Rather
+ * than a fixed light or dark chip, they borrow the palette's ink through
+ * currentColor and hold themselves apart with a hairline and a faint wash —
+ * legible at noon and at midnight without ever painting a box.
+ */
+.hud-btn,
+.hud-btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.45rem;
-  min-height: 42px;
-  padding: 0 1.15rem;
-  font-size: 14px;
+  min-height: 38px;
+  padding: 0 1rem;
+  font-size: 13px;
   font-weight: 500;
-  color: var(--ink);
-  background: var(--card);
-  border: none;
   border-radius: 999px;
-  box-shadow: var(--shadow);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: background 0.18s ease, transform 0.18s ease;
 }
 
-.btn:hover:not(:disabled) {
+.hud-btn {
+  color: currentColor;
+  background: color-mix(in oklab, currentColor 10%, transparent);
+  border: 1px solid color-mix(in oklab, currentColor 22%, transparent);
+}
+
+.hud-btn:hover {
+  background: color-mix(in oklab, currentColor 18%, transparent);
+}
+
+.hud-btn-primary {
+  min-height: 48px;
+  padding: 0 1.6rem;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--hud-on-ink, #f6efe1);
+  background: var(--hud-ink, #23242a);
+  border: none;
+}
+
+.hud-btn-primary:hover {
   transform: translateY(-1px);
 }
 
-.btn-primary {
-  background: var(--accent);
-  color: var(--on-accent);
-  font-weight: 600;
-}
-
-.btn-sm {
-  min-height: 34px;
-  padding: 0 0.85rem;
-  font-size: 13px;
-}
-
-:where(button, a):focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: 2px;
+:where(button):focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
 }
 
 @media (prefers-reduced-motion: reduce) {

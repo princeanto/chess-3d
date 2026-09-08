@@ -10,8 +10,12 @@
 
 export const TICK = 1 / 120; // seconds per simulation step
 
-/** World units. The renderer scales this to whatever the canvas actually is. */
-export const WORLD = { width: 1200, height: 340, groundY: 268 };
+/**
+ * World units. Height is fixed; width is whatever the viewport works out to at
+ * that height, so a full-bleed canvas has no letterboxing and obstacles always
+ * enter from beyond the real edge of the screen rather than an inner boundary.
+ */
+export const WORLD = { height: 340, groundY: 268, minWidth: 640, refWidth: 1200 };
 
 export type Phase = 'ready' | 'running' | 'dead';
 
@@ -82,6 +86,10 @@ export interface State {
   spawnIn: number;
   /** Frames of screen shake left, for the death hit. */
   shake: number;
+  /** Visible width in world units, set by the shell from the canvas aspect. */
+  viewWidth: number;
+  /** Position through the day, 0..1. Continuous — never a hard flip. */
+  cycle: number;
   /** Set on the tick a milestone is crossed so the shell can react. */
   justMilestone: boolean;
   justJumped: boolean;
@@ -124,6 +132,8 @@ export function createState(best = 0): State {
     clouds: seedClouds(),
     dunes: seedDunes(),
     particles: [],
+    viewWidth: WORLD.refWidth,
+    cycle: 0.06,
     night: 0,
     nightTarget: 0,
     spawnIn: 1.4,
@@ -136,8 +146,8 @@ export function createState(best = 0): State {
 }
 
 function seedClouds(): Cloud[] {
-  return Array.from({ length: 5 }, (_, i) => ({
-    x: (i / 5) * WORLD.width * 1.4,
+  return Array.from({ length: 7 }, (_, i) => ({
+    x: (i / 7) * WORLD.refWidth * 1.4,
     y: 40 + ((i * 37) % 90),
     scale: 0.6 + ((i * 13) % 10) / 14,
     speed: 0.14 + ((i * 7) % 10) / 90,
@@ -146,7 +156,7 @@ function seedClouds(): Cloud[] {
 
 function seedDunes(): Dune[] {
   return Array.from({ length: 7 }, (_, i) => ({
-    x: (i / 7) * WORLD.width * 1.5,
+    x: (i / 7) * WORLD.refWidth * 1.5,
     seed: i * 91 + 17,
   }));
 }
@@ -210,10 +220,12 @@ export function step(state: State, input: Input, rand: () => number): State {
   if (s.score !== previousScore) s.justScored = true;
   if (previousScore > 0 && s.score % 100 === 0 && s.score !== previousScore) {
     s.justMilestone = true;
-    // Flip day/night every 100 points; the render eases toward the target.
-    s.nightTarget = s.nightTarget > 0.5 ? 0 : 1;
   }
-  s.night += (s.nightTarget - s.night) * Math.min(1, TICK * 1.1);
+
+  // The sky moves continuously through dawn, day, dusk and night rather than
+  // snapping between two states. A full day takes about ninety seconds of
+  // running, so a decent run sees the light change two or three times.
+  s.cycle = (s.cycle + (s.speed * TICK) / 52000) % 1;
 
   /* ------------------------------ runner ------------------------------ */
   const r = s.runner;
@@ -296,13 +308,13 @@ function driftBackground(s: State, dt: number, speed: number) {
   for (const c of s.clouds) {
     c.x -= speed * c.speed * dt;
     if (c.x < -160) {
-      c.x = WORLD.width + 60;
-      c.y = 30 + ((c.y * 7) % 100);
+      c.x = s.viewWidth + 60;
+      c.y = 26 + ((c.y * 7) % 104);
     }
   }
   for (const d of s.dunes) {
     d.x -= speed * 0.22 * dt;
-    if (d.x < -400) d.x += WORLD.width * 1.5 + 400;
+    if (d.x < -400) d.x += s.viewWidth * 1.5 + 400;
   }
 }
 
@@ -317,7 +329,7 @@ function spawnObstacle(s: State, rand: () => number) {
   else if (roll > 0.3) kind = 'cactus-cluster';
   else kind = 'cactus-small';
 
-  const x = WORLD.width + 40;
+  const x = s.viewWidth + 40;
   if (kind === 'bird') {
     // Three lanes: duck under, jump over, or run beneath at full height.
     const lane = rand();

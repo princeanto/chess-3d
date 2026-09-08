@@ -2,7 +2,7 @@
   "name": "runner",
   "version": "1.0.0",
   "private": true,
-  "description": "An offline-first endless runner — the Chrome dino game, rebuilt.",
+  "description": "An offline-first endless runner \u2014 the Chrome dino game, rebuilt.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -10,7 +10,8 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "icons": "tsx scripts/make-icons.ts",
-    "test": "npm run typecheck"
+    "test": "npm run typecheck && npm run test:climate",
+    "test:climate": "tsx scripts/climate-test.ts"
   },
   "dependencies": {
     "next": "14.2.35",

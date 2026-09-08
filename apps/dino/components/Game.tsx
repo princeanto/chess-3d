@@ -15,14 +15,15 @@ import { render } from '@/lib/game/render';
 import { loadBest, loadMuted, saveBest, saveMuted } from '@/lib/game/storage';
 
 /**
- * The shell: canvas, input, and the loop that drives the simulation.
+ * The shell: a full-bleed canvas with the HUD floating on top of it.
  *
  * The loop accumulates real time and consumes it in fixed TICK slices, so the
  * physics behave identically on a 60Hz laptop and a 144Hz monitor. Rendering
- * still happens once per animation frame, at whatever rate the display runs.
+ * happens once per animation frame, at whatever rate the display runs.
  */
 export default function Game() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const shellRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef<State | null>(null);
   const inputRef = useRef<Input>({ jump: false, duck: false, jumpPressed: false });
   const randRef = useRef(makeRandom());
@@ -43,6 +44,10 @@ export default function Game() {
     if (s.phase === 'running') return;
     const fresh = createState(s.best);
     fresh.phase = 'running';
+    // Carry the sky across a restart: resetting to dawn every death would make
+    // the cycle feel like a scoreboard rather than weather.
+    fresh.cycle = s.cycle;
+    fresh.viewWidth = s.viewWidth;
     stateRef.current = fresh;
     randRef.current = makeRandom();
     setPhase('running');
@@ -112,16 +117,29 @@ export default function Game() {
     let accumulator = 0;
     let last = performance.now();
     let running = true;
+    let cssWidth = 0;
+    let cssHeight = 0;
+    let dpr = 1;
 
     const resize = () => {
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      dpr = Math.min(2, window.devicePixelRatio || 1);
       const rect = canvas.getBoundingClientRect();
-      canvas.width = Math.round(rect.width * dpr);
-      canvas.height = Math.round(rect.height * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      cssWidth = rect.width;
+      cssHeight = rect.height;
+      canvas.width = Math.round(cssWidth * dpr);
+      canvas.height = Math.round(cssHeight * dpr);
+
+      // Tell the simulation how much world is actually on screen, so obstacles
+      // enter from beyond the real edge rather than an invisible inner one.
+      const s = stateRef.current;
+      if (s) {
+        const scale = Math.min(cssHeight / WORLD.height, cssWidth / WORLD.minWidth);
+        s.viewWidth = cssWidth / scale;
+      }
     };
     resize();
     window.addEventListener('resize', resize);
+    window.addEventListener('orientationchange', resize);
 
     const frame = (now: number) => {
       if (!running) return;
@@ -152,8 +170,24 @@ export default function Game() {
       setScore((prev) => (prev === s.score ? prev : s.score));
       setBest((prev) => (prev === s.best ? prev : s.best));
 
-      const rect = canvas.getBoundingClientRect();
-      render(ctx, s, rect.width, rect.height, now / 1000);
+      const palette = render(ctx, s, cssWidth, cssHeight, now / 1000, dpr);
+      // The HUD sits on a sky that changes colour all run, so its ink is driven
+      // straight from the palette. Set on the node rather than through state:
+      // a re-render every frame would be wasteful and jittery.
+      const shell = shellRef.current;
+      if (shell) {
+        shell.style.setProperty('--hud-top', palette.hudTop);
+        shell.style.setProperty('--hud-mid', palette.hudMid);
+        shell.style.setProperty('--hud-bottom', palette.hudBottom);
+        shell.style.setProperty('--hud-ink', palette.hudMid);
+        shell.style.setProperty('--hud-on-ink', palette.onHudMid);
+        // The halo is whatever the text is not, so it separates in both directions.
+        shell.style.setProperty(
+          '--hud-halo',
+          palette.hudBottom === palette.onHudMid ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.5)',
+        );
+      }
+
       rafRef.current = requestAnimationFrame(frame);
     };
 
@@ -162,6 +196,7 @@ export default function Game() {
       running = false;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       window.removeEventListener('resize', resize);
+      window.removeEventListener('orientationchange', resize);
     };
   }, []);
 
@@ -210,85 +245,104 @@ export default function Game() {
   };
 
   return (
-    <div className="flex w-full flex-col gap-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 px-1">
-        <div className="flex items-baseline gap-6">
-          <p className="mono text-[13px] text-[var(--muted)]">
-            Score <span className="ml-1.5 text-[19px] text-[var(--ink)]">{pad(score)}</span>
-          </p>
-          <p className="mono text-[13px] text-[var(--muted)]">
-            Best <span className="ml-1.5 text-[19px] text-[var(--ink)]">{pad(best)}</span>
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {installable && (
-            <button className="btn btn-sm" onClick={install}>
-              Install
-            </button>
-          )}
-          <button
-            className="btn btn-sm"
-            onClick={toggleMute}
-            aria-pressed={muted}
-            aria-label={muted ? 'Unmute' : 'Mute'}
-          >
-            {muted ? 'Sound off' : 'Sound on'}
-          </button>
-        </div>
-      </div>
+    <div
+      ref={shellRef}
+      className="fixed inset-0 select-none overflow-hidden"
+      style={
+        {
+          ['--hud-top' as string]: '#1a1b22',
+          ['--hud-mid' as string]: '#1a1b22',
+          ['--hud-bottom' as string]: '#1a1b22',
+          ['--hud-ink' as string]: '#1a1b22',
+          ['--hud-on-ink' as string]: '#f4f6ff',
+        } as React.CSSProperties
+      }
+      onPointerDown={(e) => {
+        e.preventDefault();
+        // Bottom third ducks, everything above jumps — a thumb rests low on a
+        // phone, and reaching for a separate button loses runs.
+        press(e.clientY > window.innerHeight * 0.66 ? 'duck' : 'jump');
+      }}
+      onPointerUp={() => {
+        release('jump');
+        release('duck');
+      }}
+      onPointerCancel={() => {
+        release('jump');
+        release('duck');
+      }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <canvas ref={canvasRef} className="block h-full w-full" />
 
+      {/* HUD. Pointer events off so nothing steals a jump except real buttons. */}
       <div
-        className="stage relative w-full select-none overflow-hidden"
-        style={{ aspectRatio: `${WORLD.width} / ${WORLD.height}` }}
-        onPointerDown={(e) => {
-          e.preventDefault();
-          // Bottom third of the stage ducks, everything else jumps — a thumb
-          // rests low on a phone, and reaching for a separate button loses runs.
-          const rect = e.currentTarget.getBoundingClientRect();
-          press(e.clientY - rect.top > rect.height * 0.66 ? 'duck' : 'jump');
-        }}
-        onPointerUp={() => {
-          release('jump');
-          release('duck');
-        }}
-        onPointerLeave={() => {
-          release('jump');
-          release('duck');
-        }}
-        onContextMenu={(e) => e.preventDefault()}
+        className="pointer-events-none absolute inset-0 flex flex-col justify-between p-5 sm:p-8"
       >
-        <canvas ref={canvasRef} className="block h-full w-full" />
+        <div
+          className="flex items-start justify-between gap-6"
+          style={{ color: 'var(--hud-top)' }}
+        >
+          <div>
+            <h1 className="display text-[26px] leading-none sm:text-[32px]">Runner</h1>
+            <p className="hud-text mt-1.5 text-[12.5px] opacity-80">
+              {offlineReady ? 'Runs with no connection' : 'Saving for offline…'}
+            </p>
+          </div>
 
-        {phase !== 'running' && (
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
-            <div className="pointer-events-auto rounded-[20px] bg-[var(--card)]/92 px-7 py-6 backdrop-blur-sm">
-              <p className="display text-[26px] leading-none">
-                {phase === 'dead' ? 'Caught by a cactus' : 'Ready'}
-              </p>
-              <p className="mt-2.5 text-[13.5px] text-[var(--muted)]">
-                {phase === 'dead' ? (
-                  <>
-                    You scored {score}
-                    {score >= best && score > 0 ? ' — a new best.' : `. Best is ${best}.`}
-                  </>
-                ) : (
-                  'Space or tap to jump. Hold down to duck.'
-                )}
-              </p>
-              <button className="btn btn-primary mt-4" onClick={start}>
-                {phase === 'dead' ? 'Run again' : 'Start running'}
+          <div className="flex items-start gap-6">
+            <div className="text-right">
+              <p className="mono text-[26px] leading-none sm:text-[34px]">{pad(score)}</p>
+              <p className="hud-text mono mt-1 text-[12px] opacity-80">best {pad(best)}</p>
+            </div>
+            <div className="pointer-events-auto flex gap-2">
+              {installable && (
+                <button className="hud-btn" onClick={install}>
+                  Install
+                </button>
+              )}
+              <button
+                className="hud-btn"
+                onClick={toggleMute}
+                aria-pressed={muted}
+                aria-label={muted ? 'Turn sound on' : 'Turn sound off'}
+              >
+                {muted ? 'Sound off' : 'Sound on'}
               </button>
             </div>
           </div>
-        )}
+        </div>
+
+        <p
+          className="hud-text mono text-center text-[12px] opacity-80"
+          style={{ color: 'var(--hud-bottom)' }}
+        >
+          space or tap to jump &middot; hold ↓ to duck &middot; a short tap gives a short hop
+        </p>
       </div>
 
-      <p className="px-1 text-[12.5px] text-[var(--faint)]">
-        {offlineReady
-          ? 'Saved to this device — it runs with no connection.'
-          : 'Caching for offline play…'}
-        {' Space / ↑ to jump, ↓ to duck. A short tap gives a short hop.'}
-      </p>
+      {phase !== 'running' && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6">
+          <div className="pointer-events-auto text-center" style={{ color: 'var(--hud-mid)' }}>
+            <p className="display text-[38px] leading-none sm:text-[52px]">
+              {phase === 'dead' ? 'Caught by a cactus' : 'Ready when you are'}
+            </p>
+            <p className="mt-3 text-[15px] opacity-75">
+              {phase === 'dead' ? (
+                <>
+                  You scored {score}
+                  {score >= best && score > 0 ? ' — a new best.' : `. Best is ${best}.`}
+                </>
+              ) : (
+                'Press space, or tap anywhere.'
+              )}
+            </p>
+            <button className="hud-btn-primary mt-6" onClick={start}>
+              {phase === 'dead' ? 'Run again' : 'Start running'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -8,7 +8,7 @@
  * cached the first time it is fetched.
  */
 
-const VERSION = 'runner-v1';
+const VERSION = 'runner-v2';
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (event) => {
