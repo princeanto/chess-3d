@@ -82,21 +82,24 @@ function Lighting() {
 
   return (
     <>
-      <ambientLight intensity={0.28} color="#fff4e2" />
-      <hemisphereLight args={['#fff6e8', '#3a3128', 0.34]} />
+      <ambientLight intensity={0.16} color="#c8d8e8" />
+      <hemisphereLight args={['#dceaff', '#05070a', 0.22]} />
       <directionalLight
         ref={key}
         castShadow
-        position={[5.5, 9, 6.5]}
-        intensity={2.5}
-        color="#fff2dc"
+        position={[4.5, 7.5, 5.5]}
+        intensity={2.6}
+        color="#ffffff"
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
         shadow-bias={-0.0006}
         shadow-normalBias={0.025}
       />
       {/* Cool fill from the left keeps the beige from going flat and orange. */}
-      <directionalLight position={[-7, 4, 3]} intensity={0.45} color="#cfe0ff" />
+      {/* Rim from behind picks the translucent shell off the black ground. */}
+      <directionalLight position={[-5, 3.5, -6]} intensity={1.5} color="#7fd4e8" />
+      <directionalLight position={[6, 2.4, -5]} intensity={0.9} color="#ffd9b0" />
+      <directionalLight position={[-6, 3, 4]} intensity={0.3} color="#cfe0ff" />
     </>
   );
 }
@@ -238,6 +241,10 @@ export default function Game() {
 
       while (acc >= TICK) {
         step(s, input.current, rand);
+        // The engine reads the rising edge but does not clear it, so the shell
+        // has to — otherwise one press leaves the flag set and the runner jumps
+        // again the instant it lands, for ever.
+        input.current.jumpPressed = false;
         acc -= TICK;
 
         if (s.justJumped) sfx.jump();
@@ -290,7 +297,7 @@ export default function Game() {
   }, [phase]);
 
   return (
-    <div className="fixed inset-0 bg-[#15120e]">
+    <div className="fixed inset-0 bg-black">
       <Canvas
         shadows
         dpr={[1, 2]}
@@ -305,8 +312,8 @@ export default function Game() {
           gl.toneMapping = THREE.ACESFilmicToneMapping;
           gl.toneMappingExposure = 1.02;
           gl.shadowMap.type = THREE.PCFSoftShadowMap;
-          scene.background = new THREE.Color('#100e0b');
-          scene.fog = new THREE.Fog('#100e0b', 18, 40);
+          scene.background = new THREE.Color('#000000');
+          scene.fog = new THREE.Fog('#000000', 14, 30);
         }}
       >
         <CameraRig view={view} />
@@ -323,14 +330,14 @@ export default function Game() {
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-5 sm:p-7">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-[19px] font-semibold tracking-tight text-[#f2ece0]">Runner</h1>
-            <p className="mt-0.5 text-[12px] text-[#a99f8c]">Runs with no connection</p>
+            <h1 className="text-[19px] font-semibold tracking-tight text-[#eef4f6]">Runner</h1>
+            <p className="mt-0.5 text-[12px] text-[#8b979c]">Runs with no connection</p>
           </div>
-          <div className="mono flex items-baseline gap-4 text-[#f2ece0]">
+          <div className="mono flex items-baseline gap-4 text-[#eef4f6]">
             <span className="text-[22px] tabular-nums">
               {String(score).padStart(5, '0')}
             </span>
-            <span className="text-[12px] text-[#a99f8c]">
+            <span className="text-[12px] text-[#8b979c]">
               best {String(best).padStart(5, '0')}
             </span>
           </div>
@@ -345,8 +352,8 @@ export default function Game() {
                 aria-pressed={view === i}
                 className={`min-h-[38px] rounded-full px-4 text-[13px] transition-colors ${
                   view === i
-                    ? 'bg-[#f2ece0] font-semibold text-[#15120e]'
-                    : 'bg-white/10 text-[#e8e1d3] hover:bg-white/20'
+                    ? 'bg-[#eef4f6] font-semibold text-[#0a0d0f]'
+                    : 'bg-white/10 text-[#dfe7ea] hover:bg-white/20'
                 }`}
               >
                 {v.label}
@@ -355,12 +362,12 @@ export default function Game() {
           </div>
 
           <div className="flex items-center gap-4">
-            <p className="text-[12px] text-[#a99f8c]">{hint}</p>
+            <p className="text-[12px] text-[#8b979c]">{hint}</p>
             <div className="pointer-events-auto flex gap-1.5">
               {phase === 'dead' && (
                 <button
                   onClick={restart}
-                  className="min-h-[38px] rounded-full bg-[#f2ece0] px-4 text-[13px] font-semibold text-[#15120e]"
+                  className="min-h-[38px] rounded-full bg-[#eef4f6] px-4 text-[13px] font-semibold text-[#0a0d0f]"
                 >
                   Run again
                 </button>
@@ -368,14 +375,14 @@ export default function Game() {
               {canInstall && (
                 <button
                   onClick={install}
-                  className="min-h-[38px] rounded-full bg-white/10 px-4 text-[13px] text-[#e8e1d3] hover:bg-white/20"
+                  className="min-h-[38px] rounded-full bg-white/10 px-4 text-[13px] text-[#dfe7ea] hover:bg-white/20"
                 >
                   Install
                 </button>
               )}
               <button
                 onClick={toggleSound}
-                className="min-h-[38px] rounded-full bg-white/10 px-4 text-[13px] text-[#e8e1d3] hover:bg-white/20"
+                className="min-h-[38px] rounded-full bg-white/10 px-4 text-[13px] text-[#dfe7ea] hover:bg-white/20"
               >
                 {muted ? 'Sound off' : 'Sound on'}
               </button>

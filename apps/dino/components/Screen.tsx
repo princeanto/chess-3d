@@ -52,7 +52,7 @@ export default function Screen({
   );
 
   return (
-    <group position={[0, 0, 0.05]}>
+    <group position={[0, 0, 0.17]}>
       {/* The picture is self-lit, so it ignores the room lights entirely. */}
       <mesh geometry={picture}>
         {texture ? (

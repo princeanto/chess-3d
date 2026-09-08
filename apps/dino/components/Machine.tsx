@@ -1,35 +1,208 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { LIVE_CODES, layoutKeys, type PlacedKey } from '@/lib/scene/keys';
 
 /**
- * The computer.
+ * A 1998 iMac G3, on a black studio sweep.
  *
- * Built from primitives rather than a model file, so it ships with the app and
- * works offline like everything else here. The one trick worth knowing: a
- * four-sided CylinderGeometry is a square frustum, which gives the tapered box
- * a CRT housing needs — a plain BoxGeometry reads as a filing cabinet.
+ * The shape is the whole point of that machine: a bulbous translucent egg that
+ * swells out behind the screen and tucks into a small foot. It is built by
+ * deforming a sphere rather than assembling boxes — the silhouette has no
+ * straight line in it anywhere except the screen bezel.
+ *
+ * Translucency is two shells: a dark opaque chassis inside a tinted transparent
+ * body. Real `transmission` would be more correct and costs a render target
+ * every frame; two shells give the same read — darker internals seen through
+ * coloured plastic — for the price of one extra mesh.
  */
 
-const BEIGE = '#d8cfbd';
-const BEIGE_DARK = '#bdb3a0';
-const PLASTIC_DARK = '#3a3a3d';
-const KEYCAP = '#e6e0d4';
-const KEYCAP_LIVE = '#c9bfa8';
+const BONDI = '#3f96a8';
+const BONDI_DEEP = '#1d5a67';
+const CHASSIS = '#14343b';
+const BEZEL = '#dfe3e0';
+const KEYCAP = '#e9ece9';
+const KEYCAP_LIVE = '#bcd6dc';
+
+export const SCREEN_SIZE = { w: 1.72, h: 1.29 };
 
 /**
- * A frustum: a box whose top face can differ in size from its bottom.
- *
- * Built from explicit vertices rather than by deforming a cylinder. The cylinder
- * trick looked clever and produced a slab in the wrong orientation — eight
- * corners written out are unambiguous, and non-indexed triangles give the flat
- * per-face normals a moulded plastic box needs.
- *
- * Runs from y = 0 up to y = height, so callers can rotate it into place.
+ * One number drives the whole machine. The shell's flattened front works out at
+ * `BODY * 0.69` from its centre, so the bezel can be placed against it rather
+ * than guessed at — the first attempt guessed, and the bezel floated half a
+ * unit in front of the body.
  */
+const BODY = 1.42;
+const BODY_Y = BODY * 1.02;
+/**
+ * Where the flattened face actually ends up: the deformation compresses z=1 to
+ * 0.42 + 0.58*0.26 = 0.571, and the shell is then scaled by 1.1 on z. Deriving
+ * it rather than eyeballing it is the difference between a bezel seated in the
+ * shell and one hovering in front of it.
+ */
+const FRONT_Z = BODY * (0.42 + 0.58 * 0.26) * 1.1;
+
+/* ------------------------------ body shell ------------------------------ */
+
+/**
+ * The iMac silhouette, from a unit sphere.
+ *
+ * Three deformations in order: tuck the bottom into a foot, flatten the front
+ * into a face the bezel can sit on, and swell the back rather than let it taper.
+ */
+function imacShell(scale: number): THREE.BufferGeometry {
+  const g = new THREE.SphereGeometry(1, 64, 48);
+  const pos = g.attributes.position;
+  const v = new THREE.Vector3();
+
+  for (let i = 0; i < pos.count; i += 1) {
+    v.fromBufferAttribute(pos, i);
+
+    // Tuck the base in so the machine stands on a small foot.
+    if (v.y < -0.3) {
+      const k = Math.min(1, (v.y + 0.3) / -0.7);
+      const pinch = 1 - 0.62 * k * k;
+      v.x *= pinch;
+      v.z *= pinch * 0.92;
+    }
+
+    // Flatten the front. Compressing past a threshold leaves a broad face with
+    // a soft edge, rather than a ball with a slice taken off it.
+    if (v.z > 0.42) v.z = 0.42 + (v.z - 0.42) * 0.26;
+
+    // The back swells; that bulge is the whole silhouette.
+    if (v.z < 0) v.z *= 1.12;
+
+    pos.setXYZ(i, v.x * scale * 1.04, v.y * scale * 1.02, v.z * scale * 1.1);
+  }
+
+  g.computeVertexNormals();
+  return g;
+}
+
+function Body() {
+  const outer = useMemo(() => imacShell(BODY), []);
+  const inner = useMemo(() => imacShell(BODY * 0.94), []);
+
+  return (
+    <group position={[0, BODY_Y, -0.35]}>
+      {/* Dark internals, seen through the tinted shell. */}
+      <mesh geometry={inner}>
+        <meshStandardMaterial color={CHASSIS} roughness={0.55} metalness={0.1} />
+      </mesh>
+
+      <mesh geometry={outer} castShadow receiveShadow>
+        <meshPhysicalMaterial
+          color={BONDI}
+          transparent
+          opacity={0.62}
+          roughness={0.16}
+          metalness={0}
+          clearcoat={1}
+          clearcoatRoughness={0.06}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      {/* Carry handle over the crown. */}
+      <mesh
+        position={[0, BODY * 0.98, -BODY * 0.52]}
+        rotation={[Math.PI / 2.3, 0, 0]}
+        castShadow
+      >
+        <torusGeometry args={[0.26, 0.058, 16, 40, Math.PI]} />
+        <meshPhysicalMaterial
+          color={BONDI}
+          transparent
+          opacity={0.72}
+          roughness={0.18}
+          clearcoat={1}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+/* -------------------------------- screen -------------------------------- */
+
+/** A slightly bulged plane — CRT glass is never flat. */
+export function bulgedPlane(w: number, h: number, bulge: number): THREE.BufferGeometry {
+  const g = new THREE.PlaneGeometry(w, h, 32, 24);
+  const pos = g.attributes.position;
+  for (let i = 0; i < pos.count; i += 1) {
+    const x = pos.getX(i) / (w / 2);
+    const y = pos.getY(i) / (h / 2);
+    pos.setZ(i, bulge * (1 - x * x) * (1 - y * y));
+  }
+  g.computeVertexNormals();
+  return g;
+}
+
+const roundedShape = (w: number, h: number, r: number): THREE.Shape => {
+  const s = new THREE.Shape();
+  s.moveTo(-w / 2 + r, -h / 2);
+  s.lineTo(w / 2 - r, -h / 2);
+  s.quadraticCurveTo(w / 2, -h / 2, w / 2, -h / 2 + r);
+  s.lineTo(w / 2, h / 2 - r);
+  s.quadraticCurveTo(w / 2, h / 2, w / 2 - r, h / 2);
+  s.lineTo(-w / 2 + r, h / 2);
+  s.quadraticCurveTo(-w / 2, h / 2, -w / 2, h / 2 - r);
+  s.lineTo(-w / 2, -h / 2 + r);
+  s.quadraticCurveTo(-w / 2, -h / 2, -w / 2 + r, -h / 2);
+  return s;
+};
+
+function Bezel() {
+  const geometry = useMemo(() => {
+    const outer = roundedShape(2.16, 1.72, 0.2);
+    outer.holes.push(
+      new THREE.Path(roundedShape(SCREEN_SIZE.w, SCREEN_SIZE.h, 0.11).getPoints(48)),
+    );
+    const g = new THREE.ExtrudeGeometry(outer, {
+      depth: 0.12,
+      bevelEnabled: true,
+      bevelThickness: 0.05,
+      bevelSize: 0.05,
+      bevelSegments: 4,
+      curveSegments: 12,
+    });
+    g.computeVertexNormals();
+    return g;
+  }, []);
+
+  return (
+    <mesh geometry={geometry} castShadow>
+      <meshStandardMaterial color={BEZEL} roughness={0.42} metalness={0.02} />
+    </mesh>
+  );
+}
+
+/* ------------------------------- keyboard ------------------------------- */
+
+function useKeyLabel(label: string | undefined): THREE.CanvasTexture | null {
+  return useMemo(() => {
+    if (!label) return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.clearRect(0, 0, 128, 128);
+    ctx.fillStyle = '#3d4a4d';
+    ctx.font = `600 ${label.length > 2 ? 32 : 60}px ui-sans-serif, system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, 64, 70);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = 4;
+    return texture;
+  }, [label]);
+}
+
+/** A box whose top face is smaller than its bottom — a keycap, or a case. */
 export function frustumY(
   bw: number,
   bd: number,
@@ -49,88 +222,26 @@ export function frustumY(
     [tw / 2, height, -td / 2],
     [-tw / 2, height, -td / 2],
   ];
-
   const quads: number[][][] = [
-    [b[0], b[1], t[1], t[0]], // front
-    [b[1], b[2], t[2], t[1]], // right
-    [b[2], b[3], t[3], t[2]], // back
-    [b[3], b[0], t[0], t[3]], // left
-    [t[0], t[1], t[2], t[3]], // top
-    [b[3], b[2], b[1], b[0]], // bottom
+    [b[0], b[1], t[1], t[0]],
+    [b[1], b[2], t[2], t[1]],
+    [b[2], b[3], t[3], t[2]],
+    [b[3], b[0], t[0], t[3]],
+    [t[0], t[1], t[2], t[3]],
+    [b[3], b[2], b[1], b[0]],
   ];
-
   const positions: number[] = [];
   for (const [p0, p1, p2, p3] of quads) {
     positions.push(...p0, ...p1, ...p2, ...p0, ...p2, ...p3);
   }
-
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   g.computeVertexNormals();
   return g;
 }
 
-/** Frustum lying on its side, so the taper runs front-to-back. */
-function DeepBox({
-  front,
-  back,
-  depth,
-  ...props
-}: {
-  front: [number, number];
-  back: [number, number];
-  depth: number;
-} & React.ComponentProps<'mesh'>) {
-  const geometry = useMemo(() => {
-    const g = frustumY(front[0], front[1], back[0], back[1], depth);
-    // +Y becomes -Z, so the wide end faces the viewer.
-    g.rotateX(-Math.PI / 2);
-    return g;
-  }, [front, back, depth]);
-
-  return <mesh geometry={geometry} {...props} />;
-}
-
-/** A slightly bulged plane — CRT glass is never flat. */
-export function bulgedPlane(w: number, h: number, bulge: number): THREE.BufferGeometry {
-  const g = new THREE.PlaneGeometry(w, h, 32, 24);
-  const pos = g.attributes.position;
-  for (let i = 0; i < pos.count; i += 1) {
-    const x = pos.getX(i) / (w / 2);
-    const y = pos.getY(i) / (h / 2);
-    pos.setZ(i, bulge * (1 - x * x) * (1 - y * y));
-  }
-  g.computeVertexNormals();
-  return g;
-}
-
-/* ------------------------------- keyboard ------------------------------- */
-
-/** Label textures are tiny and few, so drawing them per key is cheap. */
-function useKeyLabel(label: string | undefined): THREE.CanvasTexture | null {
-  return useMemo(() => {
-    if (!label) return null;
-    const canvas = document.createElement('canvas');
-    canvas.width = 128;
-    canvas.height = 128;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-    ctx.fillStyle = 'rgba(0,0,0,0)';
-    ctx.fillRect(0, 0, 128, 128);
-    ctx.fillStyle = '#4a4a4d';
-    ctx.font = `600 ${label.length > 2 ? 34 : 62}px ui-sans-serif, system-ui, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(label, 64, 70);
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.anisotropy = 4;
-    return texture;
-  }, [label]);
-}
-
-const KEY_H = 0.07;
-const KEY_TRAVEL = 0.055;
+const KEY_H = 0.062;
+const KEY_TRAVEL = 0.05;
 
 function Keycap({
   def,
@@ -147,10 +258,8 @@ function Keycap({
   const label = useKeyLabel(def.label);
   const live = def.code ? LIVE_CODES.has(def.code) : false;
 
-  // Keycaps taper toward the top, like real ones.
   const geometry = useMemo(
-    () =>
-      frustumY(def.width, def.depth, def.width * 0.9, def.depth * 0.88, KEY_H),
+    () => frustumY(def.width, def.depth, def.width * 0.9, def.depth * 0.88, KEY_H),
     [def.width, def.depth],
   );
 
@@ -168,7 +277,6 @@ function Keycap({
       <mesh
         geometry={geometry}
         castShadow
-        receiveShadow
         onPointerDown={(e) => {
           if (!def.code) return;
           e.stopPropagation();
@@ -181,10 +289,12 @@ function Keycap({
         }}
         onPointerOut={() => def.code && onRelease(def.code)}
       >
-        <meshStandardMaterial
+        <meshPhysicalMaterial
           color={live ? KEYCAP_LIVE : KEYCAP}
-          roughness={0.72}
-          metalness={0}
+          roughness={0.38}
+          clearcoat={0.6}
+          transparent
+          opacity={0.94}
         />
       </mesh>
       {label && (
@@ -207,27 +317,23 @@ function Keyboard({
   onRelease: (code: string) => void;
 }) {
   const { keys, width, depth } = useMemo(() => layoutKeys(), []);
+  const base = useMemo(
+    () => frustumY(width + 0.3, depth + 0.26, width + 0.22, depth + 0.18, 0.13),
+    [width, depth],
+  );
 
   return (
-    <group position={[0, 0, 2.1]} rotation={[-0.05, 0, 0]}>
-      <mesh
-        geometry={useMemo(
-          () =>
-            frustumY(
-              width + 0.34,
-              depth + 0.3,
-              width + 0.24,
-              depth + 0.2,
-              0.16,
-            ),
-          [width, depth],
-        )}
-        castShadow
-        receiveShadow
-      >
-        <meshStandardMaterial color={BEIGE} roughness={0.78} />
+    <group position={[0, 0, 2.05]} rotation={[-0.05, 0, 0]} scale={0.62}>
+      <mesh geometry={base} castShadow receiveShadow>
+        <meshPhysicalMaterial
+          color={BONDI_DEEP}
+          transparent
+          opacity={0.68}
+          roughness={0.2}
+          clearcoat={0.9}
+        />
       </mesh>
-      <group position={[0, 0.2, 0]}>
+      <group position={[0, 0.16, 0]}>
         {keys.map((k, i) => (
           <Keycap
             key={i}
@@ -242,168 +348,63 @@ function Keyboard({
   );
 }
 
-/* --------------------------------- mouse -------------------------------- */
+/* --------------------------- the puck mouse ----------------------------- */
 
 function Mouse() {
-  const body = useMemo(() => {
-    const g = new THREE.SphereGeometry(0.32, 24, 18);
-    const pos = g.attributes.position;
-    for (let i = 0; i < pos.count; i += 1) {
-      const y = pos.getY(i);
-      // Squash into a mouse: flat underside, domed top, longer than it is wide.
-      pos.setY(i, y < 0 ? 0 : y * 0.62);
-      pos.setZ(i, pos.getZ(i) * 1.45);
-      pos.setX(i, pos.getX(i) * 0.92);
-    }
-    g.computeVertexNormals();
-    return g;
-  }, []);
-
   return (
-    <group position={[2.35, 0.02, 2.1]} rotation={[0, -0.26, 0]}>
-      <mesh geometry={body} castShadow receiveShadow>
-        <meshStandardMaterial color={BEIGE} roughness={0.7} />
-      </mesh>
-      {/* Split for the two buttons. */}
-      <mesh position={[0, 0.2, -0.24]} castShadow>
-        <boxGeometry args={[0.012, 0.02, 0.32]} />
-        <meshStandardMaterial color={BEIGE_DARK} roughness={0.8} />
-      </mesh>
-      <mesh position={[0, 0.215, -0.34]} castShadow>
-        <boxGeometry args={[0.07, 0.03, 0.1]} />
-        <meshStandardMaterial color={PLASTIC_DARK} roughness={0.6} />
-      </mesh>
-      {/* Cable, curving back toward the machine. */}
-      <mesh
-        position={[-0.42, 0.05, -0.66]}
-        rotation={[Math.PI / 2, 0, 0.7]}
-        castShadow
-      >
-        <torusGeometry args={[0.5, 0.018, 8, 24, Math.PI * 0.75]} />
-        <meshStandardMaterial color="#cfc6b4" roughness={0.8} />
-      </mesh>
-    </group>
-  );
-}
-
-/* -------------------------------- monitor ------------------------------- */
-
-export const SCREEN_SIZE = { w: 2.44, h: 1.83 };
-
-function Monitor({ children }: { children: React.ReactNode }) {
-  const bezel = useMemo(() => {
-    // A rounded outer rectangle with a rounded hole for the screen, extruded —
-    // one solid piece, rather than four boxes with visible seams at the corners.
-    const outer = new THREE.Shape();
-    const w = 3.06;
-    const h = 2.42;
-    const r = 0.16;
-    outer.moveTo(-w / 2 + r, -h / 2);
-    outer.lineTo(w / 2 - r, -h / 2);
-    outer.quadraticCurveTo(w / 2, -h / 2, w / 2, -h / 2 + r);
-    outer.lineTo(w / 2, h / 2 - r);
-    outer.quadraticCurveTo(w / 2, h / 2, w / 2 - r, h / 2);
-    outer.lineTo(-w / 2 + r, h / 2);
-    outer.quadraticCurveTo(-w / 2, h / 2, -w / 2, h / 2 - r);
-    outer.lineTo(-w / 2, -h / 2 + r);
-    outer.quadraticCurveTo(-w / 2, -h / 2, -w / 2 + r, -h / 2);
-
-    const hole = new THREE.Path();
-    const hw = SCREEN_SIZE.w;
-    const hh = SCREEN_SIZE.h;
-    const hr = 0.12;
-    hole.moveTo(-hw / 2 + hr, -hh / 2);
-    hole.lineTo(hw / 2 - hr, -hh / 2);
-    hole.quadraticCurveTo(hw / 2, -hh / 2, hw / 2, -hh / 2 + hr);
-    hole.lineTo(hw / 2, hh / 2 - hr);
-    hole.quadraticCurveTo(hw / 2, hh / 2, hw / 2 - hr, hh / 2);
-    hole.lineTo(-hw / 2 + hr, hh / 2);
-    hole.quadraticCurveTo(-hw / 2, hh / 2, -hw / 2, hh / 2 - hr);
-    hole.lineTo(-hw / 2, -hh / 2 + hr);
-    hole.quadraticCurveTo(-hw / 2, -hh / 2, -hw / 2 + hr, -hh / 2);
-    outer.holes.push(hole);
-
-    const g = new THREE.ExtrudeGeometry(outer, {
-      depth: 0.2,
-      bevelEnabled: true,
-      bevelThickness: 0.035,
-      bevelSize: 0.035,
-      bevelSegments: 3,
-      curveSegments: 8,
-    });
-    g.computeVertexNormals();
-    return g;
-  }, []);
-
-  return (
-    <group position={[0, 1.62, -0.55]}>
-      {/* Deep tapering housing behind the bezel. */}
-      <DeepBox
-        front={[2.98, 2.34]}
-        back={[1.9, 1.56]}
-        depth={2.2}
-        position={[0, 0, 0.02]}
-        castShadow
-        receiveShadow
-      >
-        <meshStandardMaterial color={BEIGE} roughness={0.76} />
-      </DeepBox>
-
-      <mesh geometry={bezel} position={[0, 0, -0.02]} castShadow receiveShadow>
-        <meshStandardMaterial color={BEIGE} roughness={0.66} />
-      </mesh>
-
-      {children}
-
-      {/* Vents across the top of the housing. */}
-      {Array.from({ length: 9 }, (_, i) => (
-        <mesh key={i} position={[-0.8 + i * 0.2, 1.19, -0.9]} castShadow>
-          <boxGeometry args={[0.11, 0.016, 0.62]} />
-          <meshStandardMaterial color={BEIGE_DARK} roughness={0.85} />
-        </mesh>
-      ))}
-
-      {/* Badge, power LED and two knobs along the chin. */}
-      <mesh position={[-1.0, -1.06, 0.16]}>
-        <boxGeometry args={[0.44, 0.075, 0.012]} />
-        <meshStandardMaterial color={BEIGE_DARK} roughness={0.6} />
-      </mesh>
-      <mesh position={[1.16, -1.06, 0.17]}>
-        <sphereGeometry args={[0.032, 12, 8]} />
-        <meshStandardMaterial
-          color="#7CFF9B"
-          emissive="#3ef06a"
-          emissiveIntensity={2.4}
-          toneMapped={false}
+    <group position={[1.72, 0, 2.05]} scale={0.78}>
+      <mesh position={[0, 0.09, 0]} castShadow receiveShadow>
+        <sphereGeometry args={[0.23, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        <meshPhysicalMaterial
+          color={BONDI}
+          transparent
+          opacity={0.7}
+          roughness={0.15}
+          clearcoat={1}
         />
       </mesh>
-      {[0.72, 0.92].map((x) => (
-        <mesh key={x} position={[x, -1.06, 0.16]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-          <cylinderGeometry args={[0.05, 0.05, 0.05, 16]} />
-          <meshStandardMaterial color={BEIGE_DARK} roughness={0.55} />
-        </mesh>
-      ))}
-
-      {/* Stand: a tilting neck into a base disc. */}
-      <mesh position={[0, -1.34, -0.5]} castShadow>
-        <cylinderGeometry args={[0.3, 0.42, 0.3, 20]} />
-        <meshStandardMaterial color={BEIGE_DARK} roughness={0.8} />
+      <mesh position={[0, 0.045, 0]} castShadow>
+        <cylinderGeometry args={[0.23, 0.22, 0.09, 32]} />
+        <meshStandardMaterial color={BEZEL} roughness={0.4} />
       </mesh>
-      <mesh position={[0, -1.55, -0.5]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.86, 0.94, 0.14, 28]} />
-        <meshStandardMaterial color={BEIGE} roughness={0.8} />
+      <mesh position={[0, 0.095, 0.06]}>
+        <cylinderGeometry args={[0.075, 0.075, 0.02, 24]} />
+        <meshStandardMaterial color={CHASSIS} roughness={0.5} />
       </mesh>
     </group>
   );
 }
 
-/* --------------------------------- desk --------------------------------- */
+/* ----------------------------- studio sweep ----------------------------- */
 
-function Desk() {
+/**
+ * A black studio floor. The pool of light is baked into a texture rather than
+ * lit, so it stays exactly where it is framed no matter which viewpoint the
+ * camera moves to — a real light would slide across the floor as it orbits.
+ */
+function Studio() {
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, 512, 512);
+    const g = ctx.createRadialGradient(256, 240, 16, 256, 256, 248);
+    g.addColorStop(0, '#292c30');
+    g.addColorStop(0.42, '#141517');
+    g.addColorStop(1, '#000000');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 512, 512);
+    const t = new THREE.CanvasTexture(canvas);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, []);
+
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
-      <planeGeometry args={[38, 38]} />
-      <meshStandardMaterial color="#4e4335" roughness={0.95} metalness={0} />
+    <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <planeGeometry args={[26, 26]} />
+      <meshStandardMaterial map={texture} roughness={0.4} metalness={0.06} />
     </mesh>
   );
 }
@@ -421,12 +422,16 @@ export default function Machine({
 }) {
   return (
     <group>
-      <Desk />
-      <Monitor>{screen}</Monitor>
+      <Studio />
+      <Body />
+      {/* Bezel and picture sit on the flattened front of the shell. */}
+      {/* Seated against the shell's flattened face, not floating in front of it. */}
+      <group position={[0, BODY_Y + 0.1, FRONT_Z - 0.35 - 0.11]}>
+        <Bezel />
+        {screen}
+      </group>
       <Keyboard pressedRef={pressedRef} onPress={onPress} onRelease={onRelease} />
       <Mouse />
     </group>
   );
 }
-
-export { DeepBox };
