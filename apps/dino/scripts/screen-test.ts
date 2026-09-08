@@ -99,6 +99,35 @@ check(VIEW_WIDTH === SCREEN_W, 'the engine is told the strip width, so obstacles
 check(SCREEN_W / SCREEN_H > 1.3 && SCREEN_W / SCREEN_H < 1.35, 'the screen is 4:3',
   (SCREEN_W / SCREEN_H).toFixed(3));
 
+/* --------------------------- sprite vs hitbox --------------------------- */
+
+/*
+ * Every obstacle sprite must be exactly the size of the box the physics uses.
+ * They were not, and both of the bugs that produced were invisible in the code:
+ * a sprite shorter than its box floats above the ground line, and one narrower
+ * than its box kills the runner from a gap you can see daylight through.
+ */
+console.log('\nSPRITES MATCH HITBOXES');
+const HITBOX: Array<[string, Sprite, number, number]> = [
+  ['cactus-small', sprites.CACTUS_SMALL, 24, 44],
+  ['cactus-tall', sprites.CACTUS_TALL, 28, 66],
+  ['cactus-cluster', sprites.CACTUS_CLUSTER, 58, 50],
+  ['bird', sprites.BIRD_A, 46, 30],
+  ['bird (flap)', sprites.BIRD_B, 46, 30],
+  ['runner', sprites.DINO_RUN_A, 46, 52],
+  ['runner (stride)', sprites.DINO_RUN_B, 46, 52],
+  ['ducking', sprites.DINO_DUCK_A, 58, 30],
+  ['ducking (stride)', sprites.DINO_DUCK_B, 58, 30],
+];
+for (const [name, sprite, w, h] of HITBOX) {
+  const size = spriteSize(sprite);
+  check(
+    size.w === w && size.h === h,
+    `${name} sprite is exactly its hitbox`,
+    `${size.w}x${size.h} vs ${w}x${h}`,
+  );
+}
+
 /* ------------------------------- contrast ------------------------------- */
 
 console.log('\nLEGIBILITY');

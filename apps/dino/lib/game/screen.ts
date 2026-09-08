@@ -36,9 +36,9 @@ export const SCREEN_W = 512;
 export const SCREEN_H = 384;
 
 /** The band the game occupies, and where its ground line sits. */
-export const STRIP_TOP = 138;
-export const GROUND_Y = 326;
-const STRIP_BOTTOM = 348;
+export const STRIP_TOP = 120;
+export const GROUND_Y = 308;
+const STRIP_BOTTOM = 334;
 
 export const INK = '#535353';
 export const PAPER = '#f7f7f7';
@@ -170,16 +170,16 @@ function drawClouds(ctx: CanvasRenderingContext2D, state: State) {
  * the game UI, where it belongs.
  */
 function drawPage(ctx: CanvasRenderingContext2D, state: State) {
-  blit(ctx, DINO_STAND, 40, 34, INK_SOFT);
-
+  // No dino above the heading: the runner is already on the strip below, and
+  // dropping it gives the page the air Chrome's own error page has.
   ctx.fillStyle = INK;
   ctx.textBaseline = 'alphabetic';
-  ctx.font = '600 21px ui-sans-serif, system-ui, -apple-system, Arial, sans-serif';
-  ctx.fillText('No internet', 40, 104);
+  ctx.font = '600 23px ui-sans-serif, system-ui, -apple-system, Arial, sans-serif';
+  ctx.fillText('No internet', 40, 62);
 
   ctx.fillStyle = INK_SOFT;
-  ctx.font = '12px ui-sans-serif, system-ui, -apple-system, Arial, sans-serif';
-  ctx.fillText('Try checking the network cables, or restarting the router.', 40, 124);
+  ctx.font = '12.5px ui-sans-serif, system-ui, -apple-system, Arial, sans-serif';
+  ctx.fillText('Try checking the network cables, or restarting the router.', 40, 86);
 
   ctx.fillStyle = INK_SOFT;
   ctx.font = '11px ui-monospace, SFMono-Regular, Menlo, monospace';
@@ -187,7 +187,7 @@ function drawPage(ctx: CanvasRenderingContext2D, state: State) {
     state.phase === 'ready'
       ? 'ERR_INTERNET_DISCONNECTED  ·  press space to play'
       : 'ERR_INTERNET_DISCONNECTED';
-  ctx.fillText(hint, 40, 368);
+  ctx.fillText(hint, 40, 366);
 }
 
 /* ------------------------------ CRT effects ----------------------------- */
@@ -248,23 +248,23 @@ export function renderScreen(ctx: CanvasRenderingContext2D, state: State) {
 
   // Score sits above the strip on the right, as it does in the original.
   const scoreText = pad5(state.score);
-  drawText(ctx, scoreText, SCREEN_W - 40 - textWidth(scoreText), 90);
+  drawText(ctx, scoreText, SCREEN_W - 40 - textWidth(scoreText), 48);
   if (state.best > 0) {
     const bestText = `HI ${pad5(state.best)}`;
     drawText(
       ctx,
       bestText,
       SCREEN_W - 40 - textWidth(scoreText) - 26 - textWidth(bestText),
-      90,
+      48,
       INK_SOFT,
     );
   }
 
   if (state.phase === 'dead') {
     const over = 'GAME OVER';
-    drawText(ctx, over, (SCREEN_W - textWidth(over)) / 2, STRIP_TOP + 38);
+    drawText(ctx, over, (SCREEN_W - textWidth(over)) / 2, STRIP_TOP + 30);
     const { w: rw } = spriteSize(RESTART);
-    blit(ctx, RESTART, (SCREEN_W - rw) / 2, STRIP_TOP + 74);
+    blit(ctx, RESTART, (SCREEN_W - rw) / 2, STRIP_TOP + 66);
   }
 
   drawScanlines(ctx);

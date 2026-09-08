@@ -20,8 +20,8 @@ export const VIEWS: View[] = [
   {
     id: 'front',
     label: 'Front',
-    position: [0, 2.6, 7.8],
-    target: [0, 1.15, -0.35],
+    position: [0, 3.4, 8.6],
+    target: [0, 0.95, 0.5],
     fov: 34,
   },
   {

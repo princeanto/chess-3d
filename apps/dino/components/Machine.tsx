@@ -26,7 +26,7 @@ const BEZEL = '#dfe3e0';
 const KEYCAP = '#e9ece9';
 const KEYCAP_LIVE = '#bcd6dc';
 
-export const SCREEN_SIZE = { w: 1.42, h: 1.06 };
+export const SCREEN_SIZE = { w: 1.6, h: 1.2 };
 
 /* ------------------------------ body shell ------------------------------ */
 
@@ -43,8 +43,8 @@ export const SCREEN_SIZE = { w: 1.42, h: 1.06 };
  * extruding along Z the whole thing is rotated so that Z becomes the machine's
  * width.
  */
-const BODY_W = 1.72;
-const BEVEL = 0.2;
+const BODY_W = 2.34;
+const BEVEL = 0.19;
 
 /**
  * Shape X is measured *backwards* from the front face.
@@ -55,30 +55,54 @@ const BEVEL = 0.2;
  */
 function bodyProfile(): THREE.Shape {
   const p = new THREE.Shape();
-  p.moveTo(0.08, 0.5);
-  p.lineTo(0.24, 2.02); // front face, leaning back the way the screen does
-  p.quadraticCurveTo(0.34, 2.28, 0.72, 2.3); // brow, the highest point
+  p.moveTo(0.08, 0.46);
+  p.lineTo(0.22, 1.94); // front face, leaning back the way the screen does
+  p.quadraticCurveTo(0.3, 2.14, 0.6, 2.16); // brow, the highest point
   // One long sweep from the brow down to the tail. Anything with a vertical
   // section in the back reads as a box, however rounded its corners are.
-  p.bezierCurveTo(1.54, 2.32, 2.22, 1.84, 2.62, 1.16);
-  p.bezierCurveTo(2.88, 0.74, 2.8, 0.4, 2.4, 0.28); // tail, low and far back
-  p.bezierCurveTo(1.5, 0.04, 0.72, 0.14, 0.34, 0.3); // underside
-  p.quadraticCurveTo(0.16, 0.38, 0.08, 0.5);
+  p.bezierCurveTo(1.32, 2.18, 1.98, 1.8, 2.3, 1.18);
+  p.bezierCurveTo(2.54, 0.78, 2.44, 0.4, 2.02, 0.28); // tail, low and far back
+  p.bezierCurveTo(1.26, 0.04, 0.66, 0.14, 0.32, 0.3); // underside
+  p.quadraticCurveTo(0.15, 0.36, 0.08, 0.46);
   return p;
 }
 
+/**
+ * How wide the machine is at a given depth. 0 is the face, 1 is the tail.
+ *
+ * A straight extrusion is a constant-width slab, and no amount of rounding
+ * stops that reading as a box. The real thing bulges: narrower at the face than
+ * at the shoulders, then drawing in hard toward the tail. This curve is what
+ * turns the profile into a body.
+ */
+function widthAt(t: number): number {
+  const face = Math.min(1, 0.8 + t * 0.62); // pinched at the bezel
+  const tail = 1 - 0.46 * Math.pow(t, 1.75); // drawn in toward the back
+  return face * tail;
+}
+
 function extrudedBody(inset: number): THREE.BufferGeometry {
+  const depth = BODY_W - inset * 2;
   const g = new THREE.ExtrudeGeometry(bodyProfile(), {
-    depth: BODY_W - inset * 2,
+    depth,
     bevelEnabled: true,
     bevelThickness: BEVEL,
     bevelSize: BEVEL,
-    bevelSegments: 10,
-    curveSegments: 24,
+    bevelSegments: 12,
+    curveSegments: 32,
   });
   // Centre across the width, then turn the extrusion axis into world X.
-  g.translate(0, 0, -(BODY_W - inset * 2) / 2);
+  g.translate(0, 0, -depth / 2);
   g.rotateY(Math.PI / 2);
+
+  g.computeBoundingBox();
+  const { min, max } = g.boundingBox!;
+  const pos = g.attributes.position;
+  for (let i = 0; i < pos.count; i += 1) {
+    const t = (max.z - pos.getZ(i)) / (max.z - min.z);
+    pos.setX(i, pos.getX(i) * widthAt(t));
+  }
+
   g.computeVertexNormals();
   return g;
 }
@@ -86,22 +110,33 @@ function extrudedBody(inset: number): THREE.BufferGeometry {
 /** The frosted lower section: the same profile, clipped below the waistline. */
 function lowerShell(): THREE.BufferGeometry {
   const p = new THREE.Shape();
-  p.moveTo(0.1, 0.5);
-  p.lineTo(0.16, 1.06);
-  p.bezierCurveTo(1.3, 1.18, 2.2, 1.0, 2.62, 0.72);
-  p.bezierCurveTo(2.82, 0.44, 2.74, 0.3, 2.36, 0.3);
-  p.bezierCurveTo(1.5, 0.06, 0.72, 0.16, 0.34, 0.32);
-  p.quadraticCurveTo(0.17, 0.39, 0.1, 0.5);
+  p.moveTo(0.16, 0.5);
+  p.lineTo(0.2, 0.86);
+  p.bezierCurveTo(1.06, 0.96, 1.8, 0.82, 2.16, 0.62);
+  p.bezierCurveTo(2.34, 0.44, 2.26, 0.34, 1.92, 0.34);
+  p.bezierCurveTo(1.24, 0.14, 0.68, 0.22, 0.36, 0.36);
+  p.quadraticCurveTo(0.22, 0.42, 0.16, 0.5);
+  const depth = BODY_W - 0.04;
   const g = new THREE.ExtrudeGeometry(p, {
-    depth: BODY_W - 0.02,
+    depth,
     bevelEnabled: true,
-    bevelThickness: BEVEL * 0.92,
-    bevelSize: BEVEL * 0.92,
-    bevelSegments: 8,
-    curveSegments: 20,
+    bevelThickness: BEVEL * 0.7,
+    bevelSize: BEVEL * 0.7,
+    bevelSegments: 10,
+    curveSegments: 24,
   });
-  g.translate(0, 0, -(BODY_W - 0.02) / 2);
+  g.translate(0, 0, -depth / 2);
   g.rotateY(Math.PI / 2);
+
+  // Follow the same bulge, or the chin sits proud of the shell at the shoulders.
+  g.computeBoundingBox();
+  const { min, max } = g.boundingBox!;
+  const pos = g.attributes.position;
+  for (let i = 0; i < pos.count; i += 1) {
+    const t = (max.z - pos.getZ(i)) / (max.z - min.z);
+    pos.setX(i, pos.getX(i) * widthAt(t) * 0.93);
+  }
+
   g.computeVertexNormals();
   return g;
 }
@@ -115,49 +150,42 @@ const FRONT_Z = BEVEL;
 
 function Body() {
   const shell = useMemo(() => extrudedBody(0), []);
-  const chassis = useMemo(() => extrudedBody(0.2), []);
+  const chassis = useMemo(() => extrudedBody(0.34), []);
   const lower = useMemo(() => lowerShell(), []);
 
   return (
     <group>
       {/* Dark internals, seen through the tinted shell. */}
-      <mesh geometry={chassis} position={[0, 0, -0.06]}>
+      <mesh geometry={chassis} position={[0, 0.09, -0.22]}>
         <meshStandardMaterial color={CHASSIS} roughness={0.6} metalness={0.08} />
       </mesh>
 
       {/* Frosted lower third — the coloured plastic is only the top and back. */}
       <mesh geometry={lower} castShadow receiveShadow>
-        <meshPhysicalMaterial
-          color="#e8eef0"
-          transparent
-          opacity={0.9}
-          roughness={0.42}
-          clearcoat={0.7}
-        />
+        <meshPhysicalMaterial color="#eef2f3" roughness={0.4} clearcoat={0.6} />
       </mesh>
 
       <mesh geometry={shell} castShadow receiveShadow>
         <meshPhysicalMaterial
           color={BONDI}
           transparent
-          opacity={0.58}
-          roughness={0.14}
+          opacity={0.9}
+          roughness={0.2}
           metalness={0}
           clearcoat={1}
           clearcoatRoughness={0.05}
-          side={THREE.DoubleSide}
         />
       </mesh>
 
       {/* Recessed carry handle on the crown, toward the back. */}
-      <mesh position={[0, 2.24, -1.45]} rotation={[0.55, 0, 0]} castShadow>
+      <mesh position={[0, 2.14, -1.3]} rotation={[0.5, 0, 0]} castShadow>
         <torusGeometry args={[0.26, 0.05, 14, 36, Math.PI]} />
         <meshStandardMaterial color={BONDI_DEEP} roughness={0.4} />
       </mesh>
 
       {/* Feet. */}
-      {[-0.62, 0.62].map((x) => (
-        <mesh key={x} position={[x, 0.06, -1.95]} castShadow>
+      {[-0.78, 0.78].map((x) => (
+        <mesh key={x} position={[x, 0.05, -1.7]} castShadow>
           <cylinderGeometry args={[0.11, 0.13, 0.12, 16]} />
           <meshStandardMaterial color="#e8eef0" roughness={0.6} />
         </mesh>
@@ -197,7 +225,7 @@ const roundedShape = (w: number, h: number, r: number): THREE.Shape => {
 
 function Bezel() {
   const geometry = useMemo(() => {
-    const outer = roundedShape(1.76, 1.62, 0.3);
+    const outer = roundedShape(1.98, 1.8, 0.3);
     outer.holes.push(
       new THREE.Path(roundedShape(SCREEN_SIZE.w, SCREEN_SIZE.h, 0.11).getPoints(48)),
     );
@@ -481,7 +509,7 @@ export default function Machine({
       <Body />
       {/* Bezel and picture sit on the flattened front of the shell. */}
       {/* The white face plate sits on the front of the wedge, tilted with it. */}
-      <group position={[0, 1.28, FRONT_Z - 0.04]} rotation={[0.085, 0, 0]}>
+      <group position={[0, 1.2, FRONT_Z - 0.04]} rotation={[0.075, 0, 0]}>
         <Bezel />
         {screen}
       </group>
