@@ -92,13 +92,7 @@ export function layoutKeys(): { keys: PlacedKey[]; width: number; depth: number 
     const z = (r - (ROWS.length - 1) / 2) * (ROW_DEPTH + GAP);
     for (const def of row) {
       const width = def.w * UNIT;
-      keys.push({
-        ...def,
-        x: cursor + width / 2,
-        z,
-        width,
-        depth: ROW_DEPTH,
-      });
+      keys.push({ ...def, x: cursor + width / 2, z, width, depth: ROW_DEPTH });
       cursor += width + GAP;
     }
   });
@@ -114,9 +108,29 @@ export function layoutKeys(): { keys: PlacedKey[]; width: number; depth: number 
     });
   }
 
-  const width = widest + 3 * (UNIT + GAP) + GAP * 2;
-  const depth = ROWS.length * (ROW_DEPTH + GAP);
-  return { keys, width, depth };
+  /*
+   * Centre on what was actually placed, not on the main block.
+   *
+   * The arrow cluster hangs off the right-hand side, so the assembly is not
+   * symmetric about zero. Sizing the case from the main block alone left the
+   * cluster and the right-hand keys floating past its edge — measure the real
+   * extent, then shift everything so the case can be centred on it.
+   */
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+  for (const k of keys) {
+    minX = Math.min(minX, k.x - k.width / 2);
+    maxX = Math.max(maxX, k.x + k.width / 2);
+    minZ = Math.min(minZ, k.z - k.depth / 2);
+    maxZ = Math.max(maxZ, k.z + k.depth / 2);
+  }
+
+  const shift = (minX + maxX) / 2;
+  for (const k of keys) k.x -= shift;
+
+  return { keys, width: maxX - minX, depth: maxZ - minZ };
 }
 
 /** Codes the game reacts to — used to tint those keycaps so they stand out. */

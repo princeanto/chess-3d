@@ -26,101 +26,142 @@ const BEZEL = '#dfe3e0';
 const KEYCAP = '#e9ece9';
 const KEYCAP_LIVE = '#bcd6dc';
 
-export const SCREEN_SIZE = { w: 1.72, h: 1.29 };
-
-/**
- * One number drives the whole machine. The shell's flattened front works out at
- * `BODY * 0.69` from its centre, so the bezel can be placed against it rather
- * than guessed at — the first attempt guessed, and the bezel floated half a
- * unit in front of the body.
- */
-const BODY = 1.42;
-const BODY_Y = BODY * 1.02;
-/**
- * Where the flattened face actually ends up: the deformation compresses z=1 to
- * 0.42 + 0.58*0.26 = 0.571, and the shell is then scaled by 1.1 on z. Deriving
- * it rather than eyeballing it is the difference between a bezel seated in the
- * shell and one hovering in front of it.
- */
-const FRONT_Z = BODY * (0.42 + 0.58 * 0.26) * 1.1;
+export const SCREEN_SIZE = { w: 1.42, h: 1.06 };
 
 /* ------------------------------ body shell ------------------------------ */
 
 /**
- * The iMac silhouette, from a unit sphere.
+ * The iMac is a wedge, not a ball.
  *
- * Three deformations in order: tuck the bottom into a foot, flatten the front
- * into a face the bezel can sit on, and swell the back rather than let it taper.
+ * Its side view is the whole design: a near-vertical front face carrying the
+ * screen, sweeping up over a domed top and back down to a rounded tail that
+ * meets the desk. A deformed sphere cannot make that shape — so the silhouette
+ * is drawn once as a profile and extruded sideways, with a deep bevel doing the
+ * work of rounding the flanks.
+ *
+ * Shape X runs front to back (negative is backwards); shape Y is height. After
+ * extruding along Z the whole thing is rotated so that Z becomes the machine's
+ * width.
  */
-function imacShell(scale: number): THREE.BufferGeometry {
-  const g = new THREE.SphereGeometry(1, 64, 48);
-  const pos = g.attributes.position;
-  const v = new THREE.Vector3();
+const BODY_W = 1.72;
+const BEVEL = 0.2;
 
-  for (let i = 0; i < pos.count; i += 1) {
-    v.fromBufferAttribute(pos, i);
+/**
+ * Shape X is measured *backwards* from the front face.
+ *
+ * The rotation that turns the extrusion sideways maps shape X onto world −Z, so
+ * a profile drawn with negative X put the tail in front of the screen and the
+ * body swallowed the display. Positive here, negative there.
+ */
+function bodyProfile(): THREE.Shape {
+  const p = new THREE.Shape();
+  p.moveTo(0.08, 0.5);
+  p.lineTo(0.24, 2.02); // front face, leaning back the way the screen does
+  p.quadraticCurveTo(0.34, 2.28, 0.72, 2.3); // brow, the highest point
+  // One long sweep from the brow down to the tail. Anything with a vertical
+  // section in the back reads as a box, however rounded its corners are.
+  p.bezierCurveTo(1.54, 2.32, 2.22, 1.84, 2.62, 1.16);
+  p.bezierCurveTo(2.88, 0.74, 2.8, 0.4, 2.4, 0.28); // tail, low and far back
+  p.bezierCurveTo(1.5, 0.04, 0.72, 0.14, 0.34, 0.3); // underside
+  p.quadraticCurveTo(0.16, 0.38, 0.08, 0.5);
+  return p;
+}
 
-    // Tuck the base in so the machine stands on a small foot.
-    if (v.y < -0.3) {
-      const k = Math.min(1, (v.y + 0.3) / -0.7);
-      const pinch = 1 - 0.62 * k * k;
-      v.x *= pinch;
-      v.z *= pinch * 0.92;
-    }
-
-    // Flatten the front. Compressing past a threshold leaves a broad face with
-    // a soft edge, rather than a ball with a slice taken off it.
-    if (v.z > 0.42) v.z = 0.42 + (v.z - 0.42) * 0.26;
-
-    // The back swells; that bulge is the whole silhouette.
-    if (v.z < 0) v.z *= 1.12;
-
-    pos.setXYZ(i, v.x * scale * 1.04, v.y * scale * 1.02, v.z * scale * 1.1);
-  }
-
+function extrudedBody(inset: number): THREE.BufferGeometry {
+  const g = new THREE.ExtrudeGeometry(bodyProfile(), {
+    depth: BODY_W - inset * 2,
+    bevelEnabled: true,
+    bevelThickness: BEVEL,
+    bevelSize: BEVEL,
+    bevelSegments: 10,
+    curveSegments: 24,
+  });
+  // Centre across the width, then turn the extrusion axis into world X.
+  g.translate(0, 0, -(BODY_W - inset * 2) / 2);
+  g.rotateY(Math.PI / 2);
   g.computeVertexNormals();
   return g;
 }
 
+/** The frosted lower section: the same profile, clipped below the waistline. */
+function lowerShell(): THREE.BufferGeometry {
+  const p = new THREE.Shape();
+  p.moveTo(0.1, 0.5);
+  p.lineTo(0.16, 1.06);
+  p.bezierCurveTo(1.3, 1.18, 2.2, 1.0, 2.62, 0.72);
+  p.bezierCurveTo(2.82, 0.44, 2.74, 0.3, 2.36, 0.3);
+  p.bezierCurveTo(1.5, 0.06, 0.72, 0.16, 0.34, 0.32);
+  p.quadraticCurveTo(0.17, 0.39, 0.1, 0.5);
+  const g = new THREE.ExtrudeGeometry(p, {
+    depth: BODY_W - 0.02,
+    bevelEnabled: true,
+    bevelThickness: BEVEL * 0.92,
+    bevelSize: BEVEL * 0.92,
+    bevelSegments: 8,
+    curveSegments: 20,
+  });
+  g.translate(0, 0, -(BODY_W - 0.02) / 2);
+  g.rotateY(Math.PI / 2);
+  g.computeVertexNormals();
+  return g;
+}
+
+/**
+ * World Z of the front face. The profile starts at X = 0 and the bevel pushes
+ * outward by its own size, so the front-most surface sits exactly one bevel
+ * proud of the origin.
+ */
+const FRONT_Z = BEVEL;
+
 function Body() {
-  const outer = useMemo(() => imacShell(BODY), []);
-  const inner = useMemo(() => imacShell(BODY * 0.94), []);
+  const shell = useMemo(() => extrudedBody(0), []);
+  const chassis = useMemo(() => extrudedBody(0.2), []);
+  const lower = useMemo(() => lowerShell(), []);
 
   return (
-    <group position={[0, BODY_Y, -0.35]}>
+    <group>
       {/* Dark internals, seen through the tinted shell. */}
-      <mesh geometry={inner}>
-        <meshStandardMaterial color={CHASSIS} roughness={0.55} metalness={0.1} />
+      <mesh geometry={chassis} position={[0, 0, -0.06]}>
+        <meshStandardMaterial color={CHASSIS} roughness={0.6} metalness={0.08} />
       </mesh>
 
-      <mesh geometry={outer} castShadow receiveShadow>
+      {/* Frosted lower third — the coloured plastic is only the top and back. */}
+      <mesh geometry={lower} castShadow receiveShadow>
+        <meshPhysicalMaterial
+          color="#e8eef0"
+          transparent
+          opacity={0.9}
+          roughness={0.42}
+          clearcoat={0.7}
+        />
+      </mesh>
+
+      <mesh geometry={shell} castShadow receiveShadow>
         <meshPhysicalMaterial
           color={BONDI}
           transparent
-          opacity={0.62}
-          roughness={0.16}
+          opacity={0.58}
+          roughness={0.14}
           metalness={0}
           clearcoat={1}
-          clearcoatRoughness={0.06}
+          clearcoatRoughness={0.05}
           side={THREE.DoubleSide}
         />
       </mesh>
 
-      {/* Carry handle over the crown. */}
-      <mesh
-        position={[0, BODY * 0.98, -BODY * 0.52]}
-        rotation={[Math.PI / 2.3, 0, 0]}
-        castShadow
-      >
-        <torusGeometry args={[0.26, 0.058, 16, 40, Math.PI]} />
-        <meshPhysicalMaterial
-          color={BONDI}
-          transparent
-          opacity={0.72}
-          roughness={0.18}
-          clearcoat={1}
-        />
+      {/* Recessed carry handle on the crown, toward the back. */}
+      <mesh position={[0, 2.24, -1.45]} rotation={[0.55, 0, 0]} castShadow>
+        <torusGeometry args={[0.26, 0.05, 14, 36, Math.PI]} />
+        <meshStandardMaterial color={BONDI_DEEP} roughness={0.4} />
       </mesh>
+
+      {/* Feet. */}
+      {[-0.62, 0.62].map((x) => (
+        <mesh key={x} position={[x, 0.06, -1.95]} castShadow>
+          <cylinderGeometry args={[0.11, 0.13, 0.12, 16]} />
+          <meshStandardMaterial color="#e8eef0" roughness={0.6} />
+        </mesh>
+      ))}
     </group>
   );
 }
@@ -156,17 +197,17 @@ const roundedShape = (w: number, h: number, r: number): THREE.Shape => {
 
 function Bezel() {
   const geometry = useMemo(() => {
-    const outer = roundedShape(2.16, 1.72, 0.2);
+    const outer = roundedShape(1.76, 1.62, 0.3);
     outer.holes.push(
       new THREE.Path(roundedShape(SCREEN_SIZE.w, SCREEN_SIZE.h, 0.11).getPoints(48)),
     );
     const g = new THREE.ExtrudeGeometry(outer, {
-      depth: 0.12,
+      depth: 0.1,
       bevelEnabled: true,
-      bevelThickness: 0.05,
-      bevelSize: 0.05,
-      bevelSegments: 4,
-      curveSegments: 12,
+      bevelThickness: 0.08,
+      bevelSize: 0.08,
+      bevelSegments: 6,
+      curveSegments: 16,
     });
     g.computeVertexNormals();
     return g;
@@ -174,7 +215,7 @@ function Bezel() {
 
   return (
     <mesh geometry={geometry} castShadow>
-      <meshStandardMaterial color={BEZEL} roughness={0.42} metalness={0.02} />
+      <meshPhysicalMaterial color={BEZEL} roughness={0.36} clearcoat={0.55} />
     </mesh>
   );
 }
@@ -323,7 +364,7 @@ function Keyboard({
   );
 
   return (
-    <group position={[0, 0, 2.05]} rotation={[-0.05, 0, 0]} scale={0.62}>
+    <group position={[0, 0, 2.35]} rotation={[-0.045, 0, 0]} scale={0.5}>
       <mesh geometry={base} castShadow receiveShadow>
         <meshPhysicalMaterial
           color={BONDI_DEEP}
@@ -350,26 +391,40 @@ function Keyboard({
 
 /* --------------------------- the puck mouse ----------------------------- */
 
+/**
+ * The round mouse that shipped with it: a flat translucent disc with a white
+ * circular button set into the top. Famously bad to hold, unmistakable to look
+ * at — and the reason it has to be a disc rather than the little ball that was
+ * standing in for it.
+ */
 function Mouse() {
   return (
-    <group position={[1.72, 0, 2.05]} scale={0.78}>
-      <mesh position={[0, 0.09, 0]} castShadow receiveShadow>
-        <sphereGeometry args={[0.23, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
+    <group position={[1.9, 0, 2.35]} rotation={[0, -0.18, 0]}>
+      {/* Translucent outer ring. */}
+      <mesh position={[0, 0.055, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.34, 0.32, 0.11, 44]} />
         <meshPhysicalMaterial
           color={BONDI}
           transparent
-          opacity={0.7}
-          roughness={0.15}
+          opacity={0.66}
+          roughness={0.14}
           clearcoat={1}
         />
       </mesh>
-      <mesh position={[0, 0.045, 0]} castShadow>
-        <cylinderGeometry args={[0.23, 0.22, 0.09, 32]} />
-        <meshStandardMaterial color={BEZEL} roughness={0.4} />
+      {/* White inner body, slightly domed. */}
+      <mesh position={[0, 0.105, 0]} castShadow>
+        <sphereGeometry args={[0.27, 32, 14, 0, Math.PI * 2, 0, Math.PI / 2.6]} />
+        <meshPhysicalMaterial color="#eef2f3" roughness={0.34} clearcoat={0.7} />
       </mesh>
-      <mesh position={[0, 0.095, 0.06]}>
-        <cylinderGeometry args={[0.075, 0.075, 0.02, 24]} />
-        <meshStandardMaterial color={CHASSIS} roughness={0.5} />
+      {/* The single round button, a shade proud of the shell. */}
+      <mesh position={[0, 0.125, 0.02]}>
+        <cylinderGeometry args={[0.155, 0.155, 0.016, 32]} />
+        <meshPhysicalMaterial color="#f6f8f8" roughness={0.3} clearcoat={0.8} />
+      </mesh>
+      {/* Cable, running back toward the machine. */}
+      <mesh position={[-0.22, 0.04, -0.42]} rotation={[Math.PI / 2, 0, 0.5]}>
+        <torusGeometry args={[0.4, 0.014, 8, 24, Math.PI * 0.7]} />
+        <meshStandardMaterial color="#dfe6e8" roughness={0.6} />
       </mesh>
     </group>
   );
@@ -425,8 +480,8 @@ export default function Machine({
       <Studio />
       <Body />
       {/* Bezel and picture sit on the flattened front of the shell. */}
-      {/* Seated against the shell's flattened face, not floating in front of it. */}
-      <group position={[0, BODY_Y + 0.1, FRONT_Z - 0.35 - 0.11]}>
+      {/* The white face plate sits on the front of the wedge, tilted with it. */}
+      <group position={[0, 1.28, FRONT_Z - 0.04]} rotation={[0.085, 0, 0]}>
         <Bezel />
         {screen}
       </group>
