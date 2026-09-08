@@ -52,7 +52,10 @@ export default function Screen({
   );
 
   return (
-    <group position={[0, 0, 0.17]}>
+    /* Flush with the face group's origin: that origin is already sitting on the
+       shell's front surface, and pushing the picture forward of it was what made
+       the glass hover in front of the machine. */
+    <group position={[0, 0, 0]}>
       {/* The picture is self-lit, so it ignores the room lights entirely. */}
       <mesh geometry={picture}>
         {texture ? (

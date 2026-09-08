@@ -8,42 +8,48 @@ import { LIVE_CODES, layoutKeys, type PlacedKey } from '@/lib/scene/keys';
 /**
  * A 1998 iMac G3, on a black studio sweep.
  *
- * The shape is the whole point of that machine: a bulbous translucent egg that
- * swells out behind the screen and tucks into a small foot. It is built by
- * deforming a sphere rather than assembling boxes — the silhouette has no
- * straight line in it anywhere except the screen bezel.
+ * Built against the machine's published dimensions — 15.2 wide by 15.8 high by
+ * 17.6 deep — and against photographs, which is how the two things that actually
+ * make it recognisable got found: the shell is *two* plastics, a frosted white
+ * front and base with the coloured translucent hood over the back, and it does
+ * not sit on a narrow pedestal. Earlier versions were a single blue rounded box
+ * standing on a stalk, and neither of those reads as an iMac.
  *
- * Translucency is two shells: a dark opaque chassis inside a tinted transparent
- * body. Real `transmission` would be more correct and costs a render target
- * every frame; two shells give the same read — darker internals seen through
- * coloured plastic — for the price of one extra mesh.
+ * Translucency is two shells: a dark opaque chassis inside a tinted body. Real
+ * `transmission` would be more correct and costs a render target every frame;
+ * two shells give the same read for the price of one extra mesh.
  */
 
 const BONDI = '#3f96a8';
 const BONDI_DEEP = '#1d5a67';
+const FROST = '#d5dddf';
 const CHASSIS = '#14343b';
-const BEZEL = '#dfe3e0';
 const KEYCAP = '#e9ece9';
 const KEYCAP_LIVE = '#bcd6dc';
 
-export const SCREEN_SIZE = { w: 1.6, h: 1.2 };
+/*
+ * The face.
+ *
+ * The CRT is pushed up the front, leaving a deep chin under it for the CD tray,
+ * the power button and the two speakers. That chin is most of what makes the
+ * front read as an iMac rather than as a generic monitor.
+ */
+export const SCREEN_SIZE = { w: 1.68, h: 1.26 };
+/** World height of the tube's centre. */
+export const SCREEN_Y = 1.56;
+/**
+ * How far the face leans back, in radians.
+ *
+ * Negative: the profile's front edge runs from x 0.09 at the bottom to 0.23 at
+ * the top and shape X points backwards, so going up the face moves away from
+ * the viewer. With the sign the other way the whole chin was rotated *into* the
+ * shell, which is why the CD slot and speakers were invisible.
+ */
+export const FACE_TILT = -0.077;
 
 /* ------------------------------ body shell ------------------------------ */
 
-/**
- * The iMac is a wedge, not a ball.
- *
- * Its side view is the whole design: a near-vertical front face carrying the
- * screen, sweeping up over a domed top and back down to a rounded tail that
- * meets the desk. A deformed sphere cannot make that shape — so the silhouette
- * is drawn once as a profile and extruded sideways, with a deep bevel doing the
- * work of rounding the flanks.
- *
- * Shape X runs front to back (negative is backwards); shape Y is height. After
- * extruding along Z the whole thing is rotated so that Z becomes the machine's
- * width.
- */
-const BODY_W = 2.34;
+const BODY_W = 2.26;
 const BEVEL = 0.19;
 
 /**
@@ -55,30 +61,74 @@ const BEVEL = 0.19;
  */
 function bodyProfile(): THREE.Shape {
   const p = new THREE.Shape();
-  p.moveTo(0.08, 0.46);
-  p.lineTo(0.22, 1.94); // front face, leaning back the way the screen does
-  p.quadraticCurveTo(0.3, 2.14, 0.6, 2.16); // brow, the highest point
-  // One long sweep from the brow down to the tail. Anything with a vertical
-  // section in the back reads as a box, however rounded its corners are.
-  p.bezierCurveTo(1.32, 2.18, 1.98, 1.8, 2.3, 1.18);
-  p.bezierCurveTo(2.54, 0.78, 2.44, 0.4, 2.02, 0.28); // tail, low and far back
-  p.bezierCurveTo(1.26, 0.04, 0.66, 0.14, 0.32, 0.3); // underside
-  p.quadraticCurveTo(0.15, 0.36, 0.08, 0.46);
+  p.moveTo(0.09, 0.44);
+  p.lineTo(0.23, 2.26); // front face, leaning back the way the screen does
+  p.quadraticCurveTo(0.34, 2.45, 0.68, 2.52); // brow
+  /*
+   * The back, fitted to a photograph rather than drawn by eye.
+   *
+   * The silhouette was checked by measuring the height of the top surface at
+   * eight depths across a side-on photo of the real machine and comparing. The
+   * front half had always been close; the back was up to 0.15 of the machine's
+   * height too tall, which is what kept every version reading as a rounded
+   * television. The crown plateaus over the front quarter, then falls away in
+   * one long arc to a bulge at about 40% of the height, then tucks to the base.
+   */
+  p.bezierCurveTo(1.12, 2.56, 1.46, 2.37, 1.7, 2.17);
+  p.bezierCurveTo(2.06, 1.88, 2.44, 1.6, 2.66, 1.32);
+  p.bezierCurveTo(2.74, 1.14, 2.75, 0.94, 2.64, 0.68);
+  p.bezierCurveTo(2.52, 0.38, 2.3, 0.19, 2.05, 0.18);
+  /*
+   * The base runs about half the machine's depth. An earlier version gave it a
+   * quarter, which turned the shell into an egg balanced on a stalk.
+   */
+  p.lineTo(0.62, 0.18);
+  p.bezierCurveTo(0.4, 0.19, 0.24, 0.28, 0.16, 0.36);
+  p.quadraticCurveTo(0.11, 0.4, 0.09, 0.44);
   return p;
+}
+
+/** Crown height directly above a given depth, used to seat things on the shell. */
+function crownAt(shapeX: number): number {
+  const pts = bodyProfile().getPoints(400);
+  let best = -Infinity;
+  for (const v of pts) {
+    if (Math.abs(v.x - shapeX) < 0.06) best = Math.max(best, v.y);
+  }
+  return best + BEVEL;
 }
 
 /**
  * How wide the machine is at a given depth. 0 is the face, 1 is the tail.
  *
- * A straight extrusion is a constant-width slab, and no amount of rounding
- * stops that reading as a box. The real thing bulges: narrower at the face than
- * at the shoulders, then drawing in hard toward the tail. This curve is what
- * turns the profile into a body.
+ * Widest at the front, not the middle. An earlier version pinched the face to
+ * 82% of the maximum, which is backwards, and it cost the design its whole
+ * front: the bezel came out as wide as the shell with no colour left showing
+ * around it. Seen from above the real machine is broadest just behind the face
+ * and draws steadily in toward the tail.
  */
 function widthAt(t: number): number {
-  const face = Math.min(1, 0.8 + t * 0.62); // pinched at the bezel
-  const tail = 1 - 0.46 * Math.pow(t, 1.75); // drawn in toward the back
-  return face * tail;
+  const front = Math.min(1, 0.94 + t * 0.3);
+  const tail = 1 - 0.5 * Math.pow(t, 1.7);
+  return front * tail;
+}
+
+/**
+ * How wide the machine is at a given height.
+ *
+ * This is what stops the sides being flat. An extrusion scaled only by depth is
+ * a ruled surface — curved front to back, dead straight up and down — so each
+ * flank rendered as one enormous facet with a hard crease where the bevel
+ * started, which read as a lighting bug rather than as a machine. Pulling the
+ * width in toward the crown and the base domes them, and puts the widest point
+ * where the real shell's part line sits, a little below halfway.
+ */
+function narrowAt(y: number): number {
+  const t = (y - 0.18) / 2.34; // 0 at the base, 1 at the crown
+  const dome = 1 - 0.26 * Math.pow(Math.min(1, Math.abs(t - 0.42) / 0.58), 2.2);
+  // A last gentle draw-in at the very bottom, where it meets the feet.
+  const foot = 0.9 + 0.1 * Math.min(1, Math.max(0, (y - 0.02) / 0.42));
+  return dome * foot;
 }
 
 function extrudedBody(inset: number): THREE.BufferGeometry {
@@ -100,41 +150,7 @@ function extrudedBody(inset: number): THREE.BufferGeometry {
   const pos = g.attributes.position;
   for (let i = 0; i < pos.count; i += 1) {
     const t = (max.z - pos.getZ(i)) / (max.z - min.z);
-    pos.setX(i, pos.getX(i) * widthAt(t));
-  }
-
-  g.computeVertexNormals();
-  return g;
-}
-
-/** The frosted lower section: the same profile, clipped below the waistline. */
-function lowerShell(): THREE.BufferGeometry {
-  const p = new THREE.Shape();
-  p.moveTo(0.16, 0.5);
-  p.lineTo(0.2, 0.86);
-  p.bezierCurveTo(1.06, 0.96, 1.8, 0.82, 2.16, 0.62);
-  p.bezierCurveTo(2.34, 0.44, 2.26, 0.34, 1.92, 0.34);
-  p.bezierCurveTo(1.24, 0.14, 0.68, 0.22, 0.36, 0.36);
-  p.quadraticCurveTo(0.22, 0.42, 0.16, 0.5);
-  const depth = BODY_W - 0.04;
-  const g = new THREE.ExtrudeGeometry(p, {
-    depth,
-    bevelEnabled: true,
-    bevelThickness: BEVEL * 0.7,
-    bevelSize: BEVEL * 0.7,
-    bevelSegments: 10,
-    curveSegments: 24,
-  });
-  g.translate(0, 0, -depth / 2);
-  g.rotateY(Math.PI / 2);
-
-  // Follow the same bulge, or the chin sits proud of the shell at the shoulders.
-  g.computeBoundingBox();
-  const { min, max } = g.boundingBox!;
-  const pos = g.attributes.position;
-  for (let i = 0; i < pos.count; i += 1) {
-    const t = (max.z - pos.getZ(i)) / (max.z - min.z);
-    pos.setX(i, pos.getX(i) * widthAt(t) * 0.93);
+    pos.setX(i, pos.getX(i) * widthAt(t) * narrowAt(pos.getY(i)));
   }
 
   g.computeVertexNormals();
@@ -142,52 +158,148 @@ function lowerShell(): THREE.BufferGeometry {
 }
 
 /**
- * World Z of the front face. The profile starts at X = 0 and the bevel pushes
- * outward by its own size, so the front-most surface sits exactly one bevel
- * proud of the origin.
+ * How far back the frosted front piece reaches, for a surface with this normal.
+ *
+ * Not a flat cut. The white moulding wraps a long way back over the crown but
+ * only just past the corner on the flanks, and slicing it at one depth put a
+ * hard pale triangle down the side of the machine. Leaning the seam on how
+ * upward-facing the surface is follows the real part line closely enough.
  */
-const FRONT_Z = BEVEL;
+function frontSeamZ(normalY: number): number {
+  return -0.16 - 0.62 * Math.max(0, normalY);
+}
+
+/**
+ * Height of the base seam at a given depth.
+ *
+ * Not quite a level line — measuring the band across a side-on photo shows it
+ * climbing from about 22% of the machine's height at the front to 35% at the
+ * back. A first pass read 42% off the same photo, but that number was the rear
+ * tip of the silhouette rather than the seam, and it put a pale wedge halfway
+ * up the flank.
+ */
+function baseSeamY(z: number): number {
+  const t = Math.min(1, Math.max(0, (0.1 - z) / 2.76));
+  return 0.66 + 0.24 * t;
+}
+
+/**
+ * Sorts the shell's triangles into frosted and coloured runs.
+ *
+ * The two plastics are one moulding as far as the silhouette is concerned, so
+ * they are one geometry with two material groups rather than two meshes — that
+ * keeps the seam exactly on the surface instead of leaving a hairline where two
+ * separately bevelled solids almost meet.
+ */
+function twoTone(g: THREE.BufferGeometry): THREE.BufferGeometry {
+  const pos = g.attributes.position;
+  const nor = g.attributes.normal;
+  const tris = pos.count / 3;
+  const frost: number[] = [];
+  const hood: number[] = [];
+
+  for (let t = 0; t < tris; t += 1) {
+    const i = t * 3;
+    const cz = (pos.getZ(i) + pos.getZ(i + 1) + pos.getZ(i + 2)) / 3;
+    const cy = (pos.getY(i) + pos.getY(i + 1) + pos.getY(i + 2)) / 3;
+    const ny = (nor.getY(i) + nor.getY(i + 1) + nor.getY(i + 2)) / 3;
+    (cz > frontSeamZ(ny) || cy < baseSeamY(cz) ? frost : hood).push(t);
+  }
+
+  const order = [...frost, ...hood];
+  const p = new Float32Array(order.length * 9);
+  const n = new Float32Array(order.length * 9);
+  order.forEach((t, k) => {
+    for (let v = 0; v < 3; v += 1) {
+      const src = t * 3 + v;
+      const dst = k * 3 + v;
+      p[dst * 3] = pos.getX(src);
+      p[dst * 3 + 1] = pos.getY(src);
+      p[dst * 3 + 2] = pos.getZ(src);
+      n[dst * 3] = nor.getX(src);
+      n[dst * 3 + 1] = nor.getY(src);
+      n[dst * 3 + 2] = nor.getZ(src);
+    }
+  });
+
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.BufferAttribute(p, 3));
+  out.setAttribute('normal', new THREE.BufferAttribute(n, 3));
+  out.addGroup(0, frost.length * 3, 0);
+  out.addGroup(frost.length * 3, hood.length * 3, 1);
+  return out;
+}
+
+/**
+ * World Z of the shell's front surface at the tube's height, plus a hair.
+ *
+ * The face slopes, so this is only correct at one height — which is why the
+ * group carrying it is tilted to match rather than sitting square.
+ */
+const FRONT_Z = 0.03;
 
 function Body() {
-  const shell = useMemo(() => extrudedBody(0), []);
+  const shell = useMemo(() => twoTone(extrudedBody(0)), []);
   const chassis = useMemo(() => extrudedBody(0.34), []);
-  const lower = useMemo(() => lowerShell(), []);
+  const handleY = useMemo(() => crownAt(1.75), []);
 
   return (
-    <group>
-      {/* Dark internals, seen through the tinted shell. */}
-      <mesh geometry={chassis} position={[0, 0.09, -0.22]}>
+    <group position={[0, 0.04, 0]}>
+      {/*
+        Dark internals, seen through the tinted hood. Scaled in about the body's
+        own centre rather than merely nudged — offsetting it alone pushed the
+        crown of the chassis out through the top of the shell, which showed up
+        as a beige slab lying across the machine's back.
+      */}
+      <mesh geometry={chassis} position={[0, 0.1, -0.1]} scale={[1, 0.93, 0.93]}>
         <meshStandardMaterial color={CHASSIS} roughness={0.6} metalness={0.08} />
       </mesh>
 
-      {/* Frosted lower third — the coloured plastic is only the top and back. */}
-      <mesh geometry={lower} castShadow receiveShadow>
-        <meshPhysicalMaterial color="#eef2f3" roughness={0.4} clearcoat={0.6} />
-      </mesh>
-
       <mesh geometry={shell} castShadow receiveShadow>
+        {/* Group 0: the frosted front and base. */}
         <meshPhysicalMaterial
-          color={BONDI}
+          attach="material-0"
+          color={FROST}
           transparent
           opacity={0.9}
-          roughness={0.2}
+          roughness={0.34}
+          clearcoat={0.7}
+          clearcoatRoughness={0.12}
+        />
+        {/* Group 1: the coloured hood over the back. */}
+        <meshPhysicalMaterial
+          attach="material-1"
+          color={BONDI}
+          transparent
+          opacity={0.93}
+          roughness={0.18}
           metalness={0}
           clearcoat={1}
           clearcoatRoughness={0.05}
         />
       </mesh>
 
-      {/* Recessed carry handle on the crown, toward the back. */}
-      <mesh position={[0, 2.14, -1.3]} rotation={[0.5, 0, 0]} castShadow>
-        <torusGeometry args={[0.26, 0.05, 14, 36, Math.PI]} />
-        <meshStandardMaterial color={BONDI_DEEP} roughness={0.4} />
+      {/*
+        The carry handle: a dark slot read through the translucent hood, which is
+        how it looks on the real machine. Seated on the crown by measuring the
+        profile rather than by a guessed height — guessing left it hovering over
+        the case like a lunchbox lid.
+      */}
+      <mesh position={[0, handleY - 0.05, -1.75]} rotation={[0.52, 0, 0]}>
+        <boxGeometry args={[0.62, 0.03, 0.26]} />
+        <meshStandardMaterial color="#0a2429" roughness={0.9} />
       </mesh>
 
-      {/* Feet. */}
-      {[-0.78, 0.78].map((x) => (
-        <mesh key={x} position={[x, 0.05, -1.7]} castShadow>
-          <cylinderGeometry args={[0.11, 0.13, 0.12, 16]} />
-          <meshStandardMaterial color="#e8eef0" roughness={0.6} />
+      {/* Four small clear feet. */}
+      {[
+        [-0.62, -0.35],
+        [0.62, -0.35],
+        [-0.5, -2.1],
+        [0.5, -2.1],
+      ].map(([x, z]) => (
+        <mesh key={`${x},${z}`} position={[x, -0.02, z]}>
+          <cylinderGeometry args={[0.07, 0.08, 0.08, 14]} />
+          <meshPhysicalMaterial color="#cfd8da" roughness={0.5} transparent opacity={0.8} />
         </mesh>
       ))}
     </group>
@@ -223,18 +335,26 @@ const roundedShape = (w: number, h: number, r: number): THREE.Shape => {
   return s;
 };
 
-function Bezel() {
+/**
+ * The black surround the tube sits in, cut into the frosted front.
+ *
+ * The front of the shell is already the right plastic, so this is a ring rather
+ * than a plate laid over the machine. The plate version had to be big enough to
+ * frame the tube, which put its corners past where the shell had already curved
+ * away — from the side it floated in front of the case with daylight behind it.
+ */
+function BezelRing() {
   const geometry = useMemo(() => {
-    const outer = roundedShape(1.98, 1.8, 0.3);
+    const outer = roundedShape(SCREEN_SIZE.w + 0.13, SCREEN_SIZE.h + 0.13, 0.16);
     outer.holes.push(
-      new THREE.Path(roundedShape(SCREEN_SIZE.w, SCREEN_SIZE.h, 0.11).getPoints(48)),
+      new THREE.Path(roundedShape(SCREEN_SIZE.w, SCREEN_SIZE.h, 0.1).getPoints(48)),
     );
     const g = new THREE.ExtrudeGeometry(outer, {
-      depth: 0.1,
+      depth: 0.05,
       bevelEnabled: true,
-      bevelThickness: 0.08,
-      bevelSize: 0.08,
-      bevelSegments: 6,
+      bevelThickness: 0.04,
+      bevelSize: 0.035,
+      bevelSegments: 5,
       curveSegments: 16,
     });
     g.computeVertexNormals();
@@ -242,9 +362,105 @@ function Bezel() {
   }, []);
 
   return (
-    <mesh geometry={geometry} castShadow>
-      <meshPhysicalMaterial color={BEZEL} roughness={0.36} clearcoat={0.55} />
+    <mesh geometry={geometry} position={[0, 0, -0.055]}>
+      <meshPhysicalMaterial color="#23282b" roughness={0.5} clearcoat={0.4} />
     </mesh>
+  );
+}
+
+/** Dots, for the speaker grilles. */
+function useGrille(): THREE.CanvasTexture {
+  return useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#1e4f58';
+    ctx.fillRect(0, 0, 64, 64);
+    ctx.fillStyle = '#07161a';
+    for (let y = 0; y < 64; y += 6) {
+      for (let x = 0; x < 64; x += 6) {
+        ctx.beginPath();
+        ctx.arc(x + ((y / 6) % 2 ? 3 : 0), y, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    const t = new THREE.CanvasTexture(canvas);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, []);
+}
+
+/** The iMac wordmark, as it is printed on the chin. */
+function useWordmark(): THREE.CanvasTexture {
+  return useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 96;
+    const ctx = canvas.getContext('2d')!;
+    ctx.clearRect(0, 0, 256, 96);
+    ctx.fillStyle = '#7d8a8d';
+    ctx.font = '300 62px ui-sans-serif, system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('iMac', 128, 52);
+    const t = new THREE.CanvasTexture(canvas);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 4;
+    return t;
+  }, []);
+}
+
+/**
+ * What lives on the chin: the wordmark, the CD tray, the power button and the
+ * two speakers.
+ *
+ * All of it sits a hair proud of the shell rather than being cut into it — real
+ * booleans through the body would cost four more shapes and read identically at
+ * any distance you can actually see the machine from.
+ */
+function Chin() {
+  const grille = useGrille();
+  const mark = useWordmark();
+  // Local to the face group, whose origin is the tube's centre.
+  const ceiling = -SCREEN_SIZE.h / 2;
+  const z = 0.005;
+
+  return (
+    <group>
+      <mesh position={[0, ceiling - 0.13, z]}>
+        <planeGeometry args={[0.42, 0.16]} />
+        <meshBasicMaterial map={mark} transparent toneMapped={false} />
+      </mesh>
+
+      {/* Tray-loading CD slot, centred under the wordmark. */}
+      <mesh position={[0, ceiling - 0.32, z]}>
+        <boxGeometry args={[0.78, 0.11, 0.015]} />
+        <meshStandardMaterial color="#aab4b6" roughness={0.6} />
+      </mesh>
+      <mesh position={[0, ceiling - 0.32, z + 0.008]}>
+        <boxGeometry args={[0.72, 0.022, 0.015]} />
+        <meshStandardMaterial color="#394245" roughness={0.95} />
+      </mesh>
+
+      {/* Power button and its light: to the right of the tray, not the left. */}
+      <mesh position={[0.5, ceiling - 0.32, z]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.042, 0.042, 0.014, 20]} />
+        <meshStandardMaterial color="#9fabad" roughness={0.5} />
+      </mesh>
+      <mesh position={[0.5, ceiling - 0.46, z]}>
+        <sphereGeometry args={[0.018, 12, 10]} />
+        <meshBasicMaterial color="#7ef0b0" toneMapped={false} />
+      </mesh>
+
+      {/* Speakers: two grilles at the bottom corners of the face. */}
+      {[-0.74, 0.74].map((x) => (
+        <mesh key={x} position={[x, ceiling - 0.38, z]}>
+          <circleGeometry args={[0.115, 28]} />
+          <meshStandardMaterial map={grille} roughness={0.8} />
+        </mesh>
+      ))}
+    </group>
   );
 }
 
@@ -507,10 +723,10 @@ export default function Machine({
     <group>
       <Studio />
       <Body />
-      {/* Bezel and picture sit on the flattened front of the shell. */}
-      {/* The white face plate sits on the front of the wedge, tilted with it. */}
-      <group position={[0, 1.2, FRONT_Z - 0.04]} rotation={[0.075, 0, 0]}>
-        <Bezel />
+      {/* The face plate sits on the flattened front of the shell, tilted with it. */}
+      <group position={[0, SCREEN_Y, FRONT_Z]} rotation={[FACE_TILT, 0, 0]}>
+        <BezelRing />
+        <Chin />
         {screen}
       </group>
       <Keyboard pressedRef={pressedRef} onPress={onPress} onRelease={onRelease} />
