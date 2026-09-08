@@ -26,7 +26,6 @@ import {
   DINO_RUN_B,
   DINO_STAND,
   GLYPHS,
-  RESTART,
   SPRITE_SCALE,
   spriteSize,
   type Sprite,
@@ -261,10 +260,17 @@ export function renderScreen(ctx: CanvasRenderingContext2D, state: State) {
   }
 
   if (state.phase === 'dead') {
+    /*
+     * Words rather than a reload glyph.
+     *
+     * A small circular arrow sitting in the middle of the strip is the same ink
+     * and the same size as an obstacle, and it gets read as one. Text cannot be
+     * mistaken for something to jump over, and it says what to actually do.
+     */
     const over = 'GAME OVER';
-    drawText(ctx, over, (SCREEN_W - textWidth(over)) / 2, STRIP_TOP + 30);
-    const { w: rw } = spriteSize(RESTART);
-    blit(ctx, RESTART, (SCREEN_W - rw) / 2, STRIP_TOP + 66);
+    drawText(ctx, over, (SCREEN_W - textWidth(over)) / 2, STRIP_TOP + 26);
+    const again = 'PRESS SPACE';
+    drawText(ctx, again, (SCREEN_W - textWidth(again)) / 2, STRIP_TOP + 50, INK_SOFT);
   }
 
   drawScanlines(ctx);
