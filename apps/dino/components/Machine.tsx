@@ -47,19 +47,38 @@ function bodySurface(): THREE.BufferGeometry {
   const pts = bodyProfile().getPoints(900);
   const X0 = Math.min(...pts.map((p) => p.x));
   const X1 = Math.max(...pts.map((p) => p.x));
-  const NZ = 112;
-  const NA = 128;
-  const eps = (X1 - X0) / 240;
+  const NZ = 168;
+  const NA = 184;
 
-  /** Vertical extent of the side profile at a given depth. */
+  /**
+   * Vertical extent of the side profile at a given depth.
+   *
+   * Intersects the outline's segments rather than gathering sampled points near
+   * `x`. three.js hands back only the two endpoints for a straight run, so the
+   * flat base and the slanted face contributed no samples between them: from a
+   * quarter to four fifths of the way back, nothing was found underneath and the
+   * section collapsed to a blade along the crown. The machine came out solid at
+   * the front, solid at the tail, and hollow through the middle.
+   */
   const spanAt = (x: number): [number, number] => {
     let lo = Infinity;
     let hi = -Infinity;
-    for (const q of pts) {
-      if (Math.abs(q.x - x) <= eps) {
-        lo = Math.min(lo, q.y);
-        hi = Math.max(hi, q.y);
+    for (let i = 0; i < pts.length; i += 1) {
+      const a = pts[i];
+      const b = pts[(i + 1) % pts.length];
+      const dx = b.x - a.x;
+      if (dx === 0) {
+        if (Math.abs(a.x - x) < 1e-9) {
+          lo = Math.min(lo, a.y, b.y);
+          hi = Math.max(hi, a.y, b.y);
+        }
+        continue;
       }
+      const u = (x - a.x) / dx;
+      if (u < 0 || u > 1) continue;
+      const y = a.y + u * (b.y - a.y);
+      lo = Math.min(lo, y);
+      hi = Math.max(hi, y);
     }
     return lo === Infinity ? [0, 0] : [lo, hi];
   };
@@ -124,13 +143,25 @@ function bodySurface(): THREE.BufferGeometry {
   const nor = g.attributes.normal;
   const frost = new THREE.Color(FROST);
   const hood = new THREE.Color(BONDI);
+  const mix = new THREE.Color();
   const colour: number[] = [];
+  const BAND = 0.06;
   for (let v = 0; v < pos.count; v += 1) {
     const y = pos.getY(v);
     const z = pos.getZ(v);
-    const isFrost = z > frontSeamZ(nor.getY(v)) || y < baseSeamY(z);
-    const c = isFrost ? frost : hood;
-    colour.push(c.r, c.g, c.b);
+    /*
+     * Signed distance to the seam, not a yes/no test.
+     *
+     * Colour only exists at vertices, so choosing one plastic or the other per
+     * vertex left the boundary snapping from quad to quad — a staircase across
+     * the back. Blending over a narrow band gives an even edge, and a slightly
+     * soft one is closer to the real thing anyway: the blue is translucent and
+     * fades into the frosted plastic rather than stopping at a printed line.
+     */
+    const d = Math.max(z - frontSeamZ(nor.getY(v)), baseSeamY(z) - y);
+    const u = Math.min(1, Math.max(0, (d + BAND) / (2 * BAND)));
+    mix.copy(hood).lerp(frost, u * u * (3 - 2 * u));
+    colour.push(mix.r, mix.g, mix.b);
   }
   g.setAttribute('color', new THREE.Float32BufferAttribute(colour, 3));
   return g;
