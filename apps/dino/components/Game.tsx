@@ -1,350 +1,390 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { sfx, setMuted } from '@/lib/game/audio';
-import {
-  TICK,
-  WORLD,
-  createState,
-  makeRandom,
-  step,
-  type Input,
-  type State,
-} from '@/lib/game/engine';
-import { render } from '@/lib/game/render';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import * as THREE from 'three';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { createState, step, TICK, type Input, type State } from '@/lib/game/engine';
+import { createScreenCanvas, renderScreen, VIEW_WIDTH } from '@/lib/game/screen';
+import { isMuted, setMuted, sfx } from '@/lib/game/audio';
 import { loadBest, loadMuted, saveBest, saveMuted } from '@/lib/game/storage';
+import { DEFAULT_VIEW, ease, VIEW_MS, VIEWS } from '@/lib/scene/views';
+import Machine from './Machine';
+import Screen from './Screen';
+
+const JUMP_CODES = new Set(['Space', 'ArrowUp', 'KeyW']);
+const DUCK_CODES = new Set(['ArrowDown', 'KeyS']);
 
 /**
- * The shell: a full-bleed canvas with the HUD floating on top of it.
+ * Moves the camera between framed viewpoints.
  *
- * The loop accumulates real time and consumes it in fixed TICK slices, so the
- * physics behave identically on a 60Hz laptop and a 144Hz monitor. Rendering
- * happens once per animation frame, at whatever rate the display runs.
+ * Position and look-at target are eased together — animating only the position
+ * makes the machine appear to swing past the frame, because the camera keeps
+ * staring at where it was aimed for the old shot.
  */
-export default function Game() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const shellRef = useRef<HTMLDivElement>(null);
-  const stateRef = useRef<State | null>(null);
-  const inputRef = useRef<Input>({ jump: false, duck: false, jumpPressed: false });
-  const randRef = useRef(makeRandom());
-  const rafRef = useRef<number | null>(null);
+function CameraRig({ view }: { view: number }) {
+  const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
+  const from = useRef({
+    pos: new THREE.Vector3(...VIEWS[DEFAULT_VIEW].position),
+    target: new THREE.Vector3(...VIEWS[DEFAULT_VIEW].target),
+    fov: VIEWS[DEFAULT_VIEW].fov,
+  });
+  const start = useRef(0);
+  const active = useRef(view);
 
-  // Mirrored into React state only for the HUD; the loop never reads these.
+  useEffect(() => {
+    if (active.current === view) return;
+    from.current = {
+      pos: camera.position.clone(),
+      target: new THREE.Vector3(...VIEWS[active.current].target),
+      fov: camera.fov,
+    };
+    active.current = view;
+    start.current = performance.now();
+  }, [view, camera]);
+
+  useFrame(() => {
+    const target = VIEWS[view];
+    const t = start.current === 0 ? 1 : Math.min(1, (performance.now() - start.current) / VIEW_MS);
+    const e = ease(t);
+
+    camera.position.lerpVectors(
+      from.current.pos,
+      new THREE.Vector3(...target.position),
+      e,
+    );
+    const look = from.current.target.clone().lerp(new THREE.Vector3(...target.target), e);
+    camera.lookAt(look);
+
+    const fov = from.current.fov + (target.fov - from.current.fov) * e;
+    if (Math.abs(camera.fov - fov) > 0.01) {
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+    }
+  });
+
+  return null;
+}
+
+function Lighting() {
+  const key = useRef<THREE.DirectionalLight>(null);
+  useEffect(() => {
+    const light = key.current;
+    if (!light) return;
+    const cam = light.shadow.camera;
+    cam.left = -9;
+    cam.right = 9;
+    cam.top = 9;
+    cam.bottom = -9;
+    cam.near = 1;
+    cam.far = 30;
+    cam.updateProjectionMatrix();
+  }, []);
+
+  return (
+    <>
+      <ambientLight intensity={0.28} color="#fff4e2" />
+      <hemisphereLight args={['#fff6e8', '#3a3128', 0.34]} />
+      <directionalLight
+        ref={key}
+        castShadow
+        position={[5.5, 9, 6.5]}
+        intensity={2.5}
+        color="#fff2dc"
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+        shadow-bias={-0.0006}
+        shadow-normalBias={0.025}
+      />
+      {/* Cool fill from the left keeps the beige from going flat and orange. */}
+      <directionalLight position={[-7, 4, 3]} intensity={0.45} color="#cfe0ff" />
+    </>
+  );
+}
+
+export default function Game() {
+  const [view, setView] = useState(DEFAULT_VIEW);
   const [phase, setPhase] = useState<State['phase']>('ready');
   const [score, setScore] = useState(0);
   const [best, setBest] = useState(0);
   const [muted, setMutedState] = useState(false);
-  const [installable, setInstallable] = useState(false);
-  const [offlineReady, setOfflineReady] = useState(false);
-  const promptRef = useRef<Event | null>(null);
+  const [canInstall, setCanInstall] = useState(false);
 
-  const start = useCallback(() => {
+  const screenCanvas = useRef<HTMLCanvasElement | null>(null);
+  const [canvasReady, setCanvasReady] = useState<HTMLCanvasElement | null>(null);
+  const dirty = useRef(0);
+
+  const stateRef = useRef<State | null>(null);
+  const pressed = useRef<Set<string>>(new Set());
+  const input = useRef<Input>({ jump: false, duck: false, jumpPressed: false });
+  const installEvent = useRef<Event | null>(null);
+  /** When the last run ended, so a death press cannot instantly restart. */
+  const diedAt = useRef(0);
+
+  // One canvas for the life of the page; the texture is bound to it once.
+  useEffect(() => {
+    const canvas = createScreenCanvas();
+    screenCanvas.current = canvas;
+    setCanvasReady(canvas);
+
+    const stored = loadBest();
+    const s = createState(stored);
+    s.viewWidth = VIEW_WIDTH;
+    stateRef.current = s;
+    setBest(stored);
+
+    const startMuted = loadMuted();
+    setMuted(startMuted);
+    setMutedState(startMuted);
+  }, []);
+
+  const syncInput = useCallback(() => {
+    const keys = pressed.current;
+    const jump = [...JUMP_CODES].some((c) => keys.has(c));
+    const duck = [...DUCK_CODES].some((c) => keys.has(c));
+    if (jump && !input.current.jump) input.current.jumpPressed = true;
+    input.current.jump = jump;
+    input.current.duck = duck;
+  }, []);
+
+  const restart = useCallback(() => {
     const s = stateRef.current;
     if (!s) return;
-    if (s.phase === 'running') return;
     const fresh = createState(s.best);
+    fresh.viewWidth = VIEW_WIDTH;
     fresh.phase = 'running';
-    // Carry the sky across a restart: resetting to dawn every death would make
-    // the cycle feel like a scoreboard rather than weather.
-    fresh.cycle = s.cycle;
-    fresh.viewWidth = s.viewWidth;
     stateRef.current = fresh;
-    randRef.current = makeRandom();
-    setPhase('running');
-    setScore(0);
+    pressed.current.clear();
+    input.current = { jump: false, duck: false, jumpPressed: false };
   }, []);
-
-  /* ------------------------------- input ------------------------------- */
 
   const press = useCallback(
-    (kind: 'jump' | 'duck') => {
+    (code: string) => {
+      if (pressed.current.has(code)) return;
+      pressed.current.add(code);
+      syncInput();
+
+      // The engine only simulates while running; leaving the title and death
+      // screens is the shell's job, not the simulation's.
+      if (!JUMP_CODES.has(code)) return;
       const s = stateRef.current;
       if (!s) return;
-      if (kind === 'jump') {
-        inputRef.current.jump = true;
-        inputRef.current.jumpPressed = true;
-        if (s.phase !== 'running') start();
-      } else {
-        inputRef.current.duck = true;
+      if (s.phase === 'ready') {
+        s.phase = 'running';
+      } else if (s.phase === 'dead' && performance.now() - diedAt.current > 450) {
+        restart();
       }
     },
-    [start],
+    [syncInput, restart],
   );
 
-  const release = useCallback((kind: 'jump' | 'duck') => {
-    if (kind === 'jump') inputRef.current.jump = false;
-    else inputRef.current.duck = false;
-  }, []);
+  const release = useCallback(
+    (code: string) => {
+      if (!pressed.current.delete(code)) return;
+      syncInput();
+    },
+    [syncInput],
+  );
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.repeat) return;
-      if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+      if (JUMP_CODES.has(e.code) || DUCK_CODES.has(e.code)) {
         e.preventDefault();
-        press('jump');
-      } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
-        e.preventDefault();
-        press('duck');
+        press(e.code);
       }
     };
-    const up = (e: KeyboardEvent) => {
-      if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') release('jump');
-      else if (e.code === 'ArrowDown' || e.code === 'KeyS') release('duck');
+    const up = (e: KeyboardEvent) => release(e.code);
+    // Focus loss drops keyup, which would leave a key stuck down for ever.
+    const blur = () => {
+      pressed.current.clear();
+      syncInput();
     };
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
+    window.addEventListener('blur', blur);
     return () => {
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', blur);
     };
-  }, [press, release]);
-
-  /* -------------------------------- loop ------------------------------- */
+  }, [press, release, syncInput]);
 
   useEffect(() => {
-    const initialBest = loadBest();
-    const initialMuted = loadMuted();
-    stateRef.current = createState(initialBest);
-    setBest(initialBest);
-    setMutedState(initialMuted);
-    setMuted(initialMuted);
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let accumulator = 0;
-    let last = performance.now();
-    let running = true;
-    let cssWidth = 0;
-    let cssHeight = 0;
-    let dpr = 1;
-
-    const resize = () => {
-      dpr = Math.min(2, window.devicePixelRatio || 1);
-      const rect = canvas.getBoundingClientRect();
-      cssWidth = rect.width;
-      cssHeight = rect.height;
-      canvas.width = Math.round(cssWidth * dpr);
-      canvas.height = Math.round(cssHeight * dpr);
-
-      // Tell the simulation how much world is actually on screen, so obstacles
-      // enter from beyond the real edge rather than an invisible inner one.
-      const s = stateRef.current;
-      if (s) {
-        const scale = Math.min(cssHeight / WORLD.height, cssWidth / WORLD.minWidth);
-        s.viewWidth = cssWidth / scale;
-      }
+    const onPrompt = (e: Event) => {
+      e.preventDefault();
+      installEvent.current = e;
+      setCanInstall(true);
     };
-    resize();
-    window.addEventListener('resize', resize);
-    window.addEventListener('orientationchange', resize);
+    window.addEventListener('beforeinstallprompt', onPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', onPrompt);
+  }, []);
 
-    const frame = (now: number) => {
-      if (!running) return;
+  // The simulation loop. Fixed 120Hz steps with an accumulator, so the physics
+  // are identical whatever the display refresh rate is.
+  useEffect(() => {
+    let raf = 0;
+    let last = performance.now();
+    let acc = 0;
+    const rand = Math.random;
+
+    const loop = (now: number) => {
+      raf = requestAnimationFrame(loop);
       const s = stateRef.current;
-      if (!s) return;
+      const canvas = screenCanvas.current;
+      if (!s || !canvas) return;
 
-      // Clamp the delta: returning to a backgrounded tab would otherwise
-      // deliver a multi-second dt and run hundreds of ticks at once.
       const dt = Math.min(0.25, (now - last) / 1000);
       last = now;
-      accumulator += dt;
+      acc += dt;
 
-      while (accumulator >= TICK) {
-        const wasPhase = s.phase;
-        step(s, inputRef.current, randRef.current);
-        inputRef.current.jumpPressed = false;
-        accumulator -= TICK;
+      while (acc >= TICK) {
+        step(s, input.current, rand);
+        acc -= TICK;
 
         if (s.justJumped) sfx.jump();
         if (s.justMilestone) sfx.milestone();
         if (s.justDied) {
           sfx.die();
-          saveBest(s.best);
+          diedAt.current = performance.now();
+          if (s.score > s.best) {
+            s.best = Math.floor(s.score);
+            saveBest(s.best);
+          }
+          setBest(Math.floor(s.best));
         }
-        if (wasPhase !== s.phase) setPhase(s.phase);
       }
 
-      setScore((prev) => (prev === s.score ? prev : s.score));
-      setBest((prev) => (prev === s.best ? prev : s.best));
-
-      const palette = render(ctx, s, cssWidth, cssHeight, now / 1000, dpr);
-      // The HUD sits on a sky that changes colour all run, so its ink is driven
-      // straight from the palette. Set on the node rather than through state:
-      // a re-render every frame would be wasteful and jittery.
-      const shell = shellRef.current;
-      if (shell) {
-        shell.style.setProperty('--hud-top', palette.hudTop);
-        shell.style.setProperty('--hud-mid', palette.hudMid);
-        shell.style.setProperty('--hud-bottom', palette.hudBottom);
-        shell.style.setProperty('--hud-ink', palette.hudMid);
-        shell.style.setProperty('--hud-on-ink', palette.onHudMid);
-        // The halo is whatever the text is not, so it separates in both directions.
-        shell.style.setProperty(
-          '--hud-halo',
-          palette.hudBottom === palette.onHudMid ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.5)',
-        );
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        renderScreen(ctx, s);
+        dirty.current += 1;
       }
 
-      rafRef.current = requestAnimationFrame(frame);
+      setPhase((p) => (p === s.phase ? p : s.phase));
+      const rounded = Math.floor(s.score);
+      setScore((v) => (v === rounded ? v : rounded));
     };
 
-    rafRef.current = requestAnimationFrame(frame);
-    return () => {
-      running = false;
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      window.removeEventListener('resize', resize);
-      window.removeEventListener('orientationchange', resize);
-    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
   }, []);
 
-  /* ------------------------------ install ------------------------------ */
-
-  useEffect(() => {
-    const onPrompt = (e: Event) => {
-      e.preventDefault();
-      promptRef.current = e;
-      setInstallable(true);
-    };
-    window.addEventListener('beforeinstallprompt', onPrompt);
-
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker
-        .register('/sw.js')
-        .then((reg) => {
-          if (reg.active) setOfflineReady(true);
-          reg.addEventListener('updatefound', () => {
-            reg.installing?.addEventListener('statechange', function onChange() {
-              if (this.state === 'activated') setOfflineReady(true);
-            });
-          });
-        })
-        .catch(() => setOfflineReady(false));
-
-      if (navigator.serviceWorker.controller) setOfflineReady(true);
-    }
-
-    return () => window.removeEventListener('beforeinstallprompt', onPrompt);
-  }, []);
-
-  const install = async () => {
-    const e = promptRef.current as (Event & { prompt?: () => Promise<void> }) | null;
-    if (!e?.prompt) return;
-    await e.prompt();
-    promptRef.current = null;
-    setInstallable(false);
-  };
-
-  const toggleMute = () => {
+  const toggleSound = useCallback(() => {
     const next = !muted;
-    setMutedState(next);
     setMuted(next);
     saveMuted(next);
-  };
+    setMutedState(next);
+  }, [muted]);
+
+  const install = useCallback(async () => {
+    const e = installEvent.current as (Event & { prompt?: () => Promise<void> }) | null;
+    if (!e?.prompt) return;
+    await e.prompt();
+    installEvent.current = null;
+    setCanInstall(false);
+  }, []);
+
+  const hint = useMemo(() => {
+    if (phase === 'ready') return 'Press space, or click the spacebar on screen';
+    if (phase === 'dead') return 'Press space to run again';
+    return 'Space to jump · ↓ to duck';
+  }, [phase]);
 
   return (
-    <div
-      ref={shellRef}
-      className="fixed inset-0 select-none overflow-hidden"
-      style={
-        {
-          ['--hud-top' as string]: '#1a1b22',
-          ['--hud-mid' as string]: '#1a1b22',
-          ['--hud-bottom' as string]: '#1a1b22',
-          ['--hud-ink' as string]: '#1a1b22',
-          ['--hud-on-ink' as string]: '#f4f6ff',
-        } as React.CSSProperties
-      }
-      onPointerDown={(e) => {
-        e.preventDefault();
-        // Bottom third ducks, everything above jumps — a thumb rests low on a
-        // phone, and reaching for a separate button loses runs.
-        press(e.clientY > window.innerHeight * 0.66 ? 'duck' : 'jump');
-      }}
-      onPointerUp={() => {
-        release('jump');
-        release('duck');
-      }}
-      onPointerCancel={() => {
-        release('jump');
-        release('duck');
-      }}
-      onContextMenu={(e) => e.preventDefault()}
-    >
-      <canvas ref={canvasRef} className="block h-full w-full" />
-
-      {/* HUD. Pointer events off so nothing steals a jump except real buttons. */}
-      <div
-        className="pointer-events-none absolute inset-0 flex flex-col justify-between p-5 sm:p-8"
+    <div className="fixed inset-0 bg-[#15120e]">
+      <Canvas
+        shadows
+        dpr={[1, 2]}
+        gl={{ antialias: true }}
+        camera={{
+          position: VIEWS[DEFAULT_VIEW].position,
+          fov: VIEWS[DEFAULT_VIEW].fov,
+          near: 0.1,
+          far: 100,
+        }}
+        onCreated={({ gl, scene }) => {
+          gl.toneMapping = THREE.ACESFilmicToneMapping;
+          gl.toneMappingExposure = 1.02;
+          gl.shadowMap.type = THREE.PCFSoftShadowMap;
+          scene.background = new THREE.Color('#100e0b');
+          scene.fog = new THREE.Fog('#100e0b', 18, 40);
+        }}
       >
-        <div
-          className="flex items-start justify-between gap-6"
-          style={{ color: 'var(--hud-top)' }}
-        >
+        <CameraRig view={view} />
+        <Lighting />
+        <Machine
+          pressedRef={pressed}
+          onPress={press}
+          onRelease={release}
+          screen={<Screen canvas={canvasReady} dirty={dirty} />}
+        />
+      </Canvas>
+
+      {/* Overlay chrome. Nothing here rotates the scene — that is the buttons' job. */}
+      <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-5 sm:p-7">
+        <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="display text-[26px] leading-none sm:text-[32px]">Runner</h1>
-            <p className="hud-text mt-1.5 text-[12.5px] opacity-80">
-              {offlineReady ? 'Runs with no connection' : 'Saving for offline…'}
-            </p>
+            <h1 className="text-[19px] font-semibold tracking-tight text-[#f2ece0]">Runner</h1>
+            <p className="mt-0.5 text-[12px] text-[#a99f8c]">Runs with no connection</p>
+          </div>
+          <div className="mono flex items-baseline gap-4 text-[#f2ece0]">
+            <span className="text-[22px] tabular-nums">
+              {String(score).padStart(5, '0')}
+            </span>
+            <span className="text-[12px] text-[#a99f8c]">
+              best {String(best).padStart(5, '0')}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="pointer-events-auto flex flex-wrap gap-1.5">
+            {VIEWS.map((v, i) => (
+              <button
+                key={v.id}
+                onClick={() => setView(i)}
+                aria-pressed={view === i}
+                className={`min-h-[38px] rounded-full px-4 text-[13px] transition-colors ${
+                  view === i
+                    ? 'bg-[#f2ece0] font-semibold text-[#15120e]'
+                    : 'bg-white/10 text-[#e8e1d3] hover:bg-white/20'
+                }`}
+              >
+                {v.label}
+              </button>
+            ))}
           </div>
 
-          <div className="flex items-start gap-6">
-            <div className="text-right">
-              <p className="mono text-[26px] leading-none sm:text-[34px]">{pad(score)}</p>
-              <p className="hud-text mono mt-1 text-[12px] opacity-80">best {pad(best)}</p>
-            </div>
-            <div className="pointer-events-auto flex gap-2">
-              {installable && (
-                <button className="hud-btn" onClick={install}>
+          <div className="flex items-center gap-4">
+            <p className="text-[12px] text-[#a99f8c]">{hint}</p>
+            <div className="pointer-events-auto flex gap-1.5">
+              {phase === 'dead' && (
+                <button
+                  onClick={restart}
+                  className="min-h-[38px] rounded-full bg-[#f2ece0] px-4 text-[13px] font-semibold text-[#15120e]"
+                >
+                  Run again
+                </button>
+              )}
+              {canInstall && (
+                <button
+                  onClick={install}
+                  className="min-h-[38px] rounded-full bg-white/10 px-4 text-[13px] text-[#e8e1d3] hover:bg-white/20"
+                >
                   Install
                 </button>
               )}
               <button
-                className="hud-btn"
-                onClick={toggleMute}
-                aria-pressed={muted}
-                aria-label={muted ? 'Turn sound on' : 'Turn sound off'}
+                onClick={toggleSound}
+                className="min-h-[38px] rounded-full bg-white/10 px-4 text-[13px] text-[#e8e1d3] hover:bg-white/20"
               >
                 {muted ? 'Sound off' : 'Sound on'}
               </button>
             </div>
           </div>
         </div>
-
-        <p
-          className="hud-text mono text-center text-[12px] opacity-80"
-          style={{ color: 'var(--hud-bottom)' }}
-        >
-          space or tap to jump &middot; hold ↓ to duck &middot; a short tap gives a short hop
-        </p>
       </div>
-
-      {phase !== 'running' && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6">
-          <div className="pointer-events-auto text-center" style={{ color: 'var(--hud-mid)' }}>
-            <p className="display text-[38px] leading-none sm:text-[52px]">
-              {phase === 'dead' ? 'Caught by a cactus' : 'Ready when you are'}
-            </p>
-            <p className="mt-3 text-[15px] opacity-75">
-              {phase === 'dead' ? (
-                <>
-                  You scored {score}
-                  {score >= best && score > 0 ? ' — a new best.' : `. Best is ${best}.`}
-                </>
-              ) : (
-                'Press space, or tap anywhere.'
-              )}
-            </p>
-            <button className="hud-btn-primary mt-6" onClick={start}>
-              {phase === 'dead' ? 'Run again' : 'Start running'}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-const pad = (n: number) => String(n).padStart(5, '0');
+export { isMuted };

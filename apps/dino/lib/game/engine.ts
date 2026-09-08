@@ -391,4 +391,6 @@ export const constants = {
   DUCK_H,
   START_SPEED,
   MAX_SPEED,
+  GRAVITY,
+  JUMP_VELOCITY,
 };
