@@ -1083,23 +1083,22 @@ function Keyboard({
     /*
      * Out of the back edge and all the way to the machine.
      *
-     * It used to stop about a unit short and simply end in the air. In this
-     * group's frame the desk in front of the iMac is around z = -4.2, so that is
-     * where it has to run to.
+     * It used to stop about a unit short and simply end in the air. With the
+     * keyboard pulled in close to the machine, the desk just in front of the
+     * iMac is around z = -2.2 in this group's frame.
      */
     const back = -depth / 2;
     const curve = new THREE.CatmullRomCurve3([
       new THREE.Vector3(0.4, 0.12, back - 0.16),
-      new THREE.Vector3(0.52, 0.14, back - 0.8),
-      new THREE.Vector3(0.24, 0.05, back - 1.8),
-      new THREE.Vector3(-0.2, 0.05, -3.5),
-      new THREE.Vector3(-0.12, 0.05, -4.2),
+      new THREE.Vector3(0.52, 0.14, back - 0.55),
+      new THREE.Vector3(0.2, 0.05, back - 1.0),
+      new THREE.Vector3(-0.1, 0.05, -2.2),
     ]);
     return new THREE.TubeGeometry(curve, 64, 0.026, 8, false);
   }, [depth]);
 
   return (
-    <group position={[0, 0, 2.35]} rotation={[-0.045, 0, 0]} scale={0.5}>
+    <group position={[0, 0, 1.3]} rotation={[-0.045, 0, 0]} scale={0.5}>
       <mesh geometry={shell} castShadow receiveShadow>
         <meshPhysicalMaterial
           color={BONDI_DEEP}
@@ -1289,7 +1288,7 @@ function Mouse() {
   }, []);
 
   return (
-    <group position={[1.9, 0, 2.35]} rotation={[0, -0.18, 0]}>
+    <group position={[1.9, 0, 1.3]} rotation={[0, -0.18, 0]}>
       <mesh geometry={body} castShadow receiveShadow>
         <meshPhysicalMaterial
           color={BONDI}

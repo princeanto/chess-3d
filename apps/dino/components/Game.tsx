@@ -12,6 +12,9 @@ import { DEFAULT_VIEW, ease, VIEW_MS, VIEWS } from '@/lib/scene/views';
 import Machine from './Machine';
 import Screen from './Screen';
 
+/** Fractal noise, inline, so the grain costs no request and no library. */
+const GRAIN = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E")`;
+
 const JUMP_CODES = new Set(['Space', 'ArrowUp', 'KeyW']);
 const DUCK_CODES = new Set(['ArrowDown', 'KeyS']);
 
@@ -389,6 +392,31 @@ export default function Game() {
           screen={<Screen canvas={canvasReady} dirty={dirty} />}
         />
       </Canvas>
+
+      {/*
+        Vignette and grain.
+
+        A render is uniformly sharp and uniformly clean to the very corners,
+        which is the giveaway no amount of material work fixes. Falling off at
+        the edges and carrying a little noise is what a photograph of this room
+        would do, and it costs two divs.
+      */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(125% 95% at 50% 44%, rgba(0,0,0,0) 38%, rgba(0,0,0,0.16) 72%, rgba(0,0,0,0.44) 100%)',
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.055] mix-blend-overlay"
+        style={{
+          backgroundImage: GRAIN,
+          backgroundSize: '160px 160px',
+        }}
+      />
 
       {/* Overlay chrome. Only Free look hands the scene to the mouse. */}
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-5 sm:p-7">
