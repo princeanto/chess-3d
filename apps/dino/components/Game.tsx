@@ -418,18 +418,42 @@ export default function Game() {
         }}
       />
 
+      {/*
+        Scrims behind the chrome.
+
+        The room is lit and the desk is pale, so white-on-transparent controls
+        washed straight out along the bottom edge. A gradient under each band
+        gives them something to sit on without putting a solid bar across the
+        picture.
+      */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-32"
+        style={{
+          background: 'linear-gradient(to bottom, rgba(4,6,8,0.62), rgba(4,6,8,0))',
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-48"
+        style={{
+          background:
+            'linear-gradient(to top, rgba(4,6,8,0.86), rgba(4,6,8,0.5) 42%, rgba(4,6,8,0))',
+        }}
+      />
+
       {/* Overlay chrome. Only Free look hands the scene to the mouse. */}
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-5 sm:p-7">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-[19px] font-semibold tracking-tight text-[#eef4f6]">Runner</h1>
-            <p className="mt-0.5 text-[12px] text-[#8b979c]">Runs with no connection</p>
+            <h1 className="text-[19px] font-semibold tracking-tight text-[#f2f7f8] [text-shadow:0_1px_4px_rgba(0,0,0,0.6)]">Runner</h1>
+            <p className="mt-0.5 text-[12px] text-[#c3cdd1]">Runs with no connection</p>
           </div>
           <div className="mono flex items-baseline gap-4 text-[#eef4f6]">
             <span className="text-[22px] tabular-nums">
               {String(score).padStart(5, '0')}
             </span>
-            <span className="text-[12px] text-[#8b979c]">
+            <span className="text-[12px] text-[#bdc7cb]">
               best {String(best).padStart(5, '0')}
             </span>
           </div>
@@ -447,8 +471,8 @@ export default function Game() {
                 aria-pressed={!free && view === i}
                 className={`min-h-[38px] rounded-full px-4 text-[13px] transition-colors ${
                   !free && view === i
-                    ? 'bg-[#eef4f6] font-semibold text-[#0a0d0f]'
-                    : 'bg-white/10 text-[#dfe7ea] hover:bg-white/20'
+                    ? 'bg-[#f4f8f9] font-semibold text-[#0a0d0f] ring-1 ring-white/60'
+                    : 'bg-black/62 text-[#eff5f6] ring-1 ring-white/25 hover:bg-black/75'
                 }`}
               >
                 {v.label}
@@ -460,8 +484,8 @@ export default function Game() {
               title="Drag to orbit, scroll to zoom"
               className={`min-h-[38px] rounded-full px-4 text-[13px] transition-colors ${
                 free
-                  ? 'bg-[#eef4f6] font-semibold text-[#0a0d0f]'
-                  : 'bg-white/10 text-[#dfe7ea] hover:bg-white/20'
+                  ? 'bg-[#f4f8f9] font-semibold text-[#0a0d0f] ring-1 ring-white/60'
+                  : 'bg-black/62 text-[#eff5f6] ring-1 ring-white/25 hover:bg-black/75'
               }`}
             >
               Free look
@@ -469,12 +493,12 @@ export default function Game() {
           </div>
 
           <div className="flex items-center gap-4">
-            <p className="text-[12px] text-[#8b979c]">{hint}</p>
+            <p className="text-[12px] text-[#cdd6d9] [text-shadow:0_1px_3px_rgba(0,0,0,0.7)]">{hint}</p>
             <div className="pointer-events-auto flex gap-1.5">
               {phase === 'dead' && (
                 <button
                   onClick={restart}
-                  className="min-h-[38px] rounded-full bg-[#eef4f6] px-4 text-[13px] font-semibold text-[#0a0d0f]"
+                  className="min-h-[38px] rounded-full bg-[#f4f8f9] px-4 text-[13px] font-semibold text-[#0a0d0f] ring-1 ring-white/60"
                 >
                   Run again
                 </button>
@@ -482,14 +506,14 @@ export default function Game() {
               {canInstall && (
                 <button
                   onClick={install}
-                  className="min-h-[38px] rounded-full bg-white/10 px-4 text-[13px] text-[#dfe7ea] hover:bg-white/20"
+                  className="min-h-[38px] rounded-full bg-black/62 px-4 text-[13px] text-[#eff5f6] ring-1 ring-white/25 transition-colors hover:bg-black/75"
                 >
                   Install
                 </button>
               )}
               <button
                 onClick={toggleSound}
-                className="min-h-[38px] rounded-full bg-white/10 px-4 text-[13px] text-[#dfe7ea] hover:bg-white/20"
+                className="min-h-[38px] rounded-full bg-black/62 px-4 text-[13px] text-[#eff5f6] ring-1 ring-white/25 transition-colors hover:bg-black/75"
               >
                 {muted ? 'Sound off' : 'Sound on'}
               </button>
