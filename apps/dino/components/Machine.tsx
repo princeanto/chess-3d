@@ -46,6 +46,31 @@ function sectionExponent(t: number): number {
 /** How far the shell is lowered so its feet meet the desk. */
 const BODY_DROP = 0.1;
 
+/**
+ * The flat front panel.
+ *
+ * The swept shell's front is a dome, not a plane: measured at the bezel's edge
+ * it falls 0.007 behind the centreline halfway up and 0.014 by the top. A flat
+ * bezel laid on it therefore only touched in the middle and stood off at the
+ * corners with daylight behind it — which is what the screen looked like, a
+ * panel hovering in front of the case.
+ *
+ * So the front is flattened into an actual panel: vertices inside a rounded
+ * rectangle are drawn forward onto the face plane, blended over a band at the
+ * edge so the shell rolls into it instead of meeting it at a knife edge.
+ */
+const FACE_SLOPE = 0.14 / 1.82;
+const PANEL = { cy: 1.35, halfW: 1.02, halfH: 0.9, radius: 0.36, band: 0.13 };
+
+/** 1 well inside the panel, 0 well outside it. */
+function panelMask(px: number, py: number): number {
+  const dx = Math.max(0, Math.abs(px) - (PANEL.halfW - PANEL.radius));
+  const dy = Math.max(0, Math.abs(py - PANEL.cy) - (PANEL.halfH - PANEL.radius));
+  const dist = Math.hypot(dx, dy) - PANEL.radius;
+  const u = Math.min(1, Math.max(0, (PANEL.band - dist) / (2 * PANEL.band)));
+  return u * u * (3 - 2 * u);
+}
+
 /** The profile, sampled once — every surface query below reads from it. */
 const PROFILE = bodyProfile().getPoints(900);
 const PROFILE_X0 = Math.min(...PROFILE.map((p) => p.x));
@@ -208,7 +233,23 @@ function bodySurface(): THREE.BufferGeometry {
       const k = 2 / (5 + (sectionExponent(t) - 5) * ease);
       const px = Math.sign(c) * Math.pow(Math.abs(c), k) * rx;
       const py = cy + Math.sign(sn) * Math.pow(Math.abs(sn), k) * ry;
-      position.push(px, py, z);
+      /*
+       * Draw the front forward onto the face plane. Only ever forward, so the
+       * silhouette the profile was fitted to is left alone.
+       *
+       * The depth window matters as much as the outline: without it every
+       * vertex whose width and height happened to fall inside the panel was
+       * dragged to the front, back of the machine included, and the shell grew
+       * flat fins out of its flanks. The real gap to close is at most 0.014.
+       */
+      const zFace = 0.11 - (py - 0.44) * FACE_SLOPE;
+      const gap = zFace - z;
+      let pz = z;
+      if (gap > 0 && gap < 0.18) {
+        const near = 1 - gap / 0.18;
+        pz = z + gap * panelMask(px, py) * near * near;
+      }
+      position.push(px, py, pz);
       // Projected straight down the machine's axis, so the ribs run vertically
       // across the face — which is the only place they are meant to read.
       uv.push((px / HALF_W) * 0.5 + 0.5, py * 0.5);
