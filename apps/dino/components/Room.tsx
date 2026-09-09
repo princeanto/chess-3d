@@ -537,6 +537,41 @@ function Shell({ rough }: { rough: THREE.Texture }) {
   const cz = (ROOM.z0 + ROOM.z1) / 2;
   const cy = (ROOM.floorY + ROOM.wallTop) / 2;
 
+  const sideWall = useMemo(() => {
+    /*
+     * The plane is turned a quarter turn about Y, which maps its local +X onto
+     * world −Z. So the opening's local position is the room's centre depth
+     * minus the window's, not the window's own coordinate.
+     */
+    const hx = d / 2;
+    const hy = h / 2;
+    const shape = new THREE.Shape();
+    shape.moveTo(-hx, -hy);
+    shape.lineTo(hx, -hy);
+    shape.lineTo(hx, hy);
+    shape.lineTo(-hx, hy);
+    shape.lineTo(-hx, -hy);
+
+    const ox = cz - WINDOW.z;
+    const oy = WINDOW.y - cy;
+    const hole = new THREE.Path();
+    hole.moveTo(ox - WINDOW.w / 2, oy - WINDOW.h / 2);
+    hole.lineTo(ox - WINDOW.w / 2, oy + WINDOW.h / 2);
+    hole.lineTo(ox + WINDOW.w / 2, oy + WINDOW.h / 2);
+    hole.lineTo(ox + WINDOW.w / 2, oy - WINDOW.h / 2);
+    hole.lineTo(ox - WINDOW.w / 2, oy - WINDOW.h / 2);
+    shape.holes.push(hole);
+
+    const g = new THREE.ShapeGeometry(shape, 4);
+    const pos = g.attributes.position;
+    const uv: number[] = [];
+    for (let i = 0; i < pos.count; i += 1) {
+      uv.push((pos.getX(i) + hx) / d, (pos.getY(i) + hy) / h);
+    }
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    return g;
+  }, [d, h, cy, cz]);
+
   return (
     <group>
       {/* Floor slab, thick enough to show an edge from above. */}
@@ -545,9 +580,20 @@ function Shell({ rough }: { rough: THREE.Texture }) {
         <meshStandardMaterial map={boards} roughnessMap={rough} roughness={0.9} />
       </mesh>
 
-      {/* Left wall, inward-facing only. */}
-      <mesh position={[ROOM.x0, cy, cz]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
-        <planeGeometry args={[d, h]} />
+      {/*
+        Left wall, inward-facing, with the window cut out of it.
+        
+        A real hole, not a bright rectangle painted on: the wall casts shadows,
+        so without one the sun outside would light the room straight through
+        solid plaster and the mullions would throw nothing.
+      */}
+      <mesh
+        geometry={sideWall}
+        position={[ROOM.x0, cy, cz]}
+        rotation={[0, Math.PI / 2, 0]}
+        receiveShadow
+        castShadow
+      >
         <meshStandardMaterial map={side} roughnessMap={rough} roughness={0.95} />
       </mesh>
 
@@ -621,34 +667,79 @@ function Rug({ rough }: { rough: THREE.Texture }) {
 }
 
 function Chair({ rough }: { rough: THREE.Texture }) {
-  const seat = useMemo(() => roundedBox(1.6, 1.5, 0.22, 0.22, 0.05), []);
-  const back = useMemo(() => roundedBox(1.5, 1.75, 0.16, 0.28, 0.045), []);
-  // Seat height comes from the desk: the top is 2.88 above the floor, which is
+  const shell = useMemo(() => roundedBox(1.62, 1.5, 0.16, 0.3, 0.05), []);
+  const cushion = useMemo(() => roundedBox(1.5, 1.38, 0.2, 0.3, 0.07), []);
+  const backFrame = useMemo(() => roundedBox(1.5, 1.9, 0.12, 0.4, 0.04), []);
+  const backPad = useMemo(() => roundedBox(1.34, 1.72, 0.17, 0.36, 0.06), []);
+  const arm = useMemo(() => roundedBox(0.16, 0.5, 0.62, 0.06, 0.03), []);
+  // Seat height comes from the desk: its top is 2.88 above the floor, which is
   // 740mm, so a 450mm seat sits 1.75 units up.
   const seatY = ROOM.floorY + 1.75;
+
   return (
     <group position={[0.4, 0, 4.15]} rotation={[0, Math.PI + 0.12, 0]}>
-      <mesh geometry={seat} position={[0, seatY, 0]} rotation={[-Math.PI / 2, 0, 0]} castShadow>
-        <meshStandardMaterial color="#eae6de" roughness={0.78} roughnessMap={rough} />
+      {/* Seat: a shell with a cushion proud of it, not one flat slab. */}
+      <mesh geometry={shell} position={[0, seatY - 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} castShadow>
+        <meshStandardMaterial color="#4a4c50" roughness={0.72} roughnessMap={rough} />
       </mesh>
-      <mesh geometry={back} position={[0, seatY + 0.95, -0.66]} rotation={[-0.16, 0, 0]} castShadow>
-        <meshStandardMaterial color="#eae6de" roughness={0.78} roughnessMap={rough} />
+      <mesh geometry={cushion} position={[0, seatY + 0.11, 0.02]} rotation={[-Math.PI / 2, 0, 0]} castShadow>
+        <meshStandardMaterial color="#eae5dc" roughness={0.86} roughnessMap={rough} />
       </mesh>
-      <mesh position={[0, seatY - 0.55, 0]} castShadow>
-        <cylinderGeometry args={[0.11, 0.13, 1.0, 16]} />
-        <meshStandardMaterial color="#3d3f42" roughness={0.4} metalness={0.5} />
+
+      {/* The spine, which is what was missing: the back has to join the seat. */}
+      <mesh position={[0, seatY + 0.22, -0.72]} rotation={[0.34, 0, 0]} castShadow>
+        <boxGeometry args={[0.26, 0.62, 0.16]} />
+        <meshStandardMaterial color="#3d3f42" roughness={0.5} metalness={0.35} />
       </mesh>
+
+      <group position={[0, seatY + 1.08, -0.9]} rotation={[-0.19, 0, 0]}>
+        <mesh geometry={backFrame} castShadow>
+          <meshStandardMaterial color="#4a4c50" roughness={0.7} roughnessMap={rough} />
+        </mesh>
+        <mesh geometry={backPad} position={[0, 0, 0.06]} castShadow>
+          <meshStandardMaterial color="#eae5dc" roughness={0.86} roughnessMap={rough} />
+        </mesh>
+      </group>
+
+      {/* Armrests. */}
+      {[-0.86, 0.86].map((x) => (
+        <group key={x} position={[x, seatY + 0.12, -0.12]}>
+          <mesh position={[0, 0.24, -0.2]} castShadow>
+            <boxGeometry args={[0.1, 0.5, 0.12]} />
+            <meshStandardMaterial color="#3d3f42" roughness={0.5} metalness={0.3} />
+          </mesh>
+          <mesh geometry={arm} position={[0, 0.52, 0.04]} castShadow>
+            <meshStandardMaterial color="#2f3134" roughness={0.62} roughnessMap={rough} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* Gas lift: a chrome ram inside a black sleeve. */}
+      <mesh position={[0, seatY - 0.42, 0]} castShadow>
+        <cylinderGeometry args={[0.075, 0.075, 0.72, 18]} />
+        <meshStandardMaterial color="#b9bcc0" roughness={0.24} metalness={0.85} />
+      </mesh>
+      <mesh position={[0, seatY - 0.92, 0]} castShadow>
+        <cylinderGeometry args={[0.13, 0.15, 0.62, 20]} />
+        <meshStandardMaterial color="#2c2e31" roughness={0.42} metalness={0.4} />
+      </mesh>
+
+      {/* Five arms, each with a fork and a castor that actually meets the floor. */}
       {[0, 1, 2, 3, 4].map((i) => {
-        const a = (i / 5) * Math.PI * 2;
+        const a2 = (i / 5) * Math.PI * 2;
         return (
-          <group key={i} rotation={[0, a, 0]}>
-            <mesh position={[0, ROOM.floorY + 0.22, 0.44]} castShadow>
-              <boxGeometry args={[0.12, 0.09, 0.88]} />
-              <meshStandardMaterial color="#3d3f42" roughness={0.45} metalness={0.4} />
+          <group key={i} rotation={[0, a2, 0]}>
+            <mesh position={[0, ROOM.floorY + 0.3, 0.46]} rotation={[0.12, 0, 0]} castShadow>
+              <boxGeometry args={[0.17, 0.11, 0.94]} />
+              <meshStandardMaterial color="#33353a" roughness={0.46} metalness={0.4} />
             </mesh>
-            <mesh position={[0, ROOM.floorY + 0.1, 0.86]}>
-              <cylinderGeometry args={[0.1, 0.1, 0.07, 14]} />
-              <meshStandardMaterial color="#26282b" roughness={0.6} />
+            <mesh position={[0, ROOM.floorY + 0.19, 0.9]} castShadow>
+              <boxGeometry args={[0.09, 0.2, 0.1]} />
+              <meshStandardMaterial color="#26282b" roughness={0.5} />
+            </mesh>
+            <mesh position={[0, ROOM.floorY + 0.1, 0.9]} rotation={[0, 0, Math.PI / 2]}>
+              <cylinderGeometry args={[0.1, 0.1, 0.07, 16]} />
+              <meshStandardMaterial color="#1e2022" roughness={0.6} />
             </mesh>
           </group>
         );
@@ -657,39 +748,60 @@ function Chair({ rough }: { rough: THREE.Texture }) {
   );
 }
 
-/** A tall plant in the corner, and a standing lamp opposite it. */
+/**
+ * The corner plant, and a standing lamp opposite it.
+ *
+ * The plant is grown, not scattered: a trunk, stems that branch off it, and a
+ * leaf on a petiole at the end of each. The first version placed leaves at
+ * points in the air around a pot with nothing joining them to anything, which
+ * is exactly what it looked like.
+ */
 function FloorPieces({ rough }: { rough: THREE.Texture }) {
   const leaf = useMemo(() => {
     const shape = new THREE.Shape();
     shape.moveTo(0, 0);
-    shape.bezierCurveTo(0.34, 0.36, 0.74, 0.28, 1, 0);
-    shape.bezierCurveTo(0.74, -0.28, 0.34, -0.36, 0, 0);
+    shape.bezierCurveTo(0.3, 0.4, 0.72, 0.32, 1, 0);
+    shape.bezierCurveTo(0.72, -0.32, 0.3, -0.4, 0, 0);
     const g = new THREE.ExtrudeGeometry(shape, {
-      depth: 0.014,
-      bevelEnabled: false,
-      curveSegments: 10,
+      depth: 0.016,
+      bevelEnabled: true,
+      bevelThickness: 0.008,
+      bevelSize: 0.008,
+      bevelSegments: 2,
+      curveSegments: 12,
     });
     g.computeVertexNormals();
     return g;
   }, []);
 
-  const fronds = useMemo(() => {
+  const plant = useMemo(() => {
     const rng = (n: number) => (((Math.sin(n * 45.31) * 43758.5453) % 1) + 1) % 1;
-    return Array.from({ length: 22 }, (_, i) => {
-      const a = (i / 22) * Math.PI * 2 + rng(i) * 0.4;
-      const lift = 0.5 + rng(i + 5) * 1.5;
-      const reach = 0.5 + rng(i + 9) * 0.75;
-      return {
-        p: [Math.cos(a) * reach, ROOM.floorY + 1.1 + lift, Math.sin(a) * reach] as [
-          number,
-          number,
-          number,
-        ],
-        rot: [rng(i + 2) * 1.1 - 0.55, -a, 0.5 + rng(i + 7) * 0.7] as [number, number, number],
-        s: 0.42 + rng(i + 11) * 0.3,
-        dark: i % 3 === 0,
-      };
-    });
+    const base = ROOM.floorY + 1.05;
+    const stems: Array<{ tube: THREE.BufferGeometry; tip: THREE.Vector3; dir: THREE.Vector3 }> = [];
+
+    for (let i = 0; i < 9; i += 1) {
+      const a2 = (i / 9) * Math.PI * 2 + rng(i) * 0.5;
+      const lean = 0.55 + rng(i + 3) * 1.15;
+      const rise = 1.5 + rng(i + 6) * 1.75;
+      const mid = new THREE.Vector3(
+        Math.cos(a2) * lean * 0.35,
+        base + rise * 0.55,
+        Math.sin(a2) * lean * 0.35,
+      );
+      const tip = new THREE.Vector3(Math.cos(a2) * lean, base + rise, Math.sin(a2) * lean);
+      const curve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0, base - 0.1, 0),
+        new THREE.Vector3(Math.cos(a2) * 0.12, base + rise * 0.22, Math.sin(a2) * 0.12),
+        mid,
+        tip,
+      ]);
+      stems.push({
+        tube: new THREE.TubeGeometry(curve, 26, 0.032, 6, false),
+        tip,
+        dir: tip.clone().sub(mid).normalize(),
+      });
+    }
+    return { stems, base };
   }, []);
 
   return (
@@ -697,38 +809,58 @@ function FloorPieces({ rough }: { rough: THREE.Texture }) {
       <group position={[-5.5, 0, 2.9]}>
         <mesh position={[0, ROOM.floorY + 0.55, 0]} castShadow receiveShadow>
           <cylinderGeometry args={[0.62, 0.48, 1.1, 26]} />
-          <meshStandardMaterial color="#d9cfc0" roughness={0.86} roughnessMap={rough} />
+          <meshStandardMaterial color="#d9cfc0" roughness={0.9} roughnessMap={rough} />
         </mesh>
-        <mesh position={[0, ROOM.floorY + 1.08, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh position={[0, ROOM.floorY + 1.06, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <circleGeometry args={[0.6, 24]} />
-          <meshStandardMaterial color="#3a2c1e" roughness={0.95} />
+          <meshStandardMaterial color="#3a2c1e" roughness={0.97} />
         </mesh>
-        {fronds.map((f, i) => (
-          <mesh key={i} geometry={leaf} position={f.p} rotation={f.rot} scale={f.s} castShadow>
-            <meshStandardMaterial
-              color={f.dark ? '#2f5230' : '#3f6f3a'}
-              roughness={0.66}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
+        {/* Trunk. */}
+        <mesh position={[0, plant.base + 0.25, 0]} castShadow>
+          <cylinderGeometry args={[0.055, 0.085, 0.8, 12]} />
+          <meshStandardMaterial color="#5e6b3f" roughness={0.85} />
+        </mesh>
+        {plant.stems.map((st, i) => (
+          <group key={i}>
+            <mesh geometry={st.tube} castShadow>
+              <meshStandardMaterial color="#4c6b3a" roughness={0.84} />
+            </mesh>
+            <mesh
+              geometry={leaf}
+              position={st.tip}
+              rotation={[
+                Math.atan2(st.dir.y, 1) * 0.6 - 0.5,
+                -Math.atan2(st.dir.z, st.dir.x),
+                0.35,
+              ]}
+              scale={0.62 + (i % 4) * 0.09}
+              castShadow
+            >
+              <meshStandardMaterial
+                color={i % 3 === 0 ? '#2f5230' : '#3d6b39'}
+                roughness={0.66}
+                side={THREE.DoubleSide}
+              />
+            </mesh>
+          </group>
         ))}
       </group>
 
       <group position={[5.6, 0, 3.4]}>
         <mesh position={[0, ROOM.floorY + 0.05, 0]} castShadow>
           <cylinderGeometry args={[0.5, 0.55, 0.1, 24]} />
-          <meshStandardMaterial color="#37383b" roughness={0.5} metalness={0.4} />
+          <meshStandardMaterial color="#37383b" roughness={0.55} metalness={0.4} />
         </mesh>
         <mesh position={[0, ROOM.floorY + 2.0, 0]} castShadow>
           <cylinderGeometry args={[0.05, 0.05, 3.9, 14]} />
-          <meshStandardMaterial color="#37383b" roughness={0.45} metalness={0.5} />
+          <meshStandardMaterial color="#37383b" roughness={0.5} metalness={0.5} />
         </mesh>
         <mesh position={[0, ROOM.floorY + 4.1, 0]} castShadow>
           <cylinderGeometry args={[0.62, 0.5, 0.9, 30, 1, true]} />
           <meshStandardMaterial
             color="#fff1da"
             emissive="#ffc078"
-            emissiveIntensity={0.85}
+            emissiveIntensity={0.55}
             roughness={0.9}
             side={THREE.DoubleSide}
           />
@@ -742,6 +874,149 @@ function FloorPieces({ rough }: { rough: THREE.Texture }) {
         />
       </group>
     </group>
+  );
+}
+
+/**
+ * A window in the side wall, and the evening coming through it.
+ *
+ * The room had one light direction and two flat walls. This gives it a second
+ * source with a reason to exist, a hard edge for the sill to throw a shadow
+ * from, and something on the wall that is not paint.
+ */
+const WINDOW = { z: 1.6, y: 1.5, w: 3.4, h: 3.5 };
+
+function useDusk(): THREE.CanvasTexture {
+  return useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d')!;
+    const g = ctx.createLinearGradient(0, 0, 0, 256);
+    g.addColorStop(0, '#7fa6c4');
+    g.addColorStop(0.42, '#e0a469');
+    g.addColorStop(0.72, '#c9743f');
+    g.addColorStop(1, '#4a3524');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 128, 256);
+    // A rooftop or two, so it is a view and not a gradient.
+    ctx.fillStyle = '#3a2b21';
+    ctx.fillRect(0, 196, 40, 60);
+    ctx.fillRect(52, 214, 30, 42);
+    ctx.fillRect(96, 204, 32, 52);
+    ctx.fillStyle = 'rgba(255, 208, 140, 0.75)';
+    for (let i = 0; i < 14; i += 1) {
+      ctx.fillRect(4 + (i % 4) * 9, 206 + Math.floor(i / 4) * 12, 4, 5);
+    }
+    const t = new THREE.CanvasTexture(canvas);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, []);
+}
+
+function Window({ rough }: { rough: THREE.Texture }) {
+  const dusk = useDusk();
+  const frame = useMemo(() => {
+    const outer = roundedShape(WINDOW.w + 0.4, WINDOW.h + 0.4, 0.05);
+    outer.holes.push(new THREE.Path(roundedShape(WINDOW.w, WINDOW.h, 0.03).getPoints(8)));
+    const g = new THREE.ExtrudeGeometry(outer, {
+      depth: 0.2,
+      bevelEnabled: true,
+      bevelThickness: 0.02,
+      bevelSize: 0.02,
+      bevelSegments: 2,
+      curveSegments: 6,
+    });
+    g.translate(0, 0, -0.1);
+    g.computeVertexNormals();
+    return g;
+  }, []);
+
+  return (
+    <group position={[ROOM.x0, WINDOW.y, WINDOW.z]} rotation={[0, Math.PI / 2, 0]}>
+      {/* The view out, set back in the reveal. */}
+      <mesh position={[0, 0, -0.34]}>
+        <planeGeometry args={[WINDOW.w + 0.2, WINDOW.h + 0.2]} />
+        <meshBasicMaterial map={dusk} toneMapped={false} />
+      </mesh>
+
+      {/* The reveal: the thickness of the wall around the opening. */}
+      <mesh position={[0, 0, -0.18]} castShadow>
+        <boxGeometry args={[WINDOW.w + 0.36, WINDOW.h + 0.36, 0.34]} />
+        <meshStandardMaterial color="#d8ccb6" roughness={0.9} roughnessMap={rough} side={THREE.BackSide} />
+      </mesh>
+
+      <mesh geometry={frame} castShadow>
+        <meshStandardMaterial color="#f4ecdd" roughness={0.78} roughnessMap={rough} />
+      </mesh>
+
+      {/* Glazing bars, which are what throw the cross onto the floor. */}
+      <mesh position={[0, 0, -0.02]} castShadow>
+        <boxGeometry args={[0.075, WINDOW.h, 0.08]} />
+        <meshStandardMaterial color="#f4ecdd" roughness={0.78} />
+      </mesh>
+      <mesh position={[0, 0.4, -0.02]} castShadow>
+        <boxGeometry args={[WINDOW.w, 0.075, 0.08]} />
+        <meshStandardMaterial color="#f4ecdd" roughness={0.78} />
+      </mesh>
+
+      <mesh position={[0, -WINDOW.h / 2 - 0.28, 0.16]} castShadow receiveShadow>
+        <boxGeometry args={[WINDOW.w + 0.74, 0.16, 0.5]} />
+        <meshStandardMaterial color="#efe5d2" roughness={0.86} roughnessMap={rough} />
+      </mesh>
+
+      {/* A curtain, gathered: four folds rather than one slab. */}
+      {[0, 1, 2, 3].map((i) => (
+        <mesh
+          key={i}
+          position={[WINDOW.w / 2 + 0.34 + i * 0.19, 0.14, 0.28 + (i % 2) * 0.12]}
+          castShadow
+        >
+          <cylinderGeometry args={[0.13, 0.16, WINDOW.h + 1.0, 10, 1, false, 0, Math.PI]} />
+          <meshStandardMaterial
+            color="#c8bb9f"
+            roughness={0.97}
+            roughnessMap={rough}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      ))}
+
+      {/*
+        The evening, from outside. A spotlight rather than a point so it throws
+        a shaped pool, and it sits beyond the wall so the glazing bars stand
+        between it and the room.
+      */}
+      <SunThroughWindow />
+    </group>
+  );
+}
+
+/** Placed in world space, so it is outside the window group's rotation. */
+function SunThroughWindow() {
+  const target = useMemo(() => {
+    const o = new THREE.Object3D();
+    o.position.set(1.4, ROOM.floorY, 3.4);
+    return o;
+  }, []);
+  return (
+    <>
+      <primitive object={target} />
+      <spotLight
+        position={[0, 0.4, -2.4]}
+        target={target}
+        angle={0.62}
+        penumbra={0.55}
+        intensity={95}
+        distance={26}
+        decay={1.5}
+        color="#ffb877"
+        castShadow
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+        shadow-bias={-0.0012}
+      />
+    </>
   );
 }
 
@@ -1364,22 +1639,6 @@ export default function Room() {
 
       <Shell rough={props} />
 
-      {/*
-        The room's own light, above and behind the camera's usual line. Its
-        fitting is only there so the glow has something to come from when the
-        camera is turned up at the wall.
-      */}
-      <mesh position={[0, 5.05, 1.4]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.62, 0.62, 0.06, 32]} />
-        <meshStandardMaterial
-          color="#fff2dc"
-          emissive="#ffc98c"
-          emissiveIntensity={0.9}
-          roughness={0.8}
-        />
-      </mesh>
-      <pointLight position={[0, 4.9, 1.4]} intensity={9} distance={16} decay={1.7} color="#ffd0a0" />
-
       <DeskMat />
       <Lamp x={-2.55} z={-0.95} rough={props} />
       <Lamp x={2.55} z={-0.95} rough={props} />
@@ -1397,6 +1656,7 @@ export default function Room() {
       <Rug rough={props} />
       <Chair rough={props} />
       <FloorPieces rough={props} />
+      <Window rough={props} />
       <Shelves rough={props} />
     </group>
   );
