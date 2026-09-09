@@ -1029,39 +1029,163 @@ function Keyboard({
 /* --------------------------- the puck mouse ----------------------------- */
 
 /**
- * The round mouse that shipped with it: a flat translucent disc with a white
- * circular button set into the top. Famously bad to hold, unmistakable to look
- * at — and the reason it has to be a disc rather than the little ball that was
- * standing in for it.
+ * The puck's silhouette, as radius against height.
+ *
+ * A squat dome, widest a third of the way up and rolling in at the top — not
+ * the cylinder-with-a-cap it used to be, which read as a bottle top.
+ */
+const PUCK: Array<[number, number]> = [
+  [0.0, 0.0],
+  [0.225, 0.0],
+  [0.272, 0.012],
+  [0.295, 0.042],
+  [0.3, 0.078],
+  [0.293, 0.115],
+  [0.268, 0.146],
+  [0.212, 0.168],
+  [0.12, 0.179],
+  [0.0, 0.183],
+];
+
+/** Just the upper surface, radius ascending, for seating the button on it. */
+const PUCK_TOP = PUCK.slice(4).reverse();
+
+function puckTopAt(radius: number): number {
+  const r = Math.min(radius, PUCK_TOP[PUCK_TOP.length - 1][0]);
+  for (let i = 1; i < PUCK_TOP.length; i += 1) {
+    if (r <= PUCK_TOP[i][0]) {
+      const [r0, y0] = PUCK_TOP[i - 1];
+      const [r1, y1] = PUCK_TOP[i];
+      return y0 + ((y1 - y0) * (r - r0)) / (r1 - r0);
+    }
+  }
+  return PUCK_TOP[PUCK_TOP.length - 1][1];
+}
+
+/**
+ * The button's outline, which is the whole trick of this object.
+ *
+ * It is not a disc. The frosted button runs to the shell's edge front and back
+ * but is pinched at the sides, so the coloured plastic shows through as two
+ * crescents — that waist is what makes the puck recognisable, and a plain round
+ * button in the middle of a plain round body never will be.
+ */
+const BUTTON_R = 0.285;
+
+function buttonRadius(angle: number): number {
+  return BUTTON_R * (1 - 0.28 * Math.pow(Math.abs(Math.cos(angle)), 1.6));
+}
+
+/**
+ * The button as a skin lying on the shell, lifted a hair so its edge reads as
+ * the seam it is rather than as a painted line.
+ */
+function buttonSkin(): THREE.BufferGeometry {
+  const RINGS = 16;
+  const SEGS = 84;
+  const LIFT = 0.006;
+  // A wall at the rim first, then the dome inward from it.
+  const bands: Array<[number, number]> = [
+    [1, 0],
+    [1, LIFT],
+  ];
+  for (let i = 1; i <= RINGS; i += 1) bands.push([1 - i / RINGS, LIFT]);
+
+  const position: number[] = [];
+  for (const [s, lift] of bands) {
+    for (let j = 0; j < SEGS; j += 1) {
+      const a = (j / SEGS) * Math.PI * 2;
+      const r = buttonRadius(a) * s;
+      position.push(Math.cos(a) * r, puckTopAt(r) + lift, Math.sin(a) * r);
+    }
+  }
+
+  const index: number[] = [];
+  for (let i = 0; i < bands.length - 1; i += 1) {
+    for (let j = 0; j < SEGS; j += 1) {
+      const a = i * SEGS + j;
+      const b = i * SEGS + ((j + 1) % SEGS);
+      const c = (i + 1) * SEGS + j;
+      const d = (i + 1) * SEGS + ((j + 1) % SEGS);
+      // Wound to face outward. The other way round the whole button was
+      // back-face culled and the mouse rendered as a bare coloured disc.
+      index.push(a, c, b, b, c, d);
+    }
+  }
+
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(position, 3));
+  g.setIndex(index);
+  g.computeVertexNormals();
+  return g;
+}
+
+/**
+ * The round mouse that shipped with it.
+ *
+ * Famously bad to hold, unmistakable to look at — which is the point: it has to
+ * be the puck, not a small ball, and not a disc with a dot on it.
  */
 function Mouse() {
+  const body = useMemo(() => {
+    const g = new THREE.LatheGeometry(
+      PUCK.map(([r, y]) => new THREE.Vector2(r, y)),
+      72,
+    );
+    g.computeVertexNormals();
+    return g;
+  }, []);
+  const button = useMemo(() => buttonSkin(), []);
+  const cable = useMemo(() => {
+    // Runs off toward the machine rather than stopping in mid-air.
+    const curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0, 0.1, -0.25),
+      new THREE.Vector3(-0.12, 0.07, -0.46),
+      new THREE.Vector3(-0.42, 0.032, -0.72),
+      new THREE.Vector3(-0.92, 0.032, -0.9),
+      new THREE.Vector3(-1.5, 0.032, -1.02),
+    ]);
+    return new THREE.TubeGeometry(curve, 60, 0.013, 8, false);
+  }, []);
+
   return (
     <group position={[1.9, 0, 2.35]} rotation={[0, -0.18, 0]}>
-      {/* Translucent outer ring. */}
-      <mesh position={[0, 0.055, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.34, 0.32, 0.11, 44]} />
+      <mesh geometry={body} castShadow receiveShadow>
         <meshPhysicalMaterial
           color={BONDI}
           transparent
-          opacity={0.66}
+          opacity={0.78}
           roughness={0.14}
           clearcoat={1}
+          clearcoatRoughness={0.04}
         />
       </mesh>
-      {/* White inner body, slightly domed. */}
-      <mesh position={[0, 0.105, 0]} castShadow>
-        <sphereGeometry args={[0.27, 32, 14, 0, Math.PI * 2, 0, Math.PI / 2.6]} />
-        <meshPhysicalMaterial color="#eef2f3" roughness={0.34} clearcoat={0.7} />
+
+      <mesh geometry={button} castShadow>
+        <meshPhysicalMaterial
+          color="#eef3f4"
+          transparent
+          opacity={0.94}
+          roughness={0.34}
+          clearcoat={0.55}
+          clearcoatRoughness={0.18}
+        />
       </mesh>
-      {/* The single round button, a shade proud of the shell. */}
-      <mesh position={[0, 0.125, 0.02]}>
-        <cylinderGeometry args={[0.155, 0.155, 0.016, 32]} />
-        <meshPhysicalMaterial color="#f6f8f8" roughness={0.3} clearcoat={0.8} />
+
+      {/* The raised boss the Apple logo sits in, toward the back of the button. */}
+      <mesh position={[0, puckTopAt(0.085) + 0.008, 0.05]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.075, 0.006, 10, 40]} />
+        <meshPhysicalMaterial color="#e2e9ea" roughness={0.4} clearcoat={0.5} />
       </mesh>
-      {/* Cable, running back toward the machine. */}
-      <mesh position={[-0.22, 0.04, -0.42]} rotation={[Math.PI / 2, 0, 0.5]}>
-        <torusGeometry args={[0.4, 0.014, 8, 24, Math.PI * 0.7]} />
-        <meshStandardMaterial color="#dfe6e8" roughness={0.6} />
+
+      <mesh geometry={cable} castShadow>
+        <meshPhysicalMaterial
+          color="#dfe6e8"
+          transparent
+          opacity={0.85}
+          roughness={0.35}
+          clearcoat={0.6}
+        />
       </mesh>
     </group>
   );
