@@ -142,15 +142,22 @@ function Lighting() {
         into their textures and lighting them a second time flattens both — but
         it is no longer so low that the room goes black a metre from the desk.
       */}
-      <ambientLight intensity={0.62} color="#ffe7d0" />
-      <hemisphereLight args={['#ffeeda', '#2a1f14', 0.5]} />
+      {/*
+        Even, and enough of it.
+        
+        The walls carry no baked light any more, so this has to do the work that
+        their painted-in gradients were doing. Warm but close to neutral, so the
+        same paint reads the same on both walls.
+      */}
+      <ambientLight intensity={1.15} color="#fff1e0" />
+      <hemisphereLight args={['#fff4e6', '#6b5a48', 0.75]} />
       {/* Same direction as before, moved out so its shadow camera can cover the
           whole room rather than just the desk. */}
       <directionalLight
         ref={key}
         castShadow
         position={[9.2, 22.6, 14.8]}
-        intensity={1.05}
+        intensity={1.35}
         color="#ffe2c0"
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
@@ -162,9 +169,12 @@ function Lighting() {
         Bondi went to beige and the machine stopped being blue at all; these are
         what keep the colour in it without cooling the room.
       */}
-      <directionalLight position={[-5, 3.5, -6]} intensity={0.75} color="#8fc8dc" />
-      <directionalLight position={[-3.5, 3, 6]} intensity={0.5} color="#a8d4e4" />
-      <directionalLight position={[6, 2.2, -4]} intensity={0.35} color="#ffc48c" />
+      <directionalLight position={[-5, 3.5, -6]} intensity={0.7} color="#8fc8dc" />
+      <directionalLight position={[-3.5, 3, 6]} intensity={0.45} color="#a8d4e4" />
+      {/* Colour for its own sake, low and from the corners — the accent the
+          room gets instead of walls painted in different tones. */}
+      <pointLight position={[-5.4, 0.9, 4.6]} intensity={7} distance={11} decay={2} color="#5fb8d8" />
+      <pointLight position={[5.6, 1.3, -2.6]} intensity={6} distance={11} decay={2} color="#e2657f" />
     </>
   );
 }
@@ -366,7 +376,7 @@ export default function Game() {
   }, [phase, free]);
 
   return (
-    <div className="fixed inset-0 bg-black">
+    <div className="fixed inset-0 bg-[#f4f2ee]">
       <Canvas
         shadows
         dpr={[1, 2]}
@@ -381,7 +391,9 @@ export default function Game() {
           gl.toneMapping = THREE.ACESFilmicToneMapping;
           gl.toneMappingExposure = 0.94;
           gl.shadowMap.type = THREE.PCFSoftShadowMap;
-          scene.background = new THREE.Color('#000000');
+          // White surround: the room is a diorama, and a black void around it read
+          // as a hole rather than as a backdrop.
+          scene.background = new THREE.Color('#f4f2ee');
           /*
            * No fog.
            *
@@ -429,17 +441,20 @@ export default function Game() {
       />
 
       {/*
-        Scrim behind the heading.
-
-        The room is lit and the desk is pale, so white-on-transparent chrome
-        washes straight out. The controls get a solid band of their own below;
-        this is just for the title and the score.
+        Scrim behind the heading, and the band below for the controls.
+      */}
+      {/*
+        A pale scrim now, and dark type over it.
+        
+        The surround is white, so the dark band that used to sit behind the
+        heading became a grey stripe across the top of a light picture, with
+        near-white text on it.
       */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-32"
+        className="pointer-events-none absolute inset-x-0 top-0 h-28"
         style={{
-          background: 'linear-gradient(to bottom, rgba(4,6,8,0.62), rgba(4,6,8,0))',
+          background: 'linear-gradient(to bottom, rgba(248,247,244,0.85), rgba(248,247,244,0))',
         }}
       />
 
@@ -447,14 +462,14 @@ export default function Game() {
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between">
         <div className="flex items-start justify-between gap-4 p-5 sm:p-7">
           <div>
-            <h1 className="text-[19px] font-semibold tracking-tight text-[#f2f7f8] [text-shadow:0_1px_4px_rgba(0,0,0,0.6)]">Runner</h1>
-            <p className="mt-0.5 text-[12px] text-[#c3cdd1]">Runs with no connection</p>
+            <h1 className="text-[19px] font-semibold tracking-tight text-[#1b1d1f]">Runner</h1>
+            <p className="mt-0.5 text-[12px] text-[#5d6367]">Runs with no connection</p>
           </div>
-          <div className="mono flex items-baseline gap-4 text-[#eef4f6]">
+          <div className="mono flex items-baseline gap-4 text-[#1b1d1f]">
             <span className="text-[22px] tabular-nums">
               {String(score).padStart(5, '0')}
             </span>
-            <span className="text-[12px] text-[#bdc7cb]">
+            <span className="text-[12px] text-[#5d6367]">
               best {String(best).padStart(5, '0')}
             </span>
           </div>

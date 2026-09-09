@@ -244,81 +244,45 @@ function usePlaster(): THREE.CanvasTexture {
   }, []);
 }
 
+/**
+ * Wall paint: one flat colour, everywhere.
+ *
+ * Both walls used to carry their own baked lighting — the back one had two lamp
+ * pools and a floor-to-ceiling gradient painted into it, the side one a
+ * different gradient — so they were literally different colours before a single
+ * light touched them. The tone is uniform now and the lights do the lighting,
+ * which is the only way two walls of the same paint can look like it.
+ */
 function useWall(): { map: THREE.CanvasTexture; rough: THREE.CanvasTexture } {
   return useMemo(() => {
     const canvas = document.createElement('canvas');
-    canvas.width = 1024;
-    canvas.height = 1024;
+    canvas.width = 512;
+    canvas.height = 512;
     const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#2b2015';
-    ctx.fillRect(0, 0, 1024, 1024);
-    /*
-     * A broad wash over the whole wall first, then the two lamp pools on top.
-     *
-     * With only the pools the room went black a metre either side of the desk
-     * and read as a lit table in a void rather than as a room.
-     */
-    const room = ctx.createLinearGradient(0, 1024, 0, 0);
-    room.addColorStop(0, 'rgba(214, 178, 132, 0.82)');
-    room.addColorStop(0.45, 'rgba(186, 152, 112, 0.6)');
-    room.addColorStop(1, 'rgba(96, 72, 48, 0.28)');
-    ctx.fillStyle = room;
-    ctx.fillRect(0, 0, 1024, 1024);
-    for (const cx of [318, 706]) {
-      const g = ctx.createRadialGradient(cx, 700, 20, cx, 660, 600);
-      g.addColorStop(0, 'rgba(252, 238, 214, 0.88)');
-      g.addColorStop(0.4, 'rgba(206, 176, 138, 0.4)');
-      g.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, 1024, 1024);
-    }
-    // Paint has tooth. Without it the wall is a perfect gradient, which is the
-    // single most render-looking thing in the room.
-    for (let i = 0; i < 5000; i += 1) {
-      const light = Math.random() < 0.5;
-      ctx.fillStyle = light
-        ? `rgba(255,255,255,${Math.random() * 0.035})`
-        : `rgba(0,0,0,${Math.random() * 0.045})`;
+    ctx.fillStyle = '#cbb9a0';
+    ctx.fillRect(0, 0, 512, 512);
+    // Tooth only — the variation a roller leaves, not a gradient.
+    for (let i = 0; i < 6000; i += 1) {
+      ctx.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '90,72,52'},${
+        Math.random() * 0.05
+      })`;
       ctx.beginPath();
-      ctx.arc(Math.random() * 1024, Math.random() * 1024, 0.5 + Math.random() * 2.4, 0, Math.PI * 2);
+      ctx.arc(Math.random() * 512, Math.random() * 512, 0.5 + Math.random() * 2.2, 0, Math.PI * 2);
       ctx.fill();
     }
     const map = new THREE.CanvasTexture(canvas);
     map.colorSpace = THREE.SRGBColorSpace;
+    map.wrapS = THREE.RepeatWrapping;
+    map.wrapT = THREE.RepeatWrapping;
+    map.repeat.set(3, 2);
     const rough = mottle(512, 0.16, 1400);
     rough.repeat.set(3, 3);
     return { map, rough };
   }, []);
 }
 
-/** The side wall: same paint, no lamp pools baked into it. */
-function useSideWall(): THREE.CanvasTexture {
-  return useMemo(() => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 512;
-    const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#2b2015';
-    ctx.fillRect(0, 0, 512, 512);
-    const g = ctx.createLinearGradient(0, 512, 0, 0);
-    g.addColorStop(0, 'rgba(216, 182, 138, 0.8)');
-    g.addColorStop(0.5, 'rgba(190, 158, 118, 0.58)');
-    g.addColorStop(1, 'rgba(104, 80, 54, 0.3)');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, 512, 512);
-    for (let i = 0; i < 2600; i += 1) {
-      ctx.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '0,0,0'},${
-        Math.random() * 0.035
-      })`;
-      ctx.beginPath();
-      ctx.arc(Math.random() * 512, Math.random() * 512, 0.5 + Math.random() * 2, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    const t = new THREE.CanvasTexture(canvas);
-    t.colorSpace = THREE.SRGBColorSpace;
-    return t;
-  }, []);
-}
+/** The side wall uses the same paint as the back one. */
+const useSideWall = () => useWall().map;
 
 /* -------------------------------- helpers -------------------------------- */
 
@@ -973,8 +937,12 @@ function FloorPieces({ rough }: { rough: THREE.Texture }) {
           Soil, domed slightly and topped with grit. A flat brown disc is the
           giveaway that a plant was placed rather than planted.
         */}
-        <mesh position={[0, ROOM.floorY + 0.96, 0]} receiveShadow>
-          <sphereGeometry args={[0.6, 28, 16, 0, Math.PI * 2, 0, Math.PI / 2.4]} />
+        {/*
+          Flat, and set a little below the rim. It was a hemisphere before,
+          which is not how anybody fills a pot.
+        */}
+        <mesh position={[0, ROOM.floorY + 1.0, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+          <circleGeometry args={[0.585, 40]} />
           <meshStandardMaterial map={soil} normalMap={soilNormal} roughness={0.99} />
         </mesh>
         {/* Trunk. */}
@@ -1096,6 +1064,22 @@ function Window({ rough }: { rough: THREE.Texture }) {
       live = false;
     };
   }, []);
+  const curtain = useMemo(() => {
+    const w = 0.95;
+    const h = WINDOW.h + 1.05;
+    const g = new THREE.PlaneGeometry(w, h, 26, 2);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i += 1) {
+      const u = (pos.getX(i) + w / 2) / w;
+      // Folds across the width, pinched to nothing at the top where it gathers.
+      const gather = 0.35 + 0.65 * ((pos.getY(i) + h / 2) / h);
+      pos.setZ(i, Math.sin(u * Math.PI * 5.5) * 0.11 * gather);
+      pos.setX(i, pos.getX(i) * (0.72 + 0.28 * gather));
+    }
+    g.computeVertexNormals();
+    return g;
+  }, []);
+
   const frame = useMemo(() => {
     const outer = roundedShape(WINDOW.w + 0.4, WINDOW.h + 0.4, 0.05);
     outer.holes.push(new THREE.Path(roundedShape(WINDOW.w, WINDOW.h, 0.03).getPoints(8)));
@@ -1145,22 +1129,21 @@ function Window({ rough }: { rough: THREE.Texture }) {
         <meshStandardMaterial color="#efe5d2" roughness={0.86} roughnessMap={rough} />
       </mesh>
 
-      {/* A curtain, gathered: four folds rather than one slab. */}
-      {[0, 1, 2, 3].map((i) => (
-        <mesh
-          key={i}
-          position={[WINDOW.w / 2 + 0.34 + i * 0.19, 0.14, 0.28 + (i % 2) * 0.12]}
-          castShadow
-        >
-          <cylinderGeometry args={[0.13, 0.16, WINDOW.h + 1.0, 10, 1, false, 0, Math.PI]} />
-          <meshStandardMaterial
-            color="#c8bb9f"
-            roughness={0.97}
-            roughnessMap={rough}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-      ))}
+      {/*
+        One panel with folds waved into it.
+        
+        Four half-cylinders side by side intersected each other and the frame,
+        and read as a stack of planks leaning on the window. A single surface
+        cannot overlap itself.
+      */}
+      <mesh geometry={curtain} position={[WINDOW.w / 2 + 0.52, 0.12, 0.3]} castShadow>
+        <meshStandardMaterial
+          color="#c8bb9f"
+          roughness={0.97}
+          roughnessMap={rough}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
 
       {/*
         The evening, from outside. A spotlight rather than a point so it throws
@@ -1628,7 +1611,7 @@ function Lived({ rough }: { rough: THREE.Texture }) {
         Stood square in the corner they read as panels hanging in the air: the
         desk hid their feet and nothing said which surface they rested against.
       */}
-      <group position={[ROOM.x0 + 0.14, 0, -0.6]} rotation={[0, Math.PI / 2, 0]}>
+      <group position={[ROOM.x0 + 0.14, 0, -2.55]} rotation={[0, Math.PI / 2, 0]}>
         {[
           { w: 2.5, h: 3.3, lean: 0.15, c: '#e8dfcb', off: 0 },
           { w: 2.0, h: 2.7, lean: 0.2, c: '#b9a488', off: 0.34 },
