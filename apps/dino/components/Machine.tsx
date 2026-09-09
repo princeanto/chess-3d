@@ -43,6 +43,9 @@ function sectionExponent(t: number): number {
  * Built indexed so shared vertices average their normals. The extruded version
  * was non-indexed, so every triangle was flat-shaded and the shell faceted.
  */
+/** How far the shell is lowered so its feet meet the desk. */
+const BODY_DROP = 0.1;
+
 /** The profile, sampled once — every surface query below reads from it. */
 const PROFILE = bodyProfile().getPoints(900);
 const PROFILE_X0 = Math.min(...PROFILE.map((p) => p.x));
@@ -140,6 +143,35 @@ function flankPatch(cy: number, cz: number, ry: number, rz: number, lift: number
   g.setIndex(index);
   g.computeVertexNormals();
   return g;
+}
+
+/**
+ * Height of the shell's underside at a given offset from the centreline.
+ *
+ * The belly is a shallow curve, not a plane: it is lowest along the centreline
+ * and lifts toward the flanks. Feet pinned to the lowest point therefore hung
+ * clear of the case everywhere else, which is exactly how they looked — four
+ * pegs standing under a machine they never touched.
+ *
+ * The section's exponent depends on height and the height is what is being
+ * solved for, so this settles it by iteration; four passes is plenty.
+ */
+function undersideY(px: number, z: number): number {
+  const t = Math.min(1, Math.max(0, (0.11 - z) / (PROFILE_X1 - PROFILE_X0)));
+  const [lo, hi] = spanAt(PROFILE_X0 + t * (PROFILE_X1 - PROFILE_X0));
+  const cy = (lo + hi) / 2;
+  const ry = (hi - lo) / 2;
+  const rx = halfWidthAt(t);
+  if (ry <= 0 || rx <= 0) return cy;
+  const q = Math.min(1, Math.abs(px) / rx);
+  let y = cy - ry;
+  for (let k = 0; k < 4; k += 1) {
+    const w = 0.5 + 0.5 * ((y - cy) / ry);
+    const ease = w * w * (3 - 2 * w);
+    const n = 5 + (sectionExponent(t) - 5) * ease;
+    y = cy - ry * Math.pow(Math.max(0, 1 - Math.pow(q, n)), 1 / n);
+  }
+  return y;
 }
 
 function bodySurface(): THREE.BufferGeometry {
@@ -375,12 +407,14 @@ function baseSeamY(z: number): number {
 }
 
 /**
- * World Z of the shell's front surface at the tube's height, plus a hair.
+ * World Z of the shell's front surface at the tube's height.
  *
- * The face slopes, so this is only correct at one height — which is why the
- * group carrying it is tilted to match rather than sitting square.
+ * Derived from the profile's front edge rather than guessed: that edge runs
+ * from x 0.09 at y 0.44 to x 0.23 at y 2.26, shape X points backwards, and the
+ * shell is dropped by BODY_DROP. The face slopes, so this is only correct at
+ * one height, which is why the group carrying it is tilted to match.
  */
-const FRONT_Z = 0.03;
+const FRONT_Z = 0.11 - (SCREEN_Y + BODY_DROP - 0.44) * (0.14 / 1.82);
 
 function Body() {
   const shell = useMemo(() => bodySurface(), []);
@@ -390,7 +424,7 @@ function Body() {
   const handleY = useMemo(() => crownAt(1.75), []);
 
   return (
-    <group position={[0, -0.1, 0]}>
+    <group position={[0, -BODY_DROP, 0]}>
       <mesh geometry={shell} castShadow receiveShadow>
         <meshPhysicalMaterial
           vertexColors
@@ -432,18 +466,30 @@ function Body() {
         />
       </mesh>
 
-      {/* Four small clear feet. */}
+      {/*
+        Four small clear feet, each sized to close the gap under it. The group
+        is lowered by BODY_DROP, so the desk sits at that height in local space.
+      */}
       {[
-        [-0.72, -0.3],
-        [0.72, -0.3],
-        [-0.56, -1.85],
-        [0.56, -1.85],
-      ].map(([x, z]) => (
-        <mesh key={`${x},${z}`} position={[x, 0.14, z]}>
-          <cylinderGeometry args={[0.07, 0.08, 0.08, 14]} />
-          <meshPhysicalMaterial color="#cfd8da" roughness={0.5} transparent opacity={0.8} />
-        </mesh>
-      ))}
+        [-0.6, -0.34],
+        [0.6, -0.34],
+        [-0.48, -1.78],
+        [0.48, -1.78],
+      ].map(([x, z]) => {
+        const top = undersideY(x, z);
+        const height = Math.max(0.03, top + BODY_DROP);
+        return (
+          <mesh key={`${x},${z}`} position={[x, top - height / 2, z]}>
+            <cylinderGeometry args={[0.07, 0.078, height, 14]} />
+            <meshPhysicalMaterial
+              color="#cfd8da"
+              roughness={0.5}
+              transparent
+              opacity={0.8}
+            />
+          </mesh>
+        );
+      })}
     </group>
   );
 }
@@ -504,7 +550,16 @@ function BezelRing() {
   }, []);
 
   return (
-    <mesh geometry={geometry} position={[0, 0, -0.055]}>
+    /*
+     * Sunk so the ring's front face finishes flush with the shell.
+     *
+     * The extrusion runs from -0.04 to +0.09 in its own space, so anything much
+     * less than -0.09 leaves it standing off the machine — the bezel had been a
+     * slab sitting on the front casting its own shadow, rather than a surround
+     * cut into the panel. The last few thousandths keep it off the shell's own
+     * surface, which the group's zero plane sits exactly on.
+     */
+    <mesh geometry={geometry} position={[0, 0, -0.078]}>
       <meshPhysicalMaterial color="#23282b" roughness={0.5} clearcoat={0.4} />
     </mesh>
   );
@@ -614,11 +669,13 @@ function Chin() {
       </mesh>
 
       {/* Power button and its light: to the right of the tray, not the left. */}
-      <mesh position={[0.5, ceiling - 0.32, z]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.042, 0.042, 0.014, 20]} />
-        <meshStandardMaterial color="#9fabad" roughness={0.5} />
+      <mesh position={[0.5, ceiling - 0.3, z + 0.004]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.044, 0.044, 0.016, 20]} />
+        <meshStandardMaterial color="#8b989b" roughness={0.55} />
       </mesh>
-      <mesh position={[0.5, ceiling - 0.46, z]}>
+      {/* The light sits beside the button, not under it: any lower and it falls
+          off the bottom of the chin, where the shell has already curved away. */}
+      <mesh position={[0.5, ceiling - 0.42, z + 0.004]}>
         <sphereGeometry args={[0.018, 12, 10]} />
         <meshBasicMaterial color="#7ef0b0" toneMapped={false} />
       </mesh>
@@ -629,10 +686,10 @@ function Chin() {
         They are not flat discs set into the panel: the shell swells forward
         around each one, which is most of what gives the front its face.
       */}
-      {[-0.74, 0.74].map((x) => (
-        <group key={x} position={[x, ceiling - 0.38, z]} scale={[1, 1, 0.42]}>
+      {[-0.64, 0.64].map((x) => (
+        <group key={x} position={[x, ceiling - 0.3, z]} scale={[1, 1, 0.26]}>
           <mesh castShadow>
-            <sphereGeometry args={[0.175, 26, 20]} />
+            <sphereGeometry args={[0.15, 26, 20]} />
             <meshPhysicalMaterial color={FROST} roughness={0.42} clearcoat={0.5} />
           </mesh>
           {/*
@@ -643,7 +700,7 @@ function Chin() {
             cap has been turned to face forward.
           */}
           <mesh rotation={[Math.PI / 2, 0, 0]}>
-            <sphereGeometry args={[0.179, 30, 14, 0, Math.PI * 2, 0, 0.82]} />
+            <sphereGeometry args={[0.154, 30, 14, 0, Math.PI * 2, 0, 0.82]} />
             <meshStandardMaterial map={grille} roughness={0.8} />
           </mesh>
         </group>

@@ -43,19 +43,25 @@ export default function Screen({
   });
 
   const picture = useMemo(
-    () => bulgedPlane(SCREEN_SIZE.w, SCREEN_SIZE.h, 0.055),
+    () => bulgedPlane(SCREEN_SIZE.w, SCREEN_SIZE.h, 0.032),
     [],
   );
   const glass = useMemo(
-    () => bulgedPlane(SCREEN_SIZE.w + 0.02, SCREEN_SIZE.h + 0.02, 0.062),
+    () => bulgedPlane(SCREEN_SIZE.w + 0.02, SCREEN_SIZE.h + 0.02, 0.037),
     [],
   );
 
   return (
-    /* Flush with the face group's origin: that origin is already sitting on the
-       shell's front surface, and pushing the picture forward of it was what made
-       the glass hover in front of the machine. */
-    <group position={[0, 0, 0]}>
+    /*
+     * Set back by the bulge.
+     *
+     * The face group's zero plane sits exactly on the shell's front surface, so
+     * the tube has to be a shade in front of it or the shell occludes it — set
+     * back by the full bulge, the picture vanished entirely. It sits just proud
+     * instead, with the bulge reduced so the glass crowns a little above the
+     * bezel and its edges fall below, which is where a tube sits in a bezel.
+     */
+    <group position={[0, 0, 0.004]}>
       {/* The picture is self-lit, so it ignores the room lights entirely. */}
       <mesh geometry={picture}>
         {texture ? (
@@ -66,7 +72,7 @@ export default function Screen({
       </mesh>
 
       {/* Glass: a faint sheen and a single specular streak across the top left. */}
-      <mesh geometry={glass} position={[0, 0, 0.012]}>
+      <mesh geometry={glass} position={[0, 0, 0.007]}>
         <meshPhysicalMaterial
           transparent
           opacity={0.16}
