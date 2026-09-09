@@ -43,47 +43,114 @@ function sectionExponent(t: number): number {
  * Built indexed so shared vertices average their normals. The extruded version
  * was non-indexed, so every triangle was flat-shaded and the shell faceted.
  */
+/** The profile, sampled once — every surface query below reads from it. */
+const PROFILE = bodyProfile().getPoints(900);
+const PROFILE_X0 = Math.min(...PROFILE.map((p) => p.x));
+const PROFILE_X1 = Math.max(...PROFILE.map((p) => p.x));
+
+/**
+ * Vertical extent of the side profile at a given depth.
+ *
+ * Intersects the outline's segments rather than gathering sampled points near
+ * `x`. three.js hands back only the two endpoints for a straight run, so the
+ * flat base and the slanted face contributed no samples between them: from a
+ * quarter to four fifths of the way back, nothing was found underneath and the
+ * section collapsed to a blade along the crown. The machine came out solid at
+ * the front, solid at the tail, and hollow through the middle.
+ */
+function spanAt(x: number): [number, number] {
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (let i = 0; i < PROFILE.length; i += 1) {
+    const a = PROFILE[i];
+    const b = PROFILE[(i + 1) % PROFILE.length];
+    const dx = b.x - a.x;
+    if (dx === 0) {
+      if (Math.abs(a.x - x) < 1e-9) {
+        lo = Math.min(lo, a.y, b.y);
+        hi = Math.max(hi, a.y, b.y);
+      }
+      continue;
+    }
+    const u = (x - a.x) / dx;
+    if (u < 0 || u > 1) continue;
+    const y = a.y + u * (b.y - a.y);
+    lo = Math.min(lo, y);
+    hi = Math.max(hi, y);
+  }
+  return lo === Infinity ? [0, 0] : [lo, hi];
+}
+
+/**
+ * How far out the flank sits at a given height and depth.
+ *
+ * The same superellipse the shell is swept from, solved for x instead of walked
+ * round. Anything that has to lie *on* the case — the port door, the speaker
+ * pods — is placed with this rather than by eye, which is what stopped earlier
+ * details floating off the surface or sinking into it.
+ */
+function flankX(y: number, z: number): number {
+  const t = Math.min(1, Math.max(0, (0.11 - z) / (PROFILE_X1 - PROFILE_X0)));
+  const [lo, hi] = spanAt(PROFILE_X0 + t * (PROFILE_X1 - PROFILE_X0));
+  const cy = (lo + hi) / 2;
+  const ry = (hi - lo) / 2;
+  if (ry <= 0) return 0;
+  const q = Math.min(1, Math.abs(y - cy) / ry);
+  const w = 0.5 + 0.5 * ((y - cy) / ry);
+  const ease = w * w * (3 - 2 * w);
+  const n = 5 + (sectionExponent(t) - 5) * ease;
+  return halfWidthAt(t) * Math.pow(Math.max(0, 1 - Math.pow(q, n)), 1 / n);
+}
+
+/**
+ * An elliptical patch lying on the right flank, lifted just clear of it.
+ *
+ * Anything flat pressed against this shell shows its corners: the flank falls
+ * away in both directions, so a rectangle big enough to read as a door had its
+ * four corners sticking out through the case. Sampling `flankX` across the
+ * patch makes it curve with the surface, and an ellipse has no corners to leave
+ * behind in the first place.
+ */
+function flankPatch(cy: number, cz: number, ry: number, rz: number, lift: number) {
+  const RINGS = 7;
+  const SEGS = 44;
+  const position: number[] = [flankX(cy, cz) + lift, cy, cz];
+  for (let r = 1; r <= RINGS; r += 1) {
+    for (let a = 0; a < SEGS; a += 1) {
+      const th = (a / SEGS) * Math.PI * 2;
+      const y = cy + (r / RINGS) * ry * Math.sin(th);
+      const z = cz + (r / RINGS) * rz * Math.cos(th);
+      position.push(flankX(y, z) + lift, y, z);
+    }
+  }
+  const index: number[] = [];
+  for (let a = 0; a < SEGS; a += 1) {
+    index.push(0, 1 + a, 1 + ((a + 1) % SEGS));
+  }
+  for (let r = 1; r < RINGS; r += 1) {
+    const base = 1 + (r - 1) * SEGS;
+    const next = 1 + r * SEGS;
+    for (let a = 0; a < SEGS; a += 1) {
+      const a2 = (a + 1) % SEGS;
+      index.push(base + a, next + a, base + a2, base + a2, next + a, next + a2);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(position, 3));
+  g.setIndex(index);
+  g.computeVertexNormals();
+  return g;
+}
+
 function bodySurface(): THREE.BufferGeometry {
-  const pts = bodyProfile().getPoints(900);
-  const X0 = Math.min(...pts.map((p) => p.x));
-  const X1 = Math.max(...pts.map((p) => p.x));
+  const pts = PROFILE;
+  const X0 = PROFILE_X0;
+  const X1 = PROFILE_X1;
   const NZ = 168;
   const NA = 184;
 
-  /**
-   * Vertical extent of the side profile at a given depth.
-   *
-   * Intersects the outline's segments rather than gathering sampled points near
-   * `x`. three.js hands back only the two endpoints for a straight run, so the
-   * flat base and the slanted face contributed no samples between them: from a
-   * quarter to four fifths of the way back, nothing was found underneath and the
-   * section collapsed to a blade along the crown. The machine came out solid at
-   * the front, solid at the tail, and hollow through the middle.
-   */
-  const spanAt = (x: number): [number, number] => {
-    let lo = Infinity;
-    let hi = -Infinity;
-    for (let i = 0; i < pts.length; i += 1) {
-      const a = pts[i];
-      const b = pts[(i + 1) % pts.length];
-      const dx = b.x - a.x;
-      if (dx === 0) {
-        if (Math.abs(a.x - x) < 1e-9) {
-          lo = Math.min(lo, a.y, b.y);
-          hi = Math.max(hi, a.y, b.y);
-        }
-        continue;
-      }
-      const u = (x - a.x) / dx;
-      if (u < 0 || u > 1) continue;
-      const y = a.y + u * (b.y - a.y);
-      lo = Math.min(lo, y);
-      hi = Math.max(hi, y);
-    }
-    return lo === Infinity ? [0, 0] : [lo, hi];
-  };
-
   const position: number[] = [];
+  const uv: number[] = [];
   for (let i = 0; i <= NZ; i += 1) {
     // Biased toward the front, where the slanted face needs the resolution.
     const t = Math.pow(i / NZ, 1.5);
@@ -107,11 +174,12 @@ function bodySurface(): THREE.BufferGeometry {
       const w = 0.5 + 0.5 * sn;
       const ease = w * w * (3 - 2 * w);
       const k = 2 / (5 + (sectionExponent(t) - 5) * ease);
-      position.push(
-        Math.sign(c) * Math.pow(Math.abs(c), k) * rx,
-        cy + Math.sign(sn) * Math.pow(Math.abs(sn), k) * ry,
-        z,
-      );
+      const px = Math.sign(c) * Math.pow(Math.abs(c), k) * rx;
+      const py = cy + Math.sign(sn) * Math.pow(Math.abs(sn), k) * ry;
+      position.push(px, py, z);
+      // Projected straight down the machine's axis, so the ribs run vertically
+      // across the face — which is the only place they are meant to read.
+      uv.push((px / HALF_W) * 0.5 + 0.5, py * 0.5);
     }
   }
 
@@ -128,6 +196,7 @@ function bodySurface(): THREE.BufferGeometry {
 
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(position, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setIndex(index);
   g.computeVertexNormals();
 
@@ -315,6 +384,9 @@ const FRONT_Z = 0.03;
 
 function Body() {
   const shell = useMemo(() => bodySurface(), []);
+  const stripe = usePinstripe();
+  const door = useMemo(() => flankPatch(0.86, -1.46, 0.24, 0.34, 0.008), []);
+  const doorIcon = useMemo(() => flankPatch(0.86, -1.46, 0.07, 0.07, 0.016), []);
   const handleY = useMemo(() => crownAt(1.75), []);
 
   return (
@@ -322,6 +394,7 @@ function Body() {
       <mesh geometry={shell} castShadow receiveShadow>
         <meshPhysicalMaterial
           vertexColors
+          map={stripe}
           roughness={0.3}
           metalness={0}
           clearcoat={0.65}
@@ -341,6 +414,23 @@ function Body() {
           <meshStandardMaterial color="#0a2429" roughness={0.95} />
         </mesh>
       </group>
+
+      {/* The port door on the right flank, curved onto the case. */}
+      <mesh geometry={door}>
+        <meshPhysicalMaterial
+          color={FROST}
+          roughness={0.42}
+          clearcoat={0.55}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      <mesh geometry={doorIcon}>
+        <meshStandardMaterial
+          color={BONDI_DEEP}
+          roughness={0.5}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
 
       {/* Four small clear feet. */}
       {[
@@ -418,6 +508,34 @@ function BezelRing() {
       <meshPhysicalMaterial color="#23282b" roughness={0.5} clearcoat={0.4} />
     </mesh>
   );
+}
+
+/**
+ * The fine vertical ribbing moulded into the frosted plastic.
+ *
+ * One row of pixels, repeated. It multiplies against the vertex colours, so it
+ * lands on the coloured hood too — at this contrast that reads as surface
+ * rather than as stripes, and the alternative was a second mesh floating over
+ * the face, which is a mistake this file has already made once.
+ */
+function usePinstripe(): THREE.CanvasTexture {
+  return useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 2;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 32, 2);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+    for (let x = 0; x < 32; x += 4) ctx.fillRect(x, 0, 2, 2);
+    const t = new THREE.CanvasTexture(canvas);
+    t.wrapS = THREE.RepeatWrapping;
+    t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(9, 1);
+    t.anisotropy = 8;
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, []);
 }
 
 /** Dots, for the speaker grilles. */
@@ -505,12 +623,30 @@ function Chin() {
         <meshBasicMaterial color="#7ef0b0" toneMapped={false} />
       </mesh>
 
-      {/* Speakers: two grilles at the bottom corners of the face. */}
+      {/*
+        Speakers, in the pods that flare out of the bottom corners.
+        
+        They are not flat discs set into the panel: the shell swells forward
+        around each one, which is most of what gives the front its face.
+      */}
       {[-0.74, 0.74].map((x) => (
-        <mesh key={x} position={[x, ceiling - 0.38, z]}>
-          <circleGeometry args={[0.115, 28]} />
-          <meshStandardMaterial map={grille} roughness={0.8} />
-        </mesh>
+        <group key={x} position={[x, ceiling - 0.38, z]} scale={[1, 1, 0.42]}>
+          <mesh castShadow>
+            <sphereGeometry args={[0.175, 26, 20]} />
+            <meshPhysicalMaterial color={FROST} roughness={0.42} clearcoat={0.5} />
+          </mesh>
+          {/*
+            The grille is a cap of the same sphere, a hair larger, not a flat
+            disc. Laid flat it either sank into the dome or stood proud of it
+            with a white ring showing round the edge — a volume knob. The
+            squash lives on the group so it lands on the pod's axis after the
+            cap has been turned to face forward.
+          */}
+          <mesh rotation={[Math.PI / 2, 0, 0]}>
+            <sphereGeometry args={[0.179, 30, 14, 0, Math.PI * 2, 0, 0.82]} />
+            <meshStandardMaterial map={grille} roughness={0.8} />
+          </mesh>
+        </group>
       ))}
     </group>
   );
