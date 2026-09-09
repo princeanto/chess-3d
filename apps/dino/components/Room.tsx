@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import * as THREE from 'three';
 import { frustumY, roundedShape } from './Machine';
 
@@ -654,7 +654,7 @@ function Rug({ rough }: { rough: THREE.Texture }) {
     return g;
   }, []);
   return (
-    <group position={[0, ROOM.floorY, 2.4]}>
+    <group position={[-0.18, ROOM.floorY, 2.5]} rotation={[0, 0.035, 0]}>
       <mesh geometry={geometry} receiveShadow>
         <meshStandardMaterial color="#cfc5b3" roughness={0.98} roughnessMap={rough} />
       </mesh>
@@ -677,7 +677,7 @@ function Chair({ rough }: { rough: THREE.Texture }) {
   const seatY = ROOM.floorY + 1.75;
 
   return (
-    <group position={[0.4, 0, 4.15]} rotation={[0, Math.PI + 0.12, 0]}>
+    <group position={[0.85, 0, 4.35]} rotation={[0, Math.PI + 0.34, 0]}>
       {/* Seat: a shell with a cushion proud of it, not one flat slab. */}
       <mesh geometry={shell} position={[0, seatY - 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} castShadow>
         <meshStandardMaterial color="#4a4c50" roughness={0.72} roughnessMap={rough} />
@@ -1022,27 +1022,26 @@ function SunThroughWindow() {
 
 /* -------------------------------- posters -------------------------------- */
 
-interface PosterSpec {
-  /** 'bars' and 'grid' are wordless prints, to break up a wall of slogans. */
-  kind?: 'type' | 'bars' | 'grid';
-  lines?: string[];
-  /** Which line to set in gold; the rest sit in the body colour. */
-  accent?: number;
+interface AdSpec {
+  lines: string[];
+  sub?: string;
+  brand?: string;
   paper: string;
   ink: string;
-  gold: string;
-  caption?: string;
+  accent: string;
+  motif?: 'disc' | 'bars' | 'grid' | 'wedge' | 'rule';
 }
 
 /**
- * A framed print, drawn as type on a canvas.
+ * One printed sheet.
  *
- * Sized from the panel rather than by guesswork: the canvas is made at the
- * poster's own aspect so the type never stretches, and the lines are fitted to
- * the width so a long one shrinks instead of running off the edge.
+ * Drawn in the idiom of a mid-century advertising poster — a flat ground, one
+ * geometric motif, a stack of display type and a rule — because that is what
+ * survives being reduced to a canvas with no illustration in it. The subjects
+ * are the design trade rather than aperitifs.
  */
-function posterTexture(spec: PosterSpec, w: number, h: number): THREE.CanvasTexture {
-  const scale = 380;
+function adTexture(spec: AdSpec, w: number, h: number): THREE.CanvasTexture {
+  const scale = 250;
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(w * scale);
   canvas.height = Math.round(h * scale);
@@ -1053,92 +1052,113 @@ function posterTexture(spec: PosterSpec, w: number, h: number): THREE.CanvasText
   ctx.fillStyle = spec.paper;
   ctx.fillRect(0, 0, W, H);
 
-  if (spec.kind === 'bars') {
-    // Bands of colour, unequal, with a wide margin: a swatch print.
-    const palette = [spec.gold, spec.ink, '#3f7f8c', '#b8543f', '#6d7f4a', '#8a6ba8'];
-    const m = W * 0.12;
-    const inner = H - m * 2;
-    let y = m;
-    palette.forEach((c, i) => {
-      const band = (inner / palette.length) * (i % 2 ? 0.72 : 1.28);
-      ctx.fillStyle = c;
-      ctx.fillRect(m, y, W - m * 2, Math.max(2, band - H * 0.012));
-      y += band;
-    });
-  } else if (spec.kind === 'grid') {
-    const m = W * 0.14;
-    const cols = 4;
-    const rows = 5;
-    const cw = (W - m * 2) / cols;
-    const ch = (H - m * 2) / rows;
-    for (let r = 0; r < rows; r += 1) {
-      for (let c = 0; c < cols; c += 1) {
-        const filled = (r * cols + c) % 5 === 0 || (r + c) % 7 === 0;
-        ctx.fillStyle = filled ? spec.gold : 'rgba(0,0,0,0)';
-        ctx.strokeStyle = spec.ink;
-        ctx.globalAlpha = filled ? 0.9 : 0.25;
-        ctx.lineWidth = Math.max(1, W * 0.004);
-        ctx.fillRect(m + c * cw, m + r * ch, cw - 2, ch - 2);
-        ctx.strokeRect(m + c * cw, m + r * ch, cw - 2, ch - 2);
-        ctx.globalAlpha = 1;
+  const m = W * 0.075;
+  ctx.save();
+  ctx.globalAlpha = 0.9;
+  switch (spec.motif) {
+    case 'disc':
+      ctx.fillStyle = spec.accent;
+      ctx.beginPath();
+      ctx.arc(W * 0.5, H * 0.34, Math.min(W, H) * 0.26, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    case 'wedge':
+      ctx.fillStyle = spec.accent;
+      ctx.beginPath();
+      ctx.moveTo(0, H * 0.62);
+      ctx.lineTo(W, H * 0.2);
+      ctx.lineTo(W, H * 0.62);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    case 'bars': {
+      const n = 5;
+      for (let i = 0; i < n; i += 1) {
+        ctx.globalAlpha = 0.32 + i * 0.14;
+        ctx.fillStyle = spec.accent;
+        ctx.fillRect(m, H * (0.14 + i * 0.058), W - m * 2, H * 0.036);
       }
+      break;
     }
+    case 'grid':
+      ctx.strokeStyle = spec.accent;
+      ctx.globalAlpha = 0.5;
+      ctx.lineWidth = Math.max(1, W * 0.006);
+      for (let i = 1; i < 5; i += 1) {
+        ctx.beginPath();
+        ctx.moveTo(m + ((W - m * 2) / 5) * i, m);
+        ctx.lineTo(m + ((W - m * 2) / 5) * i, H * 0.56);
+        ctx.stroke();
+      }
+      for (let i = 1; i < 4; i += 1) {
+        ctx.beginPath();
+        ctx.moveTo(m, m + ((H * 0.56 - m) / 4) * i);
+        ctx.lineTo(W - m, m + ((H * 0.56 - m) / 4) * i);
+        ctx.stroke();
+      }
+      break;
+    case 'rule':
+      ctx.fillStyle = spec.accent;
+      ctx.fillRect(m, H * 0.2, W - m * 2, H * 0.02);
+      ctx.fillRect(m, H * 0.28, (W - m * 2) * 0.55, H * 0.02);
+      break;
+    default:
+      break;
   }
+  ctx.restore();
 
-  // Paper has tooth, same as the wall.
-  for (let i = 0; i < 1800; i += 1) {
-    ctx.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '0,0,0'},${
-      Math.random() * 0.03
-    })`;
-    ctx.beginPath();
-    ctx.arc(Math.random() * W, Math.random() * H, 0.5 + Math.random() * 2, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  // Border rule, the way these were always set.
+  ctx.strokeStyle = spec.ink;
+  ctx.globalAlpha = 0.5;
+  ctx.lineWidth = Math.max(1.5, W * 0.009);
+  ctx.strokeRect(m * 0.55, m * 0.55, W - m * 1.1, H - m * 1.1);
+  ctx.globalAlpha = 1;
 
-  const lines = spec.lines ?? [];
-  if (lines.length === 0) {
-    const flat = new THREE.CanvasTexture(canvas);
-    flat.colorSpace = THREE.SRGBColorSpace;
-    flat.anisotropy = 8;
-    return flat;
-  }
-
-  const margin = W * 0.11;
-  const inner = W - margin * 2;
-  const lineH = H * (0.62 / lines.length);
-  const top = H * 0.5 - (lines.length * lineH) / 2 + lineH * 0.5;
-
+  const inner = W - m * 2.4;
+  const block = H * 0.34;
+  const lineH = block / spec.lines.length;
+  const top = H * 0.66 - block / 2 + lineH * 0.5;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  lines.forEach((line, i) => {
-    let size = lineH * 0.82;
+  spec.lines.forEach((line, i) => {
+    let size = lineH * 0.86;
     const font = (px: number) =>
-      `700 ${px}px ui-sans-serif, system-ui, -apple-system, Helvetica, Arial, sans-serif`;
+      `800 ${px}px ui-sans-serif, system-ui, -apple-system, Helvetica, Arial, sans-serif`;
     ctx.font = font(size);
-    // Shrink to fit rather than overflow.
-    while (ctx.measureText(line).width > inner && size > 8) {
-      size -= 2;
+    while (ctx.measureText(line).width > inner && size > 6) {
+      size -= 1.5;
       ctx.font = font(size);
     }
-    ctx.fillStyle = i === spec.accent ? spec.gold : spec.ink;
+    ctx.fillStyle = i === spec.lines.length - 1 ? spec.accent : spec.ink;
     ctx.fillText(line, W / 2, top + i * lineH);
   });
 
-  // A gold rule under the block, and the caption below it.
-  const ruleY = top + lines.length * lineH - lineH * 0.18;
-  ctx.strokeStyle = spec.gold;
-  ctx.lineWidth = Math.max(2, H * 0.006);
-  ctx.beginPath();
-  ctx.moveTo(W * 0.32, ruleY);
-  ctx.lineTo(W * 0.68, ruleY);
-  ctx.stroke();
-
-  if (spec.caption) {
+  if (spec.sub) {
     ctx.fillStyle = spec.ink;
-    ctx.globalAlpha = 0.62;
-    ctx.font = `500 ${H * 0.032}px ui-sans-serif, system-ui, sans-serif`;
-    ctx.fillText(spec.caption, W / 2, ruleY + H * 0.075);
+    ctx.globalAlpha = 0.66;
+    let size = H * 0.045;
+    ctx.font = `600 ${size}px ui-sans-serif, system-ui, sans-serif`;
+    while (ctx.measureText(spec.sub).width > inner && size > 4) {
+      size -= 1;
+      ctx.font = `600 ${size}px ui-sans-serif, system-ui, sans-serif`;
+    }
+    ctx.fillText(spec.sub, W / 2, H * 0.845);
     ctx.globalAlpha = 1;
+  }
+  if (spec.brand) {
+    ctx.fillStyle = spec.accent;
+    ctx.font = `700 ${H * 0.038}px ui-sans-serif, system-ui, sans-serif`;
+    ctx.fillText(spec.brand, W / 2, H * 0.915);
+  }
+
+  // Print grain and a little foxing at the edges.
+  for (let i = 0; i < 700; i += 1) {
+    ctx.fillStyle = `rgba(${Math.random() < 0.6 ? '90,70,45' : '255,255,255'},${
+      Math.random() * 0.045
+    })`;
+    ctx.beginPath();
+    ctx.arc(Math.random() * W, Math.random() * H, 0.5 + Math.random() * 2.2, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   const t = new THREE.CanvasTexture(canvas);
@@ -1147,138 +1167,350 @@ function posterTexture(spec: PosterSpec, w: number, h: number): THREE.CanvasText
   return t;
 }
 
-function Poster({
-  spec,
-  x,
-  y,
-  w,
-  h,
-  rough,
-}: {
-  spec: PosterSpec;
-  x: number;
-  y: number;
+const ADS: AdSpec[] = [
+  { lines: ['OLD', 'IS GOLD'], sub: 'THE MACHINE THAT CHANGED THE DESK', brand: 'BONDI · 1998', paper: '#1d1b19', ink: '#e8e1d3', accent: '#d8a94b', motif: 'disc' },
+  { lines: ['LESS', 'BUT BETTER'], sub: 'WENIGER ABER BESSER', brand: 'RAMS X', paper: '#e9e3d4', ink: '#26241f', accent: '#c0392b', motif: 'rule' },
+  { lines: ['FORM', 'FOLLOWS', 'FUNCTION'], sub: 'A DOCTRINE, NOT A STYLE', paper: '#1f4a54', ink: '#eef6f7', accent: '#f0b429', motif: 'grid' },
+  { lines: ['GOOD DESIGN', 'IS HONEST'], sub: 'NO PROMISE IT CANNOT KEEP', paper: '#f2ead8', ink: '#2b2a25', accent: '#2f6f5e', motif: 'bars' },
+  { lines: ['BONDI', 'BLUE'], sub: 'THE COMPUTER FOR THE REST OF US', brand: 'MODEL G3', paper: '#0f6b7d', ink: '#f0fbfd', accent: '#ffd166', motif: 'disc' },
+  { lines: ['DETAILS', 'MATTER'], sub: 'MEASURE IT TWICE', paper: '#efe7d7', ink: '#2b2724', accent: '#b8862c', motif: 'rule' },
+  { lines: ['GRID', 'SYSTEMS'], sub: 'ORDER IS A KIND OF KINDNESS', paper: '#232629', ink: '#dfe6e8', accent: '#e8654a', motif: 'grid' },
+  { lines: ['COLOUR', 'STUDY', 'No. 4'], paper: '#f4efe2', ink: '#262420', accent: '#7d4a9e', motif: 'bars' },
+  { lines: ['PROTOTYPE', 'TEST', 'REPEAT'], sub: 'THEN DO IT AGAIN', paper: '#2a211b', ink: '#eee2d0', accent: '#e5a13a', motif: 'wedge' },
+  { lines: ['SHIP', 'IT'], sub: 'DONE IS A FEATURE', paper: '#c0392b', ink: '#fff3e6', accent: '#ffd166', motif: 'wedge' },
+  { lines: ['KEEP IT', 'SIMPLE'], sub: 'SUBTRACT UNTIL IT BREAKS', paper: '#1f2a2e', ink: '#e6eef0', accent: '#6ecabf', motif: 'disc' },
+  { lines: ['TYPE', '& FORM'], sub: 'THE SHAPE OF WHAT IT SAYS', paper: '#e6e1d2', ink: '#22201c', accent: '#c2451f', motif: 'rule' },
+  { lines: ['INDUSTRIAL', 'DESIGN'], sub: 'DRAWN FOR THE FACTORY FLOOR', brand: 'ATELIER', paper: '#35404a', ink: '#eaf1f4', accent: '#f2a541', motif: 'grid' },
+  { lines: ['1998'], sub: 'A VERY GOOD YEAR', paper: '#1c4e5c', ink: '#eaf4f6', accent: '#9fdbe8', motif: 'disc' },
+  { lines: ['MAKE', 'IT REAL'], sub: 'A SKETCH IS NOT A THING', paper: '#f0e6d0', ink: '#2a2620', accent: '#3a7d44', motif: 'wedge' },
+  { lines: ['ERGONOMIA'], sub: 'THE BODY IS THE BRIEF', paper: '#7d4a33', ink: '#fdf3e3', accent: '#f5c26b', motif: 'bars' },
+  { lines: ['THE NEW', 'MODEL'], sub: 'IN FIVE FLAVOURS', brand: 'AVAILABLE NOW', paper: '#e8dfcb', ink: '#25231e', accent: '#0f6b7d', motif: 'rule' },
+  { lines: ['DRAW', 'EVERY DAY'], paper: '#2d2a35', ink: '#ece7f2', accent: '#c78bd8', motif: 'grid' },
+];
+
+/**
+ * The gallery cluster, traced off the reference.
+ *
+ * Positions and sizes are in fractions of the cluster's own bounding box, read
+ * straight off the photograph, so the arrangement is the arrangement: the oval
+ * massing, the record at its heart, the tall thin strip beside it, the big
+ * magazine cover low and centre. Only the overall scale and where it hangs are
+ * mine.
+ *
+ * `file` names an image under /posters. If one is there it is used; if not the
+ * slot falls back to a drawn sheet, so the wall is never empty and never
+ * depends on assets that may not have been added yet.
+ */
+interface Slot {
+  u: number;
+  v: number;
   w: number;
   h: number;
-  rough: THREE.Texture;
-}) {
-  const texture = useMemo(() => posterTexture(spec, w, h), [spec, w, h]);
-  const frame = useMemo(() => roundedBox(w + 0.1, h + 0.1, 0.05, 0.02, 0.01), [w, h]);
+  file?: string;
+  record?: boolean;
+  ad?: number;
+}
+
+const CLUSTER: Slot[] = [
+  { u: 0.129, v: 0.836, w: 0.182, h: 0.219, file: 'think-big.png', ad: 0 },
+  { u: 0.315, v: 0.88, w: 0.141, h: 0.164, ad: 7 },
+  { u: 0.315, v: 0.723, w: 0.141, h: 0.133, ad: 11 },
+  { u: 0.498, v: 0.906, w: 0.174, h: 0.188, file: 'iron-man.jpg', ad: 4 },
+  { u: 0.672, v: 0.903, w: 0.158, h: 0.18, ad: 17 },
+  { u: 0.851, v: 0.852, w: 0.149, h: 0.141, ad: 13 },
+  { u: 0.098, v: 0.539, w: 0.196, h: 0.25, file: 'naruto.jpg', ad: 10 },
+  { u: 0.29, v: 0.575, w: 0.141, h: 0.148, ad: 3 },
+  { u: 0.406, v: 0.591, w: 0.075, h: 0.133, ad: 15 },
+  { u: 0.56, v: 0.656, w: 0.226, h: 0.213, record: true },
+  { u: 0.743, v: 0.641, w: 0.066, h: 0.234, ad: 6 },
+  { u: 0.859, v: 0.653, w: 0.149, h: 0.227, file: 'demon-slayer.jpg', ad: 8 },
+  { u: 0.556, v: 0.367, w: 0.224, h: 0.297, file: 'arr.jpg', ad: 12 },
+  { u: 0.76, v: 0.43, w: 0.149, h: 0.172, ad: 16 },
+  { u: 0.9, v: 0.45, w: 0.083, h: 0.148, ad: 5 },
+  { u: 0.929, v: 0.301, w: 0.141, h: 0.117, ad: 2 },
+  { u: 0.34, v: 0.34, w: 0.191, h: 0.195, ad: 1 },
+  { u: 0.141, v: 0.273, w: 0.191, h: 0.141, ad: 14 },
+  { u: 0.287, v: 0.109, w: 0.083, h: 0.188, ad: 9 },
+  { u: 0.431, v: 0.102, w: 0.174, h: 0.203, file: 'deku.jpg', ad: 2 },
+  { u: 0.63, v: 0.114, w: 0.191, h: 0.195, file: 'never-give-up.jpg', ad: 9 },
+  { u: 0.834, v: 0.125, w: 0.182, h: 0.172, ad: 6 },
+];
+
+/*
+ * Where the cluster hangs, and how big it is.
+ *
+ * Off to the right of the machine rather than centred on the wall: centred, its
+ * whole lower half sat behind the iMac. The shelves live on the left now, so
+ * nothing crosses it.
+ */
+const CLUSTER_BOX = { cx: 1.7, cy: 2.72, w: 6.3, h: 4.35 };
+
+/** The record at the centre of it. */
+function recordTexture(): THREE.CanvasTexture {
+  const size = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  ctx.clearRect(0, 0, size, size);
+  const c = size / 2;
+  ctx.fillStyle = '#0d0d0f';
+  ctx.beginPath();
+  ctx.arc(c, c, c - 2, 0, Math.PI * 2);
+  ctx.fill();
+  // Grooves: a lot of very faint rings, which is the whole read of a record.
+  for (let r = c - 10; r > c * 0.36; r -= 2.1) {
+    ctx.strokeStyle = `rgba(255,255,255,${0.02 + Math.random() * 0.05})`;
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.arc(c, c, r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#b8442f';
+  ctx.beginPath();
+  ctx.arc(c, c, c * 0.34, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#f2e8d8';
+  ctx.font = `700 ${size * 0.045}px ui-sans-serif, system-ui, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('RCA VICTOR', c, c - size * 0.12);
+  ctx.font = `600 ${size * 0.03}px ui-sans-serif, system-ui, sans-serif`;
+  ctx.fillText('33 1/3 RPM', c, c + size * 0.12);
+  ctx.fillStyle = '#0d0d0f';
+  ctx.beginPath();
+  ctx.arc(c, c, size * 0.022, 0, Math.PI * 2);
+  ctx.fill();
+  const t = new THREE.CanvasTexture(canvas);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  return t;
+}
+
+/**
+ * One sheet: the drawn version, replaced by a real image the moment one loads.
+ *
+ * Loading is fire-and-forget with the error swallowed, so a missing file costs
+ * nothing and leaves the drawn sheet in place.
+ */
+function Sheet({ slot, index }: { slot: Slot; index: number }) {
+  const box = CLUSTER_BOX;
+  const w = slot.w * box.w;
+  const h = slot.h * box.h;
+  const x = box.cx + (slot.u - 0.5) * box.w;
+  const y = box.cy + (slot.v - 0.5) * box.h;
+  const z = WALL_Z + 0.014 + (index % 5) * 0.003;
+
+  const drawn = useMemo(
+    () => (slot.record ? recordTexture() : adTexture(ADS[(slot.ad ?? index) % ADS.length], w, h)),
+    [slot, index, w, h],
+  );
+  const [map, setMap] = useState<THREE.Texture>(drawn);
+
+  useEffect(() => {
+    if (!slot.file) return;
+    let live = true;
+    new THREE.TextureLoader().load(
+      `posters/${slot.file}`,
+      (t) => {
+        if (!live) return;
+        t.colorSpace = THREE.SRGBColorSpace;
+        t.anisotropy = 8;
+        setMap(t);
+      },
+      undefined,
+      () => undefined,
+    );
+    return () => {
+      live = false;
+    };
+  }, [slot.file]);
+
+  if (slot.record) {
+    return (
+      <mesh position={[x, y, z]} castShadow>
+        <circleGeometry args={[Math.min(w, h) / 2, 64]} />
+        <meshStandardMaterial map={map} transparent roughness={0.35} />
+      </mesh>
+    );
+  }
+
   return (
-    <group position={[x, y, WALL_Z + 0.03]}>
-      <mesh geometry={frame} castShadow>
-        <meshStandardMaterial color="#2a2523" roughness={0.7} roughnessMap={rough} />
-      </mesh>
-      <mesh position={[0, 0, 0.028]}>
-        <planeGeometry args={[w, h]} />
-        <meshStandardMaterial map={texture} roughness={0.86} />
-      </mesh>
+    <mesh position={[x, y, z]} castShadow>
+      <planeGeometry args={[w, h]} />
+      <meshStandardMaterial map={map} roughness={0.9} />
+    </mesh>
+  );
+}
+
+function Collage() {
+  return (
+    <group>
+      {CLUSTER.map((slot, i) => (
+        <Sheet key={i} slot={slot} index={i} />
+      ))}
     </group>
   );
 }
 
-/*
- * A gallery wall.
- *
- * Hung low enough to be inside the framed views: at the height the first three
- * went up, the top of every frame sat above where the Front camera cuts the
- * wall and all of them were beheaded. Nothing sits in the band the machine
- * occupies either, except the one across the top which clears its crown.
- */
-const GOLD = '#d8a94b';
+/* ------------------------------- the rest -------------------------------- */
 
-const POSTERS: Array<{ spec: PosterSpec; x: number; y: number; w: number; h: number }> = [
-  {
-    spec: {
-      lines: ['OLD', 'IS', 'GOLD'],
-      accent: 2,
-      paper: '#1d1b19',
-      ink: '#e6e0d4',
-      gold: GOLD,
-      caption: 'BONDI BLUE · 1998',
-    },
-    x: -3.85,
-    y: 2.52,
-    w: 1.08,
-    h: 1.5,
-  },
-  {
-    spec: {
-      lines: ['FORM', 'FOLLOWS', 'FUNCTION'],
-      accent: 2,
-      paper: '#efe7d7',
-      ink: '#2b2724',
-      gold: '#b8862c',
-    },
-    x: 3.85,
-    y: 2.52,
-    w: 1.08,
-    h: 1.5,
-  },
-  {
-    spec: { lines: ['LESS, BUT BETTER'], paper: '#25302f', ink: '#e8efec', gold: GOLD },
-    x: 0,
-    y: 2.9,
-    w: 1.8,
-    h: 0.62,
-  },
-  {
-    spec: { lines: ['1998'], paper: '#1c4e5c', ink: '#eaf4f6', gold: '#9fdbe8' },
-    x: -2.5,
-    y: 3.06,
-    w: 0.78,
-    h: 0.78,
-  },
-  {
-    spec: { lines: ['DETAILS', 'MATTER'], accent: 1, paper: '#f1ece1', ink: '#2b2724', gold: '#b8862c' },
-    x: 2.5,
-    y: 3.06,
-    w: 0.78,
-    h: 0.96,
-  },
-  {
-    spec: { kind: 'bars', paper: '#f3eee3', ink: '#2f2b27', gold: GOLD },
-    x: -2.42,
-    y: 1.72,
-    w: 0.86,
-    h: 1.12,
-  },
-  {
-    spec: { kind: 'grid', paper: '#191d1f', ink: '#cfd8da', gold: GOLD },
-    x: 2.42,
-    y: 1.72,
-    w: 0.86,
-    h: 1.12,
-  },
-  {
-    spec: { lines: ['PROTOTYPE', 'TEST', 'REPEAT'], accent: 2, paper: '#2a211b', ink: '#e8ded0', gold: GOLD },
-    x: -4.9,
-    y: 1.62,
-    w: 0.86,
-    h: 1.16,
-  },
-  {
-    spec: { lines: ['SHIP', 'IT'], accent: 1, paper: '#efe7d7', ink: '#2b2724', gold: '#b8862c' },
-    x: 4.9,
-    y: 1.62,
-    w: 0.86,
-    h: 1.16,
-  },
-  {
-    spec: { lines: ['KEEP', 'IT', 'SIMPLE'], accent: 2, paper: '#1f2a2e', ink: '#e2ebee', gold: GOLD },
-    x: -4.95,
-    y: 3.0,
-    w: 0.8,
-    h: 1.04,
-  },
-  {
-    spec: { kind: 'bars', paper: '#20201f', ink: '#e4ded2', gold: GOLD },
-    x: 4.95,
-    y: 3.0,
-    w: 0.8,
-    h: 1.04,
-  },
-];
+/**
+ * Cables, and something for them to plug into.
+ *
+ * Nothing in the room was connected to anything. Cable is the quickest way to
+ * stop a set reading as modelled, because it is the one thing nobody bothers to
+ * fake and everybody notices the absence of.
+ */
+function Cables({ rough }: { rough: THREE.Texture }) {
+  const flex = (pts: Array<[number, number, number]>, r = 0.028) =>
+    new THREE.TubeGeometry(
+      new THREE.CatmullRomCurve3(pts.map((q) => new THREE.Vector3(...q))),
+      50,
+      r,
+      7,
+      false,
+    );
+
+  const machine = useMemo(
+    () =>
+      flex([
+        [-0.75, 0.06, -2.35],
+        [-1.1, -0.4, -2.9],
+        [-1.35, -1.5, -3.15],
+        [-1.6, -2.5, -3.0],
+        [-1.9, ROOM.floorY + 0.06, -2.6],
+        [-2.4, ROOM.floorY + 0.05, -2.15],
+      ]),
+    [],
+  );
+  const lamp = useMemo(
+    () =>
+      flex(
+        [
+          // Out across the open floor where it can be seen, not tucked behind
+          // the desk where every cable in the room was hiding.
+          [5.6, ROOM.floorY + 0.05, 3.1],
+          [4.7, ROOM.floorY + 0.05, 4.1],
+          [2.6, ROOM.floorY + 0.05, 4.7],
+          [0.2, ROOM.floorY + 0.05, 4.4],
+          [-2.2, ROOM.floorY + 0.05, 2.7],
+          [-3.1, ROOM.floorY + 0.05, 0.4],
+          [-2.9, ROOM.floorY + 0.06, -1.6],
+          [-2.5, ROOM.floorY + 0.06, -2.0],
+        ],
+        0.032,
+      ),
+    [],
+  );
+
+  return (
+    <group>
+      <mesh geometry={machine} castShadow>
+        <meshStandardMaterial color="#d9dfe1" roughness={0.62} roughnessMap={rough} />
+      </mesh>
+      <mesh geometry={lamp} castShadow>
+        <meshStandardMaterial color="#2b2c2e" roughness={0.66} roughnessMap={rough} />
+      </mesh>
+
+      {/* The strip everything runs to. */}
+      <group position={[-2.75, ROOM.floorY + 0.09, -2.0]} rotation={[0, 0.34, 0]}>
+        <mesh castShadow receiveShadow>
+          <boxGeometry args={[1.5, 0.18, 0.4]} />
+          <meshStandardMaterial color="#e6e2d9" roughness={0.72} roughnessMap={rough} />
+        </mesh>
+        {[-0.45, -0.05, 0.35].map((x) => (
+          <mesh key={x} position={[x, 0.095, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[0.28, 0.24]} />
+            <meshStandardMaterial color="#3b3a37" roughness={0.8} />
+          </mesh>
+        ))}
+        <mesh position={[0.66, 0.02, 0]}>
+          <sphereGeometry args={[0.045, 12, 10]} />
+          <meshBasicMaterial color="#ff6b4a" toneMapped={false} />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+/**
+ * Boards leaning in the far corner, and the marks of the room being used.
+ *
+ * Everything was centred and pristine, which is its own kind of unreal.
+ */
+function Lived({ rough }: { rough: THREE.Texture }) {
+  return (
+    <group>
+      {/*
+        Boards leaning on the side wall, turned to face it.
+
+        Stood square in the corner they read as panels hanging in the air: the
+        desk hid their feet and nothing said which surface they rested against.
+      */}
+      <group position={[ROOM.x0 + 0.14, 0, -0.6]} rotation={[0, Math.PI / 2, 0]}>
+        {[
+          { w: 2.5, h: 3.3, lean: 0.15, c: '#e8dfcb', off: 0 },
+          { w: 2.0, h: 2.7, lean: 0.2, c: '#b9a488', off: 0.34 },
+          { w: 2.7, h: 2.2, lean: 0.26, c: '#5f6f5a', off: 0.66 },
+        ].map((b, i) => (
+          <mesh
+            key={i}
+            position={[b.off * 0.5, ROOM.floorY + (b.h / 2) * Math.cos(b.lean), b.off]}
+            rotation={[b.lean, 0, 0]}
+            castShadow
+          >
+            <boxGeometry args={[b.w, b.h, 0.07]} />
+            <meshStandardMaterial color={b.c} roughness={0.88} roughnessMap={rough} />
+          </mesh>
+        ))}
+      </group>
+
+      {/* A ring where the mug has been set down more than once. */}
+      <mesh position={[2.95, 0.004, 1.72]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.19, 0.235, 40]} />
+        <meshStandardMaterial color="#6b5334" transparent opacity={0.32} roughness={0.95} />
+      </mesh>
+
+      {/* Two loose sheets, dropped rather than placed. */}
+      {[
+        { x: -1.95, z: 3.15, r: -0.5 },
+        { x: -1.55, z: 3.42, r: 0.28 },
+      ].map((q, i) => (
+        <mesh
+          key={i}
+          position={[q.x, 0.005 + i * 0.004, q.z]}
+          rotation={[-Math.PI / 2, 0, q.r]}
+          receiveShadow
+        >
+          <planeGeometry args={[0.86, 1.15]} />
+          <meshStandardMaterial color="#efe9dc" roughness={0.95} roughnessMap={rough} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/**
+ * Bounce.
+ *
+ * Light in this room only ever travelled one way. Real rooms are lit twice: once
+ * by the source and again by everything the source hits. Two dim warm fills —
+ * one under the desk, one off the wall behind the machine — are the cheap
+ * version, and they are most of what was still reading as CG.
+ */
+function Bounce() {
+  return (
+    <>
+      <pointLight position={[0, -1.15, 1.6]} intensity={2.6} distance={9} decay={2} color="#c98d52" />
+      <pointLight position={[0, 1.5, -2.9]} intensity={2.2} distance={8} decay={2} color="#d59a63" />
+      <pointLight position={[-4.6, 0.9, 2.2]} intensity={1.8} distance={8} decay={2} color="#c98352" />
+    </>
+  );
+}
+
+/* --------------------------------- room ---------------------------------- */
+
 
 /* ------------------------------ desk things ------------------------------ */
 
@@ -1650,14 +1882,15 @@ export default function Room() {
       <ColourFan />
       <Mug rough={props} />
       <PaperAndScale rough={props} />
-      {POSTERS.map((p) => (
-        <Poster key={p.x + ':' + p.y} {...p} rough={props} />
-      ))}
+      <Collage />
       <Rug rough={props} />
       <Chair rough={props} />
       <FloorPieces rough={props} />
       <Window rough={props} />
       <Shelves rough={props} />
+      <Cables rough={props} />
+      <Lived rough={props} />
+      <Bounce />
     </group>
   );
 }
