@@ -921,6 +921,31 @@ export function frustumY(
 const KEY_H = 0.062;
 const KEY_TRAVEL = 0.05;
 
+/**
+ * A keycap: a rounded square, drawn back a little at the top.
+ *
+ * Extruded with a bevel rather than built as a plain frustum. The frustum had
+ * eight hard edges and a sharp square top, which at this size reads as a chiclet
+ * cut out of a block; the bevel is what makes a moulded cap.
+ */
+function keycapGeometry(w: number, d: number): THREE.BufferGeometry {
+  const inset = 0.016;
+  const shape = roundedShape(w - inset, d - inset, Math.min(w, d) * 0.24);
+  const g = new THREE.ExtrudeGeometry(shape, {
+    depth: KEY_H - 0.024,
+    bevelEnabled: true,
+    bevelThickness: 0.012,
+    bevelSize: 0.011,
+    bevelSegments: 3,
+    curveSegments: 6,
+  });
+  // Extrusion runs along +Z; stand it up and sit its underside on zero.
+  g.rotateX(-Math.PI / 2);
+  g.translate(0, 0.012, 0);
+  g.computeVertexNormals();
+  return g;
+}
+
 function Keycap({
   def,
   pressedRef,
@@ -937,7 +962,7 @@ function Keycap({
   const live = def.code ? LIVE_CODES.has(def.code) : false;
 
   const geometry = useMemo(
-    () => frustumY(def.width, def.depth, def.width * 0.9, def.depth * 0.88, KEY_H),
+    () => keycapGeometry(def.width, def.depth),
     [def.width, def.depth],
   );
 
@@ -969,10 +994,11 @@ function Keycap({
       >
         <meshPhysicalMaterial
           color={live ? KEYCAP_LIVE : KEYCAP}
-          roughness={0.38}
-          clearcoat={0.6}
+          roughness={0.36}
+          clearcoat={0.55}
+          clearcoatRoughness={0.16}
           transparent
-          opacity={0.94}
+          opacity={0.96}
         />
       </mesh>
       {label && (
@@ -985,6 +1011,48 @@ function Keycap({
   );
 }
 
+/**
+ * The case: a rounded slab with the front edge bowed out.
+ *
+ * The keyboard used to be a tapered box, which is the one shape this whole desk
+ * does not contain. Everything Apple put on it in 1998 is drawn with a radius,
+ * so the case gets a rounded outline, a bowed front and a bevelled top edge.
+ */
+function keyboardCase(
+  w: number,
+  d: number,
+  height: number,
+  bevel: number,
+): THREE.BufferGeometry {
+  const hw = w / 2;
+  const hd = d / 2;
+  const r = 0.26;
+  const shape = new THREE.Shape();
+  shape.moveTo(-hw + r, -hd);
+  // The front edge bows toward the user rather than running straight across.
+  shape.quadraticCurveTo(0, -hd - 0.12, hw - r, -hd);
+  shape.quadraticCurveTo(hw, -hd, hw, -hd + r);
+  shape.lineTo(hw, hd - r);
+  shape.quadraticCurveTo(hw, hd, hw - r, hd);
+  shape.lineTo(-hw + r, hd);
+  shape.quadraticCurveTo(-hw, hd, -hw, hd - r);
+  shape.lineTo(-hw, -hd + r);
+  shape.quadraticCurveTo(-hw, -hd, -hw + r, -hd);
+
+  const g = new THREE.ExtrudeGeometry(shape, {
+    depth: height,
+    bevelEnabled: true,
+    bevelThickness: bevel,
+    bevelSize: bevel * 0.86,
+    bevelSegments: 4,
+    curveSegments: 18,
+  });
+  g.rotateX(-Math.PI / 2);
+  g.translate(0, bevel, 0);
+  g.computeVertexNormals();
+  return g;
+}
+
 function Keyboard({
   pressedRef,
   onPress,
@@ -995,23 +1063,88 @@ function Keyboard({
   onRelease: (code: string) => void;
 }) {
   const { keys, width, depth } = useMemo(() => layoutKeys(), []);
-  const base = useMemo(
-    () => frustumY(width + 0.3, depth + 0.26, width + 0.22, depth + 0.18, 0.13),
+  const shell = useMemo(
+    () => keyboardCase(width + 0.44, depth + 0.5, 0.09, 0.03),
     [width, depth],
   );
+  /*
+   * The tray is a thin plate, not another slab.
+   *
+   * Reusing the case geometry for it made a second 0.17-tall block sitting on
+   * the first, and it swallowed every key: the keyboard rendered as a bare
+   * coloured tablet.
+   */
+  const well = useMemo(
+    () => keyboardCase(width + 0.2, depth + 0.2, 0.018, 0.01),
+    [width, depth],
+  );
+  const cable = useMemo(() => {
+    /*
+     * Out of the back edge and all the way to the machine.
+     *
+     * It used to stop about a unit short and simply end in the air. In this
+     * group's frame the desk in front of the iMac is around z = -4.2, so that is
+     * where it has to run to.
+     */
+    const back = -depth / 2;
+    const curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0.4, 0.12, back - 0.16),
+      new THREE.Vector3(0.52, 0.14, back - 0.8),
+      new THREE.Vector3(0.24, 0.05, back - 1.8),
+      new THREE.Vector3(-0.2, 0.05, -3.5),
+      new THREE.Vector3(-0.12, 0.05, -4.2),
+    ]);
+    return new THREE.TubeGeometry(curve, 64, 0.026, 8, false);
+  }, [depth]);
 
   return (
     <group position={[0, 0, 2.35]} rotation={[-0.045, 0, 0]} scale={0.5}>
-      <mesh geometry={base} castShadow receiveShadow>
+      <mesh geometry={shell} castShadow receiveShadow>
         <meshPhysicalMaterial
           color={BONDI_DEEP}
           transparent
-          opacity={0.68}
-          roughness={0.2}
-          clearcoat={0.9}
+          opacity={0.72}
+          roughness={0.18}
+          clearcoat={0.95}
+          clearcoatRoughness={0.06}
         />
       </mesh>
-      <group position={[0, 0.16, 0]}>
+
+      {/* The tray the keys sit in, a shade darker so they read as recessed. */}
+      <mesh geometry={well} position={[0, 0.112, 0.02]} receiveShadow>
+        <meshStandardMaterial color="#123a42" roughness={0.55} />
+      </mesh>
+
+      {/* Two flip-down feet under the back edge. */}
+      {[-width * 0.34, width * 0.34].map((x) => (
+        <mesh key={x} position={[x, 0.012, -depth / 2 - 0.14]} castShadow>
+          <boxGeometry args={[0.34, 0.05, 0.16]} />
+          <meshPhysicalMaterial color={BONDI_DEEP} roughness={0.3} clearcoat={0.7} />
+        </mesh>
+      ))}
+
+      {/* A USB socket at each end of the back edge — where the mouse plugs in. */}
+      {[-1, 1].map((side) => (
+        <mesh
+          key={side}
+          position={[side * (width / 2 + 0.17), 0.1, -depth / 2 - 0.14]}
+        >
+          <boxGeometry args={[0.2, 0.06, 0.05]} />
+          <meshStandardMaterial color="#0b2429" roughness={0.8} />
+        </mesh>
+      ))}
+
+      <mesh geometry={cable} castShadow>
+        <meshPhysicalMaterial
+          color="#dfe6e8"
+          transparent
+          opacity={0.85}
+          roughness={0.35}
+          clearcoat={0.6}
+        />
+      </mesh>
+
+      <group position={[0, 0.148, 0.02]}>
         {keys.map((k, i) => (
           <Keycap
             key={i}
@@ -1137,15 +1270,21 @@ function Mouse() {
   }, []);
   const button = useMemo(() => buttonSkin(), []);
   const cable = useMemo(() => {
-    // Runs off toward the machine rather than stopping in mid-air.
+    /*
+     * Into the keyboard, not off toward the machine.
+     *
+     * The puck plugs into the socket on the end of the keyboard — that is what
+     * the sockets are for — and it also means the cable ends somewhere instead
+     * of trailing off and stopping in the air. Solved for the socket's position
+     * through this group's own rotation, so it meets it rather than near it.
+     */
     const curve = new THREE.CatmullRomCurve3([
       new THREE.Vector3(0, 0.1, -0.25),
-      new THREE.Vector3(-0.12, 0.07, -0.46),
-      new THREE.Vector3(-0.42, 0.032, -0.72),
-      new THREE.Vector3(-0.92, 0.032, -0.9),
-      new THREE.Vector3(-1.5, 0.032, -1.02),
+      new THREE.Vector3(-0.22, 0.055, -0.36),
+      new THREE.Vector3(-0.45, 0.035, -0.44),
+      new THREE.Vector3(-0.6, 0.05, -0.4),
     ]);
-    return new THREE.TubeGeometry(curve, 60, 0.013, 8, false);
+    return new THREE.TubeGeometry(curve, 48, 0.013, 8, false);
   }, []);
 
   return (
