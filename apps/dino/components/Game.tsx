@@ -419,12 +419,11 @@ export default function Game() {
       />
 
       {/*
-        Scrims behind the chrome.
+        Scrim behind the heading.
 
-        The room is lit and the desk is pale, so white-on-transparent controls
-        washed straight out along the bottom edge. A gradient under each band
-        gives them something to sit on without putting a solid bar across the
-        picture.
+        The room is lit and the desk is pale, so white-on-transparent chrome
+        washes straight out. The controls get a solid band of their own below;
+        this is just for the title and the score.
       */}
       <div
         aria-hidden
@@ -433,18 +432,10 @@ export default function Game() {
           background: 'linear-gradient(to bottom, rgba(4,6,8,0.62), rgba(4,6,8,0))',
         }}
       />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-48"
-        style={{
-          background:
-            'linear-gradient(to top, rgba(4,6,8,0.86), rgba(4,6,8,0.5) 42%, rgba(4,6,8,0))',
-        }}
-      />
 
       {/* Overlay chrome. Only Free look hands the scene to the mouse. */}
-      <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-5 sm:p-7">
-        <div className="flex items-start justify-between gap-4">
+      <div className="pointer-events-none absolute inset-0 flex flex-col justify-between">
+        <div className="flex items-start justify-between gap-4 p-5 sm:p-7">
           <div>
             <h1 className="text-[19px] font-semibold tracking-tight text-[#f2f7f8] [text-shadow:0_1px_4px_rgba(0,0,0,0.6)]">Runner</h1>
             <p className="mt-0.5 text-[12px] text-[#c3cdd1]">Runs with no connection</p>
@@ -459,7 +450,24 @@ export default function Game() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-end justify-between gap-4">
+        {/*
+          One black band under all the controls, edge to edge.
+
+          Individually darkened pills were still landing on whatever happened to
+          be behind them — over the sticky pad and the sketchbook they dropped to
+          almost nothing. A single bar gives every control the same background
+          whatever the camera is looking at, and a short fade above it keeps the
+          top edge off the picture.
+        */}
+        <div className="relative">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-full h-16"
+            style={{
+              background: 'linear-gradient(to top, rgba(6,7,9,0.92), rgba(6,7,9,0))',
+            }}
+          />
+          <div className="flex flex-wrap items-end justify-between gap-4 bg-[rgba(6,7,9,0.92)] px-5 py-4 sm:px-7">
           <div className="pointer-events-auto flex flex-wrap gap-1.5">
             {VIEWS.map((v, i) => (
               <button
@@ -472,7 +480,7 @@ export default function Game() {
                 className={`min-h-[38px] rounded-full px-4 text-[13px] transition-colors ${
                   !free && view === i
                     ? 'bg-[#f4f8f9] font-semibold text-[#0a0d0f] ring-1 ring-white/60'
-                    : 'bg-black/62 text-[#eff5f6] ring-1 ring-white/25 hover:bg-black/75'
+                    : 'bg-white/12 text-[#e9f0f2] ring-1 ring-white/15 hover:bg-white/22'
                 }`}
               >
                 {v.label}
@@ -485,7 +493,7 @@ export default function Game() {
               className={`min-h-[38px] rounded-full px-4 text-[13px] transition-colors ${
                 free
                   ? 'bg-[#f4f8f9] font-semibold text-[#0a0d0f] ring-1 ring-white/60'
-                  : 'bg-black/62 text-[#eff5f6] ring-1 ring-white/25 hover:bg-black/75'
+                  : 'bg-white/12 text-[#e9f0f2] ring-1 ring-white/15 hover:bg-white/22'
               }`}
             >
               Free look
@@ -493,7 +501,7 @@ export default function Game() {
           </div>
 
           <div className="flex items-center gap-4">
-            <p className="text-[12px] text-[#cdd6d9] [text-shadow:0_1px_3px_rgba(0,0,0,0.7)]">{hint}</p>
+            <p className="text-[12px] text-[#aab4b8]">{hint}</p>
             <div className="pointer-events-auto flex gap-1.5">
               {phase === 'dead' && (
                 <button
@@ -506,18 +514,19 @@ export default function Game() {
               {canInstall && (
                 <button
                   onClick={install}
-                  className="min-h-[38px] rounded-full bg-black/62 px-4 text-[13px] text-[#eff5f6] ring-1 ring-white/25 transition-colors hover:bg-black/75"
+                  className="min-h-[38px] rounded-full bg-white/12 px-4 text-[13px] text-[#e9f0f2] ring-1 ring-white/15 transition-colors hover:bg-white/22"
                 >
                   Install
                 </button>
               )}
               <button
                 onClick={toggleSound}
-                className="min-h-[38px] rounded-full bg-black/62 px-4 text-[13px] text-[#eff5f6] ring-1 ring-white/25 transition-colors hover:bg-black/75"
+                className="min-h-[38px] rounded-full bg-white/12 px-4 text-[13px] text-[#e9f0f2] ring-1 ring-white/15 transition-colors hover:bg-white/22"
               >
                 {muted ? 'Sound off' : 'Sound on'}
               </button>
             </div>
+          </div>
           </div>
         </div>
       </div>

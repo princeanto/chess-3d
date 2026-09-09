@@ -413,6 +413,171 @@ function DeskMat() {
   );
 }
 
+/* -------------------------------- posters -------------------------------- */
+
+interface PosterSpec {
+  lines: string[];
+  /** Which line to set in gold; the rest sit in the body colour. */
+  accent?: number;
+  paper: string;
+  ink: string;
+  gold: string;
+  caption?: string;
+}
+
+/**
+ * A framed print, drawn as type on a canvas.
+ *
+ * Sized from the panel rather than by guesswork: the canvas is made at the
+ * poster's own aspect so the type never stretches, and the lines are fitted to
+ * the width so a long one shrinks instead of running off the edge.
+ */
+function posterTexture(spec: PosterSpec, w: number, h: number): THREE.CanvasTexture {
+  const scale = 380;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(w * scale);
+  canvas.height = Math.round(h * scale);
+  const ctx = canvas.getContext('2d')!;
+  const W = canvas.width;
+  const H = canvas.height;
+
+  ctx.fillStyle = spec.paper;
+  ctx.fillRect(0, 0, W, H);
+
+  // Paper has tooth, same as the wall.
+  for (let i = 0; i < 1800; i += 1) {
+    ctx.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '0,0,0'},${
+      Math.random() * 0.03
+    })`;
+    ctx.beginPath();
+    ctx.arc(Math.random() * W, Math.random() * H, 0.5 + Math.random() * 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const margin = W * 0.11;
+  const inner = W - margin * 2;
+  const lineH = H * (0.62 / spec.lines.length);
+  const top = H * 0.5 - (spec.lines.length * lineH) / 2 + lineH * 0.5;
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  spec.lines.forEach((line, i) => {
+    let size = lineH * 0.82;
+    const font = (px: number) =>
+      `700 ${px}px ui-sans-serif, system-ui, -apple-system, Helvetica, Arial, sans-serif`;
+    ctx.font = font(size);
+    // Shrink to fit rather than overflow.
+    while (ctx.measureText(line).width > inner && size > 8) {
+      size -= 2;
+      ctx.font = font(size);
+    }
+    ctx.fillStyle = i === spec.accent ? spec.gold : spec.ink;
+    ctx.fillText(line, W / 2, top + i * lineH);
+  });
+
+  // A gold rule under the block, and the caption below it.
+  const ruleY = top + spec.lines.length * lineH - lineH * 0.18;
+  ctx.strokeStyle = spec.gold;
+  ctx.lineWidth = Math.max(2, H * 0.006);
+  ctx.beginPath();
+  ctx.moveTo(W * 0.32, ruleY);
+  ctx.lineTo(W * 0.68, ruleY);
+  ctx.stroke();
+
+  if (spec.caption) {
+    ctx.fillStyle = spec.ink;
+    ctx.globalAlpha = 0.62;
+    ctx.font = `500 ${H * 0.032}px ui-sans-serif, system-ui, sans-serif`;
+    ctx.fillText(spec.caption, W / 2, ruleY + H * 0.075);
+    ctx.globalAlpha = 1;
+  }
+
+  const t = new THREE.CanvasTexture(canvas);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  return t;
+}
+
+function Poster({
+  spec,
+  x,
+  y,
+  w,
+  h,
+  rough,
+}: {
+  spec: PosterSpec;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rough: THREE.Texture;
+}) {
+  const texture = useMemo(() => posterTexture(spec, w, h), [spec, w, h]);
+  const frame = useMemo(() => roundedBox(w + 0.1, h + 0.1, 0.05, 0.02, 0.01), [w, h]);
+  return (
+    <group position={[x, y, WALL_Z + 0.03]}>
+      <mesh geometry={frame} castShadow>
+        <meshStandardMaterial color="#2a2523" roughness={0.7} roughnessMap={rough} />
+      </mesh>
+      <mesh position={[0, 0, 0.028]}>
+        <planeGeometry args={[w, h]} />
+        <meshStandardMaterial map={texture} roughness={0.86} />
+      </mesh>
+    </group>
+  );
+}
+
+/*
+ * Hung low enough to be inside the framed views.
+ *
+ * At the height they were first put, the top of every frame sat above where the
+ * Front camera cuts the wall, so all three were beheaded. The centre one has to
+ * clear the machine's crown as well, since it hangs directly behind it.
+ */
+const POSTERS: Array<{ spec: PosterSpec; x: number; y: number; w: number; h: number }> = [
+  {
+    spec: {
+      lines: ['OLD', 'IS', 'GOLD'],
+      accent: 2,
+      paper: '#1d1b19',
+      ink: '#e6e0d4',
+      gold: '#d8a94b',
+      caption: 'BONDI BLUE · 1998',
+    },
+    x: -3.25,
+    y: 2.28,
+    w: 1.3,
+    h: 1.78,
+  },
+  {
+    spec: {
+      lines: ['PRODUCT', 'DESIGN', 'IS GOLD'],
+      accent: 2,
+      paper: '#efe7d7',
+      ink: '#2b2724',
+      gold: '#b8862c',
+      caption: 'FORM FOLLOWS FEELING',
+    },
+    x: 3.25,
+    y: 2.28,
+    w: 1.3,
+    h: 1.78,
+  },
+  {
+    spec: {
+      lines: ['LESS, BUT BETTER'],
+      paper: '#25302f',
+      ink: '#e8efec',
+      gold: '#d8a94b',
+    },
+    x: 0,
+    y: 2.9,
+    w: 1.85,
+    h: 0.66,
+  },
+];
+
 /* ------------------------------ desk things ------------------------------ */
 
 /**
@@ -774,6 +939,9 @@ export default function Room() {
       <ColourFan />
       <Mug rough={props} />
       <PaperAndScale rough={props} />
+      {POSTERS.map((p) => (
+        <Poster key={p.x + ':' + p.y} {...p} rough={props} />
+      ))}
       <Shelves rough={props} />
     </group>
   );
