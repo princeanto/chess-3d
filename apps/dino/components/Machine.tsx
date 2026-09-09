@@ -4,6 +4,7 @@ import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { LIVE_CODES, layoutKeys, type PlacedKey } from '@/lib/scene/keys';
+import Room from './Room';
 
 /**
  * Half-width of the machine at a given depth. 0 is the face, 1 is the tail.
@@ -651,7 +652,7 @@ export function bulgedPlane(w: number, h: number, bulge: number): THREE.BufferGe
   return g;
 }
 
-const roundedShape = (w: number, h: number, r: number): THREE.Shape => {
+export const roundedShape = (w: number, h: number, r: number): THREE.Shape => {
   const s = new THREE.Shape();
   s.moveTo(-w / 2 + r, -h / 2);
   s.lineTo(w / 2 - r, -h / 2);
@@ -1330,107 +1331,6 @@ function Mouse() {
   );
 }
 
-/* -------------------------------- the desk ------------------------------- */
-
-const DESK = { w: 8.4, d: 7.4, cz: 0.25, thickness: 0.14, legInset: 0.62 };
-
-/**
- * The desktop: a rounded slab, with UVs projected straight down.
- *
- * ExtrudeGeometry's own UVs run off the shape's coordinates and would put the
- * gradient on edge-on, so they are replaced with a planar projection. The sides
- * pick up a smear of it, which at 0.14 thick and this dark is not worth a second
- * material to avoid.
- */
-function deskTop(): THREE.BufferGeometry {
-  const bevel = 0.035;
-  const shape = roundedShape(DESK.w, DESK.d, 0.3);
-  const g = new THREE.ExtrudeGeometry(shape, {
-    depth: DESK.thickness,
-    bevelEnabled: true,
-    bevelThickness: bevel,
-    bevelSize: bevel,
-    bevelSegments: 3,
-    curveSegments: 22,
-  });
-  g.rotateX(-Math.PI / 2);
-  // Sit the top face on zero, where everything else already stands.
-  g.translate(0, -(DESK.thickness + bevel), DESK.cz);
-
-  g.computeBoundingBox();
-  const { min, max } = g.boundingBox!;
-  const pos = g.attributes.position;
-  const uv: number[] = [];
-  for (let i = 0; i < pos.count; i += 1) {
-    uv.push(
-      (pos.getX(i) - min.x) / (max.x - min.x),
-      (pos.getZ(i) - min.z) / (max.z - min.z),
-    );
-  }
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-  g.computeVertexNormals();
-  return g;
-}
-
-/**
- * A dark desk in an unlit room.
- *
- * The pool of light on the top is baked into a texture rather than lit, so it
- * stays where it is framed however the camera moves — a real light would slide
- * across the surface as you orbit. The room itself gets only a floor far enough
- * below to catch the legs, which keeps the studio feel the scene had before the
- * desk existed while giving everything something to actually stand on.
- */
-function Desk() {
-  const top = useMemo(() => deskTop(), []);
-  const texture = useMemo(() => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 512;
-    const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, 512, 512);
-    const g = ctx.createRadialGradient(256, 232, 16, 256, 256, 250);
-    g.addColorStop(0, '#2c3034');
-    g.addColorStop(0.42, '#15171a');
-    g.addColorStop(1, '#050506');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, 512, 512);
-    const t = new THREE.CanvasTexture(canvas);
-    t.colorSpace = THREE.SRGBColorSpace;
-    return t;
-  }, []);
-
-  const leg = useMemo(() => frustumY(0.19, 0.19, 0.13, 0.13, 2.7), []);
-  const legX = DESK.w / 2 - DESK.legInset;
-  const legZ = DESK.d / 2 - DESK.legInset;
-
-  return (
-    <group>
-      <mesh geometry={top} receiveShadow castShadow>
-        <meshStandardMaterial map={texture} roughness={0.42} metalness={0.08} />
-      </mesh>
-
-      {[
-        [-legX, DESK.cz - legZ],
-        [legX, DESK.cz - legZ],
-        [-legX, DESK.cz + legZ],
-        [legX, DESK.cz + legZ],
-      ].map(([x, z]) => (
-        <mesh key={`${x},${z}`} geometry={leg} position={[x, -2.87, z]} castShadow>
-          <meshStandardMaterial color="#121417" roughness={0.5} metalness={0.15} />
-        </mesh>
-      ))}
-
-      {/* The room's floor, only there to stop the legs ending in nothing. */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2.88, 0]} receiveShadow>
-        <planeGeometry args={[40, 40]} />
-        <meshStandardMaterial color="#080a0c" roughness={0.85} />
-      </mesh>
-    </group>
-  );
-}
-
 export default function Machine({
   pressedRef,
   onPress,
@@ -1444,7 +1344,7 @@ export default function Machine({
 }) {
   return (
     <group>
-      <Desk />
+      <Room />
       <Body />
       {/* The face plate sits on the flattened front of the shell, tilted with it. */}
       <group position={[0, SCREEN_Y, FRONT_Z]} rotation={[FACE_TILT, 0, 0]}>

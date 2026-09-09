@@ -129,24 +129,36 @@ function Lighting() {
 
   return (
     <>
-      <ambientLight intensity={0.16} color="#c8d8e8" />
-      <hemisphereLight args={['#dceaff', '#05070a', 0.22]} />
+      {/*
+        A lamplit room after dark, so the rig is warm and low.
+
+        The two lamps carry most of it as real point lights inside their shades;
+        this is the soft fill around them. The key comes down from in front and
+        above, at a quarter of the intensity a daylit studio wanted, because the
+        wall's wash and the desk's pool are already painted into their textures
+        and lighting them a second time only flattens both.
+      */}
+      <ambientLight intensity={0.3} color="#ffe3c6" />
+      <hemisphereLight args={['#ffe6cc', '#140d07', 0.26]} />
       <directionalLight
         ref={key}
         castShadow
-        position={[4.5, 7.5, 5.5]}
-        intensity={2.6}
-        color="#ffffff"
+        position={[2.6, 6.4, 4.2]}
+        intensity={0.75}
+        color="#ffe2c0"
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
         shadow-bias={-0.0006}
         shadow-normalBias={0.025}
       />
-      {/* Cool fill from the left keeps the beige from going flat and orange. */}
-      {/* Rim from behind picks the translucent shell off the black ground. */}
-      <directionalLight position={[-5, 3.5, -6]} intensity={1.5} color="#7fd4e8" />
-      <directionalLight position={[6, 2.4, -5]} intensity={0.9} color="#ffd9b0" />
-      <directionalLight position={[-6, 3, 4]} intensity={0.3} color="#cfe0ff" />
+      {/*
+        Two cool slivers, front and back. Under warm light alone the shell's
+        Bondi went to beige and the machine stopped being blue at all; these are
+        what keep the colour in it without cooling the room.
+      */}
+      <directionalLight position={[-5, 3.5, -6]} intensity={0.75} color="#8fc8dc" />
+      <directionalLight position={[-3.5, 3, 6]} intensity={0.5} color="#a8d4e4" />
+      <directionalLight position={[6, 2.2, -4]} intensity={0.35} color="#ffc48c" />
     </>
   );
 }
@@ -361,7 +373,7 @@ export default function Game() {
         }}
         onCreated={({ gl, scene }) => {
           gl.toneMapping = THREE.ACESFilmicToneMapping;
-          gl.toneMappingExposure = 1.02;
+          gl.toneMappingExposure = 0.94;
           gl.shadowMap.type = THREE.PCFSoftShadowMap;
           scene.background = new THREE.Color('#000000');
           scene.fog = new THREE.Fog('#000000', 14, 30);
