@@ -30,8 +30,8 @@ export const VIEWS: View[] = [
   {
     id: 'screen',
     label: 'Screen',
-    position: [0, 1.6, 5.5],
-    target: [0, 1.36, 0.2],
+    position: [0, 1.55, 5.5],
+    target: [0, 1.31, 0.2],
     fov: 34,
   },
   {

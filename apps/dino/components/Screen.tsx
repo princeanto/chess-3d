@@ -43,11 +43,11 @@ export default function Screen({
   });
 
   const picture = useMemo(
-    () => bulgedPlane(SCREEN_SIZE.w, SCREEN_SIZE.h, 0.032),
+    () => bulgedPlane(SCREEN_SIZE.w, SCREEN_SIZE.h, 0.026),
     [],
   );
   const glass = useMemo(
-    () => bulgedPlane(SCREEN_SIZE.w + 0.02, SCREEN_SIZE.h + 0.02, 0.037),
+    () => bulgedPlane(SCREEN_SIZE.w + 0.02, SCREEN_SIZE.h + 0.02, 0.031),
     [],
   );
 
@@ -55,13 +55,14 @@ export default function Screen({
     /*
      * Set back by the bulge.
      *
-     * The face group's zero plane sits exactly on the shell's front surface, so
-     * the tube has to be a shade in front of it or the shell occludes it — set
-     * back by the full bulge, the picture vanished entirely. It sits just proud
-     * instead, with the bulge reduced so the glass crowns a little above the
-     * bezel and its edges fall below, which is where a tube sits in a bezel.
+     * Recessed into the hole now cut through the shell.
+     *
+     * While the panel was solid the picture had to sit in front of it or be
+     * occluded, which is why the whole tube stood off the case. With an
+     * aperture it can drop back behind the panel and let the bezel's inner wall
+     * frame it, with the glass crowning roughly level with the front.
      */
-    <group position={[0, 0, 0.004]}>
+    <group position={[0, 0, -0.03]}>
       {/* The picture is self-lit, so it ignores the room lights entirely. */}
       <mesh geometry={picture}>
         {texture ? (

@@ -46,6 +46,31 @@ function sectionExponent(t: number): number {
 /** How far the shell is lowered so its feet meet the desk. */
 const BODY_DROP = 0.1;
 
+/*
+ * The face.
+ *
+ * The CRT is pushed up the front, leaving a deep chin under it for the CD tray,
+ * the power button and the two speakers. That chin is most of what makes the
+ * front read as an iMac rather than as a generic monitor.
+ *
+ * The tube is sized so the bezel clears the top of the flat panel. An earlier
+ * pass had it 1.26 tall in a face 1.82 tall, which left 0.045 of margin above
+ * it — too little for the panel to reach the bezel's corners and still roll
+ * into the dome, so the top of the surround was sitting on curved shell.
+ */
+export const SCREEN_SIZE = { w: 1.56, h: 1.17 };
+/** World height of the tube's centre. */
+export const SCREEN_Y = 1.37;
+/**
+ * How far the face leans back, in radians.
+ *
+ * Negative: the profile's front edge runs from x 0.09 at the bottom to 0.23 at
+ * the top and shape X points backwards, so going up the face moves away from
+ * the viewer. With the sign the other way the whole chin was rotated *into* the
+ * shell, which is why the CD slot and speakers were invisible.
+ */
+export const FACE_TILT = -0.077;
+
 /**
  * The flat front panel.
  *
@@ -58,9 +83,35 @@ const BODY_DROP = 0.1;
  * So the front is flattened into an actual panel: vertices inside a rounded
  * rectangle are drawn forward onto the face plane, blended over a band at the
  * edge so the shell rolls into it instead of meeting it at a knife edge.
+ *
+ * The rectangle has to cover the bezel's corners with the mask still at full
+ * strength, or the surround ends up part on flat panel and part on curved
+ * shell, and the band has to be wide enough that the roll off its edge reads as
+ * a radius rather than as a crease.
  */
 const FACE_SLOPE = 0.14 / 1.82;
-const PANEL = { cy: 1.35, halfW: 1.02, halfH: 0.9, radius: 0.36, band: 0.13 };
+const PANEL = { cy: 1.35, halfW: 1.05, halfH: 0.95, radius: 0.34, band: 0.16 };
+
+/**
+ * The hole the tube sits in.
+ *
+ * Cut a little wider than the bezel ring's inner opening so the ring's annulus
+ * covers the cut edge. Without a real aperture the tube could only ever sit in
+ * *front* of the panel — a black surround standing proud of the case — because
+ * anything set back was simply occluded by the solid shell.
+ */
+const APERTURE = {
+  cy: SCREEN_Y + BODY_DROP,
+  halfW: SCREEN_SIZE.w / 2 + 0.03,
+  halfH: SCREEN_SIZE.h / 2 + 0.03,
+  radius: 0.12,
+};
+
+function inAperture(px: number, py: number): boolean {
+  const dx = Math.max(0, Math.abs(px) - (APERTURE.halfW - APERTURE.radius));
+  const dy = Math.max(0, Math.abs(py - APERTURE.cy) - (APERTURE.halfH - APERTURE.radius));
+  return Math.hypot(dx, dy) - APERTURE.radius < 0;
+}
 
 /** 1 well inside the panel, 0 well outside it. */
 function panelMask(px: number, py: number): number {
@@ -208,6 +259,8 @@ function bodySurface(): THREE.BufferGeometry {
 
   const position: number[] = [];
   const uv: number[] = [];
+  /** Vertices that fall in the tube's hole, on the panel rather than at the back. */
+  const cut: boolean[] = [];
   for (let i = 0; i <= NZ; i += 1) {
     // Biased toward the front, where the slanted face needs the resolution.
     const t = Math.pow(i / NZ, 1.5);
@@ -250,6 +303,7 @@ function bodySurface(): THREE.BufferGeometry {
         pz = z + gap * panelMask(px, py) * near * near;
       }
       position.push(px, py, pz);
+      cut.push(z > -0.06 && inAperture(px, py));
       // Projected straight down the machine's axis, so the ribs run vertically
       // across the face — which is the only place they are meant to read.
       uv.push((px / HALF_W) * 0.5 + 0.5, py * 0.5);
@@ -263,6 +317,9 @@ function bodySurface(): THREE.BufferGeometry {
       const b = i * NA + ((j + 1) % NA);
       const c = (i + 1) * NA + j;
       const d = (i + 1) * NA + ((j + 1) % NA);
+      // Drop the quad only when the whole of it is inside the hole, so the rim
+      // keeps a complete row of triangles for the bezel to land on.
+      if (cut[a] && cut[b] && cut[c] && cut[d]) continue;
       index.push(a, c, b, b, c, d);
     }
   }
@@ -330,25 +387,6 @@ const FROST = '#d5dddf';
 const KEYCAP = '#e9ece9';
 const KEYCAP_LIVE = '#bcd6dc';
 
-/*
- * The face.
- *
- * The CRT is pushed up the front, leaving a deep chin under it for the CD tray,
- * the power button and the two speakers. That chin is most of what makes the
- * front read as an iMac rather than as a generic monitor.
- */
-export const SCREEN_SIZE = { w: 1.68, h: 1.26 };
-/** World height of the tube's centre. */
-export const SCREEN_Y = 1.42;
-/**
- * How far the face leans back, in radians.
- *
- * Negative: the profile's front edge runs from x 0.09 at the bottom to 0.23 at
- * the top and shape X points backwards, so going up the face moves away from
- * the viewer. With the sign the other way the whole chin was rotated *into* the
- * shell, which is why the CD slot and speakers were invisible.
- */
-export const FACE_TILT = -0.077;
 
 /* ------------------------------ body shell ------------------------------ */
 
@@ -594,13 +632,12 @@ function BezelRing() {
     /*
      * Sunk so the ring's front face finishes flush with the shell.
      *
-     * The extrusion runs from -0.04 to +0.09 in its own space, so anything much
-     * less than -0.09 leaves it standing off the machine — the bezel had been a
-     * slab sitting on the front casting its own shadow, rather than a surround
-     * cut into the panel. The last few thousandths keep it off the shell's own
-     * surface, which the group's zero plane sits exactly on.
+     * The extrusion runs from -0.04 to +0.09 in its own space. Sunk so the rim
+     * finishes a whisker proud of the panel and the rest of it lines the hole,
+     * which is what turns the ring into a well the tube can sit down inside
+     * rather than a slab laid on the front of the machine.
      */
-    <mesh geometry={geometry} position={[0, 0, -0.078]}>
+    <mesh geometry={geometry} position={[0, 0, -0.088]}>
       <meshPhysicalMaterial color="#23282b" roughness={0.5} clearcoat={0.4} />
     </mesh>
   );
@@ -728,7 +765,7 @@ function Chin() {
         around each one, which is most of what gives the front its face.
       */}
       {[-0.64, 0.64].map((x) => (
-        <group key={x} position={[x, ceiling - 0.3, z]} scale={[1, 1, 0.26]}>
+        <group key={x} position={[x, ceiling - 0.26, z]} scale={[1, 1, 0.26]}>
           <mesh castShadow>
             <sphereGeometry args={[0.15, 26, 20]} />
             <meshPhysicalMaterial color={FROST} roughness={0.42} clearcoat={0.5} />
