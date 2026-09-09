@@ -121,12 +121,13 @@ function Lighting() {
     const light = key.current;
     if (!light) return;
     const cam = light.shadow.camera;
-    cam.left = -9;
-    cam.right = 9;
-    cam.top = 9;
-    cam.bottom = -9;
+    // Wide enough for the whole room, not just the desk.
+    cam.left = -15;
+    cam.right = 15;
+    cam.top = 15;
+    cam.bottom = -15;
     cam.near = 1;
-    cam.far = 30;
+    cam.far = 60;
     cam.updateProjectionMatrix();
   }, []);
 
@@ -143,10 +144,12 @@ function Lighting() {
       */}
       <ambientLight intensity={0.62} color="#ffe7d0" />
       <hemisphereLight args={['#ffeeda', '#2a1f14', 0.5]} />
+      {/* Same direction as before, moved out so its shadow camera can cover the
+          whole room rather than just the desk. */}
       <directionalLight
         ref={key}
         castShadow
-        position={[2.6, 6.4, 4.2]}
+        position={[9.2, 22.6, 14.8]}
         intensity={1.05}
         color="#ffe2c0"
         shadow-mapSize-width={2048}
@@ -379,7 +382,14 @@ export default function Game() {
           gl.toneMappingExposure = 0.94;
           gl.shadowMap.type = THREE.PCFSoftShadowMap;
           scene.background = new THREE.Color('#000000');
-          scene.fog = new THREE.Fog('#000000', 14, 30);
+          /*
+           * No fog.
+           *
+           * It existed to hide the horizon of an infinite floor. The room is a
+           * bounded box now, and the fog ended at 30 units — which put the
+           * isometric camera, 50 out, behind a wall of black. The room simply
+           * did not render.
+           */
         }}
       >
         <CameraRig view={view} free={free} look={look} />

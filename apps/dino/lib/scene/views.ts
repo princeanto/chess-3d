@@ -63,6 +63,21 @@ export const VIEWS: View[] = [
     fov: 36,
   },
   {
+    /*
+     * The whole room as a diorama.
+     *
+     * Isometric in feel rather than in fact: a long lens from a long way out is
+     * close enough to parallel, and it keeps one perspective camera for every
+     * viewpoint instead of swapping projections mid-flight. The distance is
+     * what buys the parallelism — 50 units out at 19 degrees, not 30 at 27.
+     */
+    id: 'room',
+    label: 'Room',
+    position: [30, 26, 33],
+    target: [0, 0.5, 1.5],
+    fov: 19,
+  },
+  {
     id: 'desk',
     label: 'Overhead',
     position: [0, 7.0, 4.4],

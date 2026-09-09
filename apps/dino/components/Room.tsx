@@ -20,6 +20,16 @@ import { frustumY, roundedShape } from './Machine';
 const DESK = { w: 8.4, d: 7.4, cz: 0.25, thickness: 0.14 };
 const WALL_Z = -3.62;
 
+/**
+ * The room's shell, as a cutaway box.
+ *
+ * Only the two far walls exist, and both are single-sided planes facing inward.
+ * That is what lets the isometric view look into the corner while every
+ * ground-level viewpoint — several of which sit outside these bounds — carries
+ * on seeing straight through them. A solid wall would black those shots out.
+ */
+const ROOM = { x0: -6.9, x1: 6.9, z0: WALL_Z, z1: 7.4, floorY: -2.88, wallTop: 6.2 };
+
 /* ------------------------------- materials ------------------------------- */
 
 /**
@@ -35,11 +45,20 @@ function mottle(size = 256, strength = 0.25, blobs = 900): THREE.CanvasTexture {
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = '#808080';
+  /*
+   * Near-white, not mid-grey.
+   *
+   * A roughness map multiplies the material's own roughness, so a 50% grey
+   * base halved it everywhere — a mat set to 0.99 was actually rendering at
+   * 0.5 and picking up broad specular patches off the lamps. That is what had
+   * looked like staining through several attempts at toning the map down: the
+   * variation was never the problem, the base level was.
+   */
+  ctx.fillStyle = '#f2f2f2';
   ctx.fillRect(0, 0, size, size);
   for (let i = 0; i < blobs; i += 1) {
     const light = Math.random() < 0.5;
-    const a = Math.random() * 0.09 * strength;
+    const a = Math.random() * 0.085 * strength;
     ctx.fillStyle = light ? `rgba(255,255,255,${a})` : `rgba(0,0,0,${a})`;
     ctx.beginPath();
     ctx.arc(
@@ -183,6 +202,35 @@ function useWall(): { map: THREE.CanvasTexture; rough: THREE.CanvasTexture } {
   }, []);
 }
 
+/** The side wall: same paint, no lamp pools baked into it. */
+function useSideWall(): THREE.CanvasTexture {
+  return useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#2b2015';
+    ctx.fillRect(0, 0, 512, 512);
+    const g = ctx.createLinearGradient(0, 512, 0, 0);
+    g.addColorStop(0, 'rgba(216, 182, 138, 0.8)');
+    g.addColorStop(0.5, 'rgba(190, 158, 118, 0.58)');
+    g.addColorStop(1, 'rgba(104, 80, 54, 0.3)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 512, 512);
+    for (let i = 0; i < 2600; i += 1) {
+      ctx.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '0,0,0'},${
+        Math.random() * 0.035
+      })`;
+      ctx.beginPath();
+      ctx.arc(Math.random() * 512, Math.random() * 512, 0.5 + Math.random() * 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    const t = new THREE.CanvasTexture(canvas);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, []);
+}
+
 /* -------------------------------- helpers -------------------------------- */
 
 /** A box with its edges taken off, standing in XY and extruded along Z. */
@@ -303,7 +351,7 @@ function Lamp({ x, z, rough }: { x: number; z: number; rough: THREE.Texture }) {
           map={shade}
           emissive="#ffffff"
           emissiveMap={shade}
-          emissiveIntensity={1.25}
+          emissiveIntensity={0.95}
           roughness={0.92}
           side={THREE.DoubleSide}
         />
@@ -335,7 +383,7 @@ function Speaker({
   return (
     <group position={[x, 0, z]} rotation={[0, flip * 0.16, 0]}>
       <mesh geometry={cabinet} position={[0, 0.52, 0]} castShadow receiveShadow>
-        <meshStandardMaterial color="#e4e0d8" roughness={0.66} roughnessMap={rough} />
+        <meshStandardMaterial color="#e4e0d8" roughness={0.8} roughnessMap={rough} />
       </mesh>
       <mesh geometry={baffle} position={[0, 0.52, 0.362]}>
         <meshStandardMaterial color="#dcd7ce" roughness={0.72} roughnessMap={rough} />
@@ -402,7 +450,13 @@ function Clock({ rough }: { rough: THREE.Texture }) {
 
 /** Felt mat, with the overlocked edge these always have. */
 function DeskMat() {
-  const felt = useMemo(() => mottle(512, 0.22, 2600), []);
+  const felt = useMemo(() => {
+    const t = mottle(512, 0.22, 2600);
+    // Tiled, not stretched: one copy across a mat this size makes each blob a
+    // handspan wide, which reads as a stain rather than as a nap.
+    t.repeat.set(7, 2.4);
+    return t;
+  }, []);
   const pad = useMemo(() => {
     const g = new THREE.ExtrudeGeometry(roundedShape(6.2, 2.15, 0.1), {
       depth: 0.014,
@@ -420,6 +474,273 @@ function DeskMat() {
       <mesh geometry={pad} receiveShadow>
         <meshStandardMaterial color="#33322f" roughness={0.99} roughnessMap={felt} />
       </mesh>
+    </group>
+  );
+}
+
+/* --------------------------------- shell --------------------------------- */
+
+/** Pale boards, running front to back. */
+function useFloorBoards(): THREE.CanvasTexture {
+  return useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 1024;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#b9a храм'.slice(0, 7);
+    ctx.fillStyle = '#b9a488';
+    ctx.fillRect(0, 0, 1024, 1024);
+    // Boards, with staggered end joints so it is laid rather than printed.
+    const bw = 1024 / 9;
+    for (let b = 0; b < 9; b += 1) {
+      const shade = 0.9 + ((b * 37) % 20) / 100;
+      ctx.fillStyle = `rgba(${Math.round(185 * shade)}, ${Math.round(164 * shade)}, ${Math.round(136 * shade)}, 1)`;
+      ctx.fillRect(b * bw, 0, bw - 1.5, 1024);
+      ctx.strokeStyle = 'rgba(74, 56, 36, 0.5)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(b * bw, 0);
+      ctx.lineTo(b * bw, 1024);
+      ctx.stroke();
+      let y = ((b * 211) % 400) - 200;
+      while (y < 1024) {
+        ctx.beginPath();
+        ctx.moveTo(b * bw, y);
+        ctx.lineTo(b * bw + bw - 1.5, y);
+        ctx.stroke();
+        y += 330 + ((b * 97) % 160);
+      }
+    }
+    for (let i = 0; i < 900; i += 1) {
+      ctx.strokeStyle = `rgba(96, 74, 48, ${0.02 + Math.random() * 0.07})`;
+      ctx.lineWidth = 0.5 + Math.random();
+      const x = Math.random() * 1024;
+      ctx.beginPath();
+      ctx.moveTo(x, Math.random() * 1024);
+      ctx.lineTo(x + (Math.random() - 0.5) * 6, Math.random() * 1024);
+      ctx.stroke();
+    }
+    const t = new THREE.CanvasTexture(canvas);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 8;
+    return t;
+  }, []);
+}
+
+function Shell({ rough }: { rough: THREE.Texture }) {
+  const boards = useFloorBoards();
+  const side = useSideWall();
+  const w = ROOM.x1 - ROOM.x0;
+  const d = ROOM.z1 - ROOM.z0;
+  const h = ROOM.wallTop - ROOM.floorY;
+  const cx = (ROOM.x0 + ROOM.x1) / 2;
+  const cz = (ROOM.z0 + ROOM.z1) / 2;
+  const cy = (ROOM.floorY + ROOM.wallTop) / 2;
+
+  return (
+    <group>
+      {/* Floor slab, thick enough to show an edge from above. */}
+      <mesh position={[cx, ROOM.floorY - 0.2, cz]} receiveShadow castShadow>
+        <boxGeometry args={[w, 0.4, d]} />
+        <meshStandardMaterial map={boards} roughnessMap={rough} roughness={0.9} />
+      </mesh>
+
+      {/* Left wall, inward-facing only. */}
+      <mesh position={[ROOM.x0, cy, cz]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
+        <planeGeometry args={[d, h]} />
+        <meshStandardMaterial map={side} roughnessMap={rough} roughness={0.95} />
+      </mesh>
+
+      {/*
+        Capping strips along the tops of both walls, facing up. They are what
+        make the cutaway read as a box with walls rather than as two flat
+        backdrops, and being one-sided they stay invisible from below.
+      */}
+      <mesh
+        position={[cx, ROOM.wallTop, ROOM.z0 - 0.16]}
+        rotation={[-Math.PI / 2, 0, 0]}
+      >
+        <planeGeometry args={[w + 0.32, 0.32]} />
+        <meshStandardMaterial color="#e0cbaa" roughness={0.9} />
+      </mesh>
+      <mesh
+        position={[ROOM.x0 - 0.16, ROOM.wallTop, cz]}
+        rotation={[-Math.PI / 2, 0, Math.PI / 2]}
+      >
+        <planeGeometry args={[d, 0.32]} />
+        <meshStandardMaterial color="#e0cbaa" roughness={0.9} />
+      </mesh>
+
+      {/* Skirting, where each wall meets the floor. */}
+      <mesh position={[cx, ROOM.floorY + 0.17, ROOM.z0 + 0.06]} castShadow>
+        <boxGeometry args={[w, 0.34, 0.12]} />
+        <meshStandardMaterial color="#e6d6bc" roughness={0.8} roughnessMap={rough} />
+      </mesh>
+      <mesh position={[ROOM.x0 + 0.06, ROOM.floorY + 0.17, cz]} castShadow>
+        <boxGeometry args={[0.12, 0.34, d]} />
+        <meshStandardMaterial color="#e6d6bc" roughness={0.8} roughnessMap={rough} />
+      </mesh>
+    </group>
+  );
+}
+
+/* --------------------------------- floor --------------------------------- */
+
+/** A rug under the desk, and the chair pulled out from it. */
+function Rug({ rough }: { rough: THREE.Texture }) {
+  const border = useMemo(() => {
+    const outer = roundedShape(8.8, 5.6, 0.34);
+    outer.holes.push(new THREE.Path(roundedShape(8.3, 5.1, 0.3).getPoints(40)));
+    const g = new THREE.ExtrudeGeometry(outer, { depth: 0.004, bevelEnabled: false, curveSegments: 12 });
+    g.rotateX(-Math.PI / 2);
+    return g;
+  }, []);
+  const geometry = useMemo(() => {
+    const g = new THREE.ExtrudeGeometry(roundedShape(9.4, 6.2, 0.4), {
+      depth: 0.05,
+      bevelEnabled: true,
+      bevelThickness: 0.014,
+      bevelSize: 0.014,
+      bevelSegments: 2,
+      curveSegments: 12,
+    });
+    g.rotateX(-Math.PI / 2);
+    return g;
+  }, []);
+  return (
+    <group position={[0, ROOM.floorY, 2.4]}>
+      <mesh geometry={geometry} receiveShadow>
+        <meshStandardMaterial color="#cfc5b3" roughness={0.98} roughnessMap={rough} />
+      </mesh>
+      {/* A woven border, a shade darker, inset from the edge. */}
+      <mesh geometry={border} position={[0, 0.055, 0]} receiveShadow>
+        <meshStandardMaterial color="#b7ab95" roughness={0.98} roughnessMap={rough} />
+      </mesh>
+    </group>
+  );
+}
+
+function Chair({ rough }: { rough: THREE.Texture }) {
+  const seat = useMemo(() => roundedBox(1.6, 1.5, 0.22, 0.22, 0.05), []);
+  const back = useMemo(() => roundedBox(1.5, 1.75, 0.16, 0.28, 0.045), []);
+  // Seat height comes from the desk: the top is 2.88 above the floor, which is
+  // 740mm, so a 450mm seat sits 1.75 units up.
+  const seatY = ROOM.floorY + 1.75;
+  return (
+    <group position={[0.4, 0, 4.15]} rotation={[0, Math.PI + 0.12, 0]}>
+      <mesh geometry={seat} position={[0, seatY, 0]} rotation={[-Math.PI / 2, 0, 0]} castShadow>
+        <meshStandardMaterial color="#eae6de" roughness={0.78} roughnessMap={rough} />
+      </mesh>
+      <mesh geometry={back} position={[0, seatY + 0.95, -0.66]} rotation={[-0.16, 0, 0]} castShadow>
+        <meshStandardMaterial color="#eae6de" roughness={0.78} roughnessMap={rough} />
+      </mesh>
+      <mesh position={[0, seatY - 0.55, 0]} castShadow>
+        <cylinderGeometry args={[0.11, 0.13, 1.0, 16]} />
+        <meshStandardMaterial color="#3d3f42" roughness={0.4} metalness={0.5} />
+      </mesh>
+      {[0, 1, 2, 3, 4].map((i) => {
+        const a = (i / 5) * Math.PI * 2;
+        return (
+          <group key={i} rotation={[0, a, 0]}>
+            <mesh position={[0, ROOM.floorY + 0.22, 0.44]} castShadow>
+              <boxGeometry args={[0.12, 0.09, 0.88]} />
+              <meshStandardMaterial color="#3d3f42" roughness={0.45} metalness={0.4} />
+            </mesh>
+            <mesh position={[0, ROOM.floorY + 0.1, 0.86]}>
+              <cylinderGeometry args={[0.1, 0.1, 0.07, 14]} />
+              <meshStandardMaterial color="#26282b" roughness={0.6} />
+            </mesh>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+/** A tall plant in the corner, and a standing lamp opposite it. */
+function FloorPieces({ rough }: { rough: THREE.Texture }) {
+  const leaf = useMemo(() => {
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 0);
+    shape.bezierCurveTo(0.34, 0.36, 0.74, 0.28, 1, 0);
+    shape.bezierCurveTo(0.74, -0.28, 0.34, -0.36, 0, 0);
+    const g = new THREE.ExtrudeGeometry(shape, {
+      depth: 0.014,
+      bevelEnabled: false,
+      curveSegments: 10,
+    });
+    g.computeVertexNormals();
+    return g;
+  }, []);
+
+  const fronds = useMemo(() => {
+    const rng = (n: number) => (((Math.sin(n * 45.31) * 43758.5453) % 1) + 1) % 1;
+    return Array.from({ length: 22 }, (_, i) => {
+      const a = (i / 22) * Math.PI * 2 + rng(i) * 0.4;
+      const lift = 0.5 + rng(i + 5) * 1.5;
+      const reach = 0.5 + rng(i + 9) * 0.75;
+      return {
+        p: [Math.cos(a) * reach, ROOM.floorY + 1.1 + lift, Math.sin(a) * reach] as [
+          number,
+          number,
+          number,
+        ],
+        rot: [rng(i + 2) * 1.1 - 0.55, -a, 0.5 + rng(i + 7) * 0.7] as [number, number, number],
+        s: 0.42 + rng(i + 11) * 0.3,
+        dark: i % 3 === 0,
+      };
+    });
+  }, []);
+
+  return (
+    <group>
+      <group position={[-5.5, 0, 2.9]}>
+        <mesh position={[0, ROOM.floorY + 0.55, 0]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.62, 0.48, 1.1, 26]} />
+          <meshStandardMaterial color="#d9cfc0" roughness={0.86} roughnessMap={rough} />
+        </mesh>
+        <mesh position={[0, ROOM.floorY + 1.08, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[0.6, 24]} />
+          <meshStandardMaterial color="#3a2c1e" roughness={0.95} />
+        </mesh>
+        {fronds.map((f, i) => (
+          <mesh key={i} geometry={leaf} position={f.p} rotation={f.rot} scale={f.s} castShadow>
+            <meshStandardMaterial
+              color={f.dark ? '#2f5230' : '#3f6f3a'}
+              roughness={0.66}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+        ))}
+      </group>
+
+      <group position={[5.6, 0, 3.4]}>
+        <mesh position={[0, ROOM.floorY + 0.05, 0]} castShadow>
+          <cylinderGeometry args={[0.5, 0.55, 0.1, 24]} />
+          <meshStandardMaterial color="#37383b" roughness={0.5} metalness={0.4} />
+        </mesh>
+        <mesh position={[0, ROOM.floorY + 2.0, 0]} castShadow>
+          <cylinderGeometry args={[0.05, 0.05, 3.9, 14]} />
+          <meshStandardMaterial color="#37383b" roughness={0.45} metalness={0.5} />
+        </mesh>
+        <mesh position={[0, ROOM.floorY + 4.1, 0]} castShadow>
+          <cylinderGeometry args={[0.62, 0.5, 0.9, 30, 1, true]} />
+          <meshStandardMaterial
+            color="#fff1da"
+            emissive="#ffc078"
+            emissiveIntensity={0.85}
+            roughness={0.9}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+        <pointLight
+          position={[0, ROOM.floorY + 4.0, 0]}
+          intensity={7}
+          distance={11}
+          decay={1.9}
+          color="#ffbe80"
+        />
+      </group>
     </group>
   );
 }
@@ -881,7 +1202,7 @@ function Shelves({ rough }: { rough: THREE.Texture }) {
     <group>
       {SHELF_Y.map((y) => (
         <mesh key={y} geometry={plank} position={[0, y, WALL_Z + 0.3]} castShadow receiveShadow>
-          <meshStandardMaterial color="#7d5730" roughness={0.76} roughnessMap={rough} />
+          <meshStandardMaterial color="#7d5730" roughness={0.88} roughnessMap={rough} />
         </mesh>
       ))}
 
@@ -996,7 +1317,11 @@ function Plant({ rough }: { rough: THREE.Texture }) {
 export default function Room() {
   const wood = useWood();
   const wall = useWall();
-  const props = useMemo(() => mottle(256, 0.35, 1100), []);
+  const props = useMemo(() => {
+    const t = mottle(256, 0.35, 1100);
+    t.repeat.set(3, 3);
+    return t;
+  }, []);
   const top = useMemo(() => deskTop(), []);
   const leg = useMemo(() => frustumY(0.19, 0.19, 0.13, 0.13, 2.7), []);
   const legX = DESK.w / 2 - 0.62;
@@ -1004,8 +1329,11 @@ export default function Room() {
 
   return (
     <group>
-      <mesh position={[0, 2.6, WALL_Z]} receiveShadow>
-        <planeGeometry args={[24, 13]} />
+      <mesh
+        position={[0, (ROOM.floorY + ROOM.wallTop) / 2, WALL_Z]}
+        receiveShadow
+      >
+        <planeGeometry args={[ROOM.x1 - ROOM.x0, ROOM.wallTop - ROOM.floorY]} />
         <meshStandardMaterial map={wall.map} roughnessMap={wall.rough} roughness={0.96} />
       </mesh>
 
@@ -1013,8 +1341,13 @@ export default function Room() {
         <meshStandardMaterial
           map={wood.map}
           roughnessMap={wood.rough}
-          roughness={0.58}
-          metalness={0.02}
+          /*
+           * Matte. Around 0.5 a standard material's specular lobe is at its
+           * broadest, so an oiled-looking desk came out marbled with soft grey
+           * patches wherever a lamp could see it. Wood at this scale is 0.85+.
+           */
+          roughness={0.88}
+          metalness={0}
         />
       </mesh>
 
@@ -1025,14 +1358,11 @@ export default function Room() {
         [legX, DESK.cz + legZ],
       ].map(([x, z]) => (
         <mesh key={`${x},${z}`} geometry={leg} position={[x, -2.87, z]} castShadow>
-          <meshStandardMaterial color="#6b4a28" roughness={0.78} roughnessMap={props} />
+          <meshStandardMaterial color="#6b4a28" roughness={0.9} roughnessMap={props} />
         </mesh>
       ))}
 
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2.88, 0]} receiveShadow>
-        <planeGeometry args={[40, 40]} />
-        <meshStandardMaterial color="#2a2015" roughness={0.94} />
-      </mesh>
+      <Shell rough={props} />
 
       {/*
         The room's own light, above and behind the camera's usual line. Its
@@ -1064,6 +1394,9 @@ export default function Room() {
       {POSTERS.map((p) => (
         <Poster key={p.x + ':' + p.y} {...p} rough={props} />
       ))}
+      <Rug rough={props} />
+      <Chair rough={props} />
+      <FloorPieces rough={props} />
       <Shelves rough={props} />
     </group>
   );
