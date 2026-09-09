@@ -15,7 +15,16 @@ import { LIVE_CODES, layoutKeys, type PlacedKey } from '@/lib/scene/keys';
 const HALF_W = 1.125;
 
 function halfWidthAt(t: number): number {
-  const nose = 0.93 + 0.07 * Math.min(1, t / 0.14);
+  /*
+   * The nose has to close in plan as well as in section.
+   *
+   * At the front the profile's section has almost no height — it is the edge
+   * where the face turns under — but the width was still 93% of maximum there,
+   * so the machine's leading feature was a razor-thin blade 2.09 across whose
+   * ends showed as beaks at the bottom corners of the front. Tapering to
+   * nothing over the first 3% of the depth rounds that edge off in plan.
+   */
+  const nose = Math.pow(Math.min(1, t / 0.03), 0.42);
   return HALF_W * nose * Math.pow(Math.max(0, 1 - Math.pow(t, 2.4)), 0.4);
 }
 
@@ -104,7 +113,23 @@ export const FACE_TILT = -Math.atan(FACE_SLOPE);
  * boundary landed on the silhouette as a knife edge instead of rolling into the
  * dome. Full strength out to the bezel at 0.845, nothing left by 1.00.
  */
-const PANEL = { cy: 1.31, halfW: 0.9225, halfH: 0.898, radius: 0.12, band: 0.078 };
+const PANEL = {
+  cy: 1.31,
+  halfW: 0.9225,
+  halfH: 0.898,
+  /*
+   * Different corner radii top and bottom.
+   *
+   * The bezel comes within 0.07 of the panel's top corners, so a generous
+   * radius there would pull the mask off the surround. Below the tube there is
+   * a third of the face free, and with the same tight radius the panel's bottom
+   * corners came to a point — the front ended in a beak where it should have
+   * turned into the underside.
+   */
+  radiusTop: 0.12,
+  radiusBottom: 0.34,
+  band: 0.078,
+};
 
 /**
  * The hole the tube sits in.
@@ -129,9 +154,10 @@ function inAperture(px: number, py: number): boolean {
 
 /** 1 well inside the panel, 0 well outside it. */
 function panelMask(px: number, py: number): number {
-  const dx = Math.max(0, Math.abs(px) - (PANEL.halfW - PANEL.radius));
-  const dy = Math.max(0, Math.abs(py - PANEL.cy) - (PANEL.halfH - PANEL.radius));
-  const dist = Math.hypot(dx, dy) - PANEL.radius;
+  const r = py < PANEL.cy ? PANEL.radiusBottom : PANEL.radiusTop;
+  const dx = Math.max(0, Math.abs(px) - (PANEL.halfW - r));
+  const dy = Math.max(0, Math.abs(py - PANEL.cy) - (PANEL.halfH - r));
+  const dist = Math.hypot(dx, dy) - r;
   const u = Math.min(1, Math.max(0, (PANEL.band - dist) / (2 * PANEL.band)));
   return u * u * (3 - 2 * u);
 }
@@ -197,7 +223,7 @@ function flankX(y: number, z: number): number {
   const q = Math.min(1, Math.abs(y - cy) / ry);
   const w = 0.5 + 0.5 * ((y - cy) / ry);
   const ease = w * w * (3 - 2 * w);
-  const n = 4.2 + (sectionExponent(t) - 4.2) * ease;
+  const n = 3.6 + (sectionExponent(t) - 3.6) * ease;
   return halfWidthAt(t) * Math.pow(Math.max(0, 1 - Math.pow(q, n)), 1 / n);
 }
 
@@ -264,7 +290,7 @@ function undersideY(px: number, z: number): number {
   for (let k = 0; k < 4; k += 1) {
     const w = 0.5 + 0.5 * ((y - cy) / ry);
     const ease = w * w * (3 - 2 * w);
-    const n = 4.2 + (sectionExponent(t) - 4.2) * ease;
+    const n = 3.6 + (sectionExponent(t) - 3.6) * ease;
     y = cy - ry * Math.pow(Math.max(0, 1 - Math.pow(q, n)), 1 / n);
   }
   return y;
@@ -303,7 +329,7 @@ function bodySurface(): THREE.BufferGeometry {
        */
       const w = 0.5 + 0.5 * sn;
       const ease = w * w * (3 - 2 * w);
-      const k = 2 / (4.2 + (sectionExponent(t) - 4.2) * ease);
+      const k = 2 / (3.6 + (sectionExponent(t) - 3.6) * ease);
       const px = Math.sign(c) * Math.pow(Math.abs(c), k) * rx;
       const py = cy + Math.sign(sn) * Math.pow(Math.abs(sn), k) * ry;
       /*
