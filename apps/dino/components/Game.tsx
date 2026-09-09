@@ -135,19 +135,19 @@ function Lighting() {
       {/*
         A lamplit room after dark, so the rig is warm and low.
 
-        The two lamps carry most of it as real point lights inside their shades;
-        this is the soft fill around them. The key comes down from in front and
-        above, at a quarter of the intensity a daylit studio wanted, because the
-        wall's wash and the desk's pool are already painted into their textures
-        and lighting them a second time only flattens both.
+        The two desk lamps and a fitting over the desk carry it as real lights;
+        this is the fill around them. It stays warm and well under a daylit
+        studio's key, because the wall's wash and the desk's pool are painted
+        into their textures and lighting them a second time flattens both — but
+        it is no longer so low that the room goes black a metre from the desk.
       */}
-      <ambientLight intensity={0.3} color="#ffe3c6" />
-      <hemisphereLight args={['#ffe6cc', '#140d07', 0.26]} />
+      <ambientLight intensity={0.62} color="#ffe7d0" />
+      <hemisphereLight args={['#ffeeda', '#2a1f14', 0.5]} />
       <directionalLight
         ref={key}
         castShadow
         position={[2.6, 6.4, 4.2]}
-        intensity={0.75}
+        intensity={1.05}
         color="#ffe2c0"
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}

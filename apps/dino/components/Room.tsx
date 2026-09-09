@@ -121,9 +121,9 @@ function useWood(): { map: THREE.CanvasTexture; rough: THREE.CanvasTexture } {
 
     // The lamps' pool, baked so it stays where it is framed.
     const pool = ctx.createRadialGradient(512, 330, 40, 512, 470, 640);
-    pool.addColorStop(0, 'rgba(255, 228, 188, 0.26)');
-    pool.addColorStop(0.45, 'rgba(186, 146, 100, 0.08)');
-    pool.addColorStop(1, 'rgba(18, 12, 6, 0.68)');
+    pool.addColorStop(0, 'rgba(255, 230, 192, 0.24)');
+    pool.addColorStop(0.45, 'rgba(190, 152, 106, 0.06)');
+    pool.addColorStop(1, 'rgba(20, 14, 8, 0.4)');
     ctx.fillStyle = pool;
     ctx.fillRect(0, 0, 1024, 1024);
 
@@ -142,13 +142,24 @@ function useWall(): { map: THREE.CanvasTexture; rough: THREE.CanvasTexture } {
     canvas.width = 1024;
     canvas.height = 1024;
     const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#181109';
+    ctx.fillStyle = '#2b2015';
     ctx.fillRect(0, 0, 1024, 1024);
-    // Two overlapping washes from the lamps, brightest a little above the desk.
+    /*
+     * A broad wash over the whole wall first, then the two lamp pools on top.
+     *
+     * With only the pools the room went black a metre either side of the desk
+     * and read as a lit table in a void rather than as a room.
+     */
+    const room = ctx.createLinearGradient(0, 1024, 0, 0);
+    room.addColorStop(0, 'rgba(214, 178, 132, 0.82)');
+    room.addColorStop(0.45, 'rgba(186, 152, 112, 0.6)');
+    room.addColorStop(1, 'rgba(96, 72, 48, 0.28)');
+    ctx.fillStyle = room;
+    ctx.fillRect(0, 0, 1024, 1024);
     for (const cx of [318, 706]) {
-      const g = ctx.createRadialGradient(cx, 700, 20, cx, 660, 560);
-      g.addColorStop(0, 'rgba(246, 229, 202, 0.9)');
-      g.addColorStop(0.4, 'rgba(194, 162, 124, 0.38)');
+      const g = ctx.createRadialGradient(cx, 700, 20, cx, 660, 600);
+      g.addColorStop(0, 'rgba(252, 238, 214, 0.88)');
+      g.addColorStop(0.4, 'rgba(206, 176, 138, 0.4)');
       g.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, 1024, 1024);
@@ -416,7 +427,9 @@ function DeskMat() {
 /* -------------------------------- posters -------------------------------- */
 
 interface PosterSpec {
-  lines: string[];
+  /** 'bars' and 'grid' are wordless prints, to break up a wall of slogans. */
+  kind?: 'type' | 'bars' | 'grid';
+  lines?: string[];
   /** Which line to set in gold; the rest sit in the body colour. */
   accent?: number;
   paper: string;
@@ -444,6 +457,38 @@ function posterTexture(spec: PosterSpec, w: number, h: number): THREE.CanvasText
   ctx.fillStyle = spec.paper;
   ctx.fillRect(0, 0, W, H);
 
+  if (spec.kind === 'bars') {
+    // Bands of colour, unequal, with a wide margin: a swatch print.
+    const palette = [spec.gold, spec.ink, '#3f7f8c', '#b8543f', '#6d7f4a', '#8a6ba8'];
+    const m = W * 0.12;
+    const inner = H - m * 2;
+    let y = m;
+    palette.forEach((c, i) => {
+      const band = (inner / palette.length) * (i % 2 ? 0.72 : 1.28);
+      ctx.fillStyle = c;
+      ctx.fillRect(m, y, W - m * 2, Math.max(2, band - H * 0.012));
+      y += band;
+    });
+  } else if (spec.kind === 'grid') {
+    const m = W * 0.14;
+    const cols = 4;
+    const rows = 5;
+    const cw = (W - m * 2) / cols;
+    const ch = (H - m * 2) / rows;
+    for (let r = 0; r < rows; r += 1) {
+      for (let c = 0; c < cols; c += 1) {
+        const filled = (r * cols + c) % 5 === 0 || (r + c) % 7 === 0;
+        ctx.fillStyle = filled ? spec.gold : 'rgba(0,0,0,0)';
+        ctx.strokeStyle = spec.ink;
+        ctx.globalAlpha = filled ? 0.9 : 0.25;
+        ctx.lineWidth = Math.max(1, W * 0.004);
+        ctx.fillRect(m + c * cw, m + r * ch, cw - 2, ch - 2);
+        ctx.strokeRect(m + c * cw, m + r * ch, cw - 2, ch - 2);
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+
   // Paper has tooth, same as the wall.
   for (let i = 0; i < 1800; i += 1) {
     ctx.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '0,0,0'},${
@@ -454,14 +499,22 @@ function posterTexture(spec: PosterSpec, w: number, h: number): THREE.CanvasText
     ctx.fill();
   }
 
+  const lines = spec.lines ?? [];
+  if (lines.length === 0) {
+    const flat = new THREE.CanvasTexture(canvas);
+    flat.colorSpace = THREE.SRGBColorSpace;
+    flat.anisotropy = 8;
+    return flat;
+  }
+
   const margin = W * 0.11;
   const inner = W - margin * 2;
-  const lineH = H * (0.62 / spec.lines.length);
-  const top = H * 0.5 - (spec.lines.length * lineH) / 2 + lineH * 0.5;
+  const lineH = H * (0.62 / lines.length);
+  const top = H * 0.5 - (lines.length * lineH) / 2 + lineH * 0.5;
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  spec.lines.forEach((line, i) => {
+  lines.forEach((line, i) => {
     let size = lineH * 0.82;
     const font = (px: number) =>
       `700 ${px}px ui-sans-serif, system-ui, -apple-system, Helvetica, Arial, sans-serif`;
@@ -476,7 +529,7 @@ function posterTexture(spec: PosterSpec, w: number, h: number): THREE.CanvasText
   });
 
   // A gold rule under the block, and the caption below it.
-  const ruleY = top + spec.lines.length * lineH - lineH * 0.18;
+  const ruleY = top + lines.length * lineH - lineH * 0.18;
   ctx.strokeStyle = spec.gold;
   ctx.lineWidth = Math.max(2, H * 0.006);
   ctx.beginPath();
@@ -529,12 +582,15 @@ function Poster({
 }
 
 /*
- * Hung low enough to be inside the framed views.
+ * A gallery wall.
  *
- * At the height they were first put, the top of every frame sat above where the
- * Front camera cuts the wall, so all three were beheaded. The centre one has to
- * clear the machine's crown as well, since it hangs directly behind it.
+ * Hung low enough to be inside the framed views: at the height the first three
+ * went up, the top of every frame sat above where the Front camera cuts the
+ * wall and all of them were beheaded. Nothing sits in the band the machine
+ * occupies either, except the one across the top which clears its crown.
  */
+const GOLD = '#d8a94b';
+
 const POSTERS: Array<{ spec: PosterSpec; x: number; y: number; w: number; h: number }> = [
   {
     spec: {
@@ -542,39 +598,89 @@ const POSTERS: Array<{ spec: PosterSpec; x: number; y: number; w: number; h: num
       accent: 2,
       paper: '#1d1b19',
       ink: '#e6e0d4',
-      gold: '#d8a94b',
+      gold: GOLD,
       caption: 'BONDI BLUE · 1998',
     },
-    x: -3.25,
-    y: 2.28,
-    w: 1.3,
-    h: 1.78,
+    x: -3.85,
+    y: 2.52,
+    w: 1.08,
+    h: 1.5,
   },
   {
     spec: {
-      lines: ['PRODUCT', 'DESIGN', 'IS GOLD'],
+      lines: ['FORM', 'FOLLOWS', 'FUNCTION'],
       accent: 2,
       paper: '#efe7d7',
       ink: '#2b2724',
       gold: '#b8862c',
-      caption: 'FORM FOLLOWS FEELING',
     },
-    x: 3.25,
-    y: 2.28,
-    w: 1.3,
-    h: 1.78,
+    x: 3.85,
+    y: 2.52,
+    w: 1.08,
+    h: 1.5,
   },
   {
-    spec: {
-      lines: ['LESS, BUT BETTER'],
-      paper: '#25302f',
-      ink: '#e8efec',
-      gold: '#d8a94b',
-    },
+    spec: { lines: ['LESS, BUT BETTER'], paper: '#25302f', ink: '#e8efec', gold: GOLD },
     x: 0,
     y: 2.9,
-    w: 1.85,
-    h: 0.66,
+    w: 1.8,
+    h: 0.62,
+  },
+  {
+    spec: { lines: ['1998'], paper: '#1c4e5c', ink: '#eaf4f6', gold: '#9fdbe8' },
+    x: -2.5,
+    y: 3.06,
+    w: 0.78,
+    h: 0.78,
+  },
+  {
+    spec: { lines: ['DETAILS', 'MATTER'], accent: 1, paper: '#f1ece1', ink: '#2b2724', gold: '#b8862c' },
+    x: 2.5,
+    y: 3.06,
+    w: 0.78,
+    h: 0.96,
+  },
+  {
+    spec: { kind: 'bars', paper: '#f3eee3', ink: '#2f2b27', gold: GOLD },
+    x: -2.42,
+    y: 1.72,
+    w: 0.86,
+    h: 1.12,
+  },
+  {
+    spec: { kind: 'grid', paper: '#191d1f', ink: '#cfd8da', gold: GOLD },
+    x: 2.42,
+    y: 1.72,
+    w: 0.86,
+    h: 1.12,
+  },
+  {
+    spec: { lines: ['PROTOTYPE', 'TEST', 'REPEAT'], accent: 2, paper: '#2a211b', ink: '#e8ded0', gold: GOLD },
+    x: -4.9,
+    y: 1.62,
+    w: 0.86,
+    h: 1.16,
+  },
+  {
+    spec: { lines: ['SHIP', 'IT'], accent: 1, paper: '#efe7d7', ink: '#2b2724', gold: '#b8862c' },
+    x: 4.9,
+    y: 1.62,
+    w: 0.86,
+    h: 1.16,
+  },
+  {
+    spec: { lines: ['KEEP', 'IT', 'SIMPLE'], accent: 2, paper: '#1f2a2e', ink: '#e2ebee', gold: GOLD },
+    x: -4.95,
+    y: 3.0,
+    w: 0.8,
+    h: 1.04,
+  },
+  {
+    spec: { kind: 'bars', paper: '#20201f', ink: '#e4ded2', gold: GOLD },
+    x: 4.95,
+    y: 3.0,
+    w: 0.8,
+    h: 1.04,
   },
 ];
 
@@ -919,14 +1025,30 @@ export default function Room() {
         [legX, DESK.cz + legZ],
       ].map(([x, z]) => (
         <mesh key={`${x},${z}`} geometry={leg} position={[x, -2.87, z]} castShadow>
-          <meshStandardMaterial color="#54391f" roughness={0.78} roughnessMap={props} />
+          <meshStandardMaterial color="#6b4a28" roughness={0.78} roughnessMap={props} />
         </mesh>
       ))}
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2.88, 0]} receiveShadow>
         <planeGeometry args={[40, 40]} />
-        <meshStandardMaterial color="#161009" roughness={0.94} />
+        <meshStandardMaterial color="#2a2015" roughness={0.94} />
       </mesh>
+
+      {/*
+        The room's own light, above and behind the camera's usual line. Its
+        fitting is only there so the glow has something to come from when the
+        camera is turned up at the wall.
+      */}
+      <mesh position={[0, 5.05, 1.4]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.62, 0.62, 0.06, 32]} />
+        <meshStandardMaterial
+          color="#fff2dc"
+          emissive="#ffc98c"
+          emissiveIntensity={0.9}
+          roughness={0.8}
+        />
+      </mesh>
+      <pointLight position={[0, 4.9, 1.4]} intensity={9} distance={16} decay={1.7} color="#ffd0a0" />
 
       <DeskMat />
       <Lamp x={-2.55} z={-0.95} rough={props} />
