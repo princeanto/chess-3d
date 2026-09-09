@@ -33,6 +33,87 @@ const ROOM = { x0: -6.9, x1: 6.9, z0: WALL_Z, z1: 7.4, floorY: -2.88, wallTop: 6
 /* ------------------------------- materials ------------------------------- */
 
 /**
+ * A normal map derived from a height canvas.
+ *
+ * Sobel over the luminance, packed into RGB. This is what gives a surface
+ * actual relief under a raking light — no amount of colour variation in a
+ * diffuse map will do it, which is why the walls read as painted card however
+ * much speckle went into them.
+ */
+function normalFrom(height: HTMLCanvasElement, strength = 2.2): THREE.CanvasTexture {
+  const size = height.width;
+  const src = height.getContext('2d')!.getImageData(0, 0, size, size).data;
+  const out = document.createElement('canvas');
+  out.width = size;
+  out.height = size;
+  const ctx = out.getContext('2d')!;
+  const img = ctx.createImageData(size, size);
+  const at = (x: number, y: number) => {
+    const i = (((y + size) % size) * size + ((x + size) % size)) * 4;
+    return (src[i] + src[i + 1] + src[i + 2]) / 765;
+  };
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const dx =
+        at(x - 1, y - 1) + 2 * at(x - 1, y) + at(x - 1, y + 1) -
+        (at(x + 1, y - 1) + 2 * at(x + 1, y) + at(x + 1, y + 1));
+      const dy =
+        at(x - 1, y - 1) + 2 * at(x, y - 1) + at(x + 1, y - 1) -
+        (at(x - 1, y + 1) + 2 * at(x, y + 1) + at(x + 1, y + 1));
+      const nx = dx * strength;
+      const ny = dy * strength;
+      const len = Math.hypot(nx, ny, 1);
+      const i = (y * size + x) * 4;
+      img.data[i] = ((nx / len) * 0.5 + 0.5) * 255;
+      img.data[i + 1] = ((ny / len) * 0.5 + 0.5) * 255;
+      img.data[i + 2] = (1 / len) * 0.5 * 255 + 127;
+      img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(out);
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+
+/** Plaster: trowel sweeps and a fine aggregate, as a height field. */
+function plasterHeight(size = 512): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#808080';
+  ctx.fillRect(0, 0, size, size);
+  // Broad trowel sweeps.
+  for (let i = 0; i < 90; i += 1) {
+    const a = Math.random() * Math.PI * 2;
+    const len = size * (0.3 + Math.random() * 0.7);
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    ctx.strokeStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '0,0,0'},${
+      0.03 + Math.random() * 0.05
+    })`;
+    ctx.lineWidth = size * (0.02 + Math.random() * 0.05);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len);
+    ctx.stroke();
+  }
+  // Aggregate.
+  for (let i = 0; i < 14000; i += 1) {
+    ctx.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '0,0,0'},${
+      0.05 + Math.random() * 0.13
+    })`;
+    ctx.beginPath();
+    ctx.arc(Math.random() * size, Math.random() * size, 0.4 + Math.random() * 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  return canvas;
+}
+
+/**
  * Soft mottling, for use as a roughness map.
  *
  * Blobs rather than per-pixel noise: pixel noise is far too high a frequency to
@@ -152,6 +233,14 @@ function useWood(): { map: THREE.CanvasTexture; rough: THREE.CanvasTexture } {
     const rough = mottle(512, 0.45, 1600);
     rough.repeat.set(2, 2);
     return { map, rough };
+  }, []);
+}
+
+function usePlaster(): THREE.CanvasTexture {
+  return useMemo(() => {
+    const t = normalFrom(plasterHeight(512), 2.6);
+    t.repeat.set(5, 3);
+    return t;
   }, []);
 }
 
@@ -527,7 +616,7 @@ function useFloorBoards(): THREE.CanvasTexture {
   }, []);
 }
 
-function Shell({ rough }: { rough: THREE.Texture }) {
+function Shell({ rough, plaster }: { rough: THREE.Texture; plaster: THREE.Texture }) {
   const boards = useFloorBoards();
   const side = useSideWall();
   const w = ROOM.x1 - ROOM.x0;
@@ -594,7 +683,13 @@ function Shell({ rough }: { rough: THREE.Texture }) {
         receiveShadow
         castShadow
       >
-        <meshStandardMaterial map={side} roughnessMap={rough} roughness={0.95} />
+        <meshStandardMaterial
+          map={side}
+          roughnessMap={rough}
+          normalMap={plaster}
+          normalScale={new THREE.Vector2(0.85, 0.85)}
+          roughness={0.95}
+        />
       </mesh>
 
       {/*
@@ -756,7 +851,49 @@ function Chair({ rough }: { rough: THREE.Texture }) {
  * points in the air around a pot with nothing joining them to anything, which
  * is exactly what it looked like.
  */
+/** Dry compost with grit over it, as a colour map and a matching relief. */
+function gravelCanvas(size = 256): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#3b2d1f';
+  ctx.fillRect(0, 0, size, size);
+  for (let i = 0; i < 2200; i += 1) {
+    const g = 70 + Math.random() * 120;
+    const warm = Math.random() < 0.55;
+    ctx.fillStyle = warm
+      ? `rgb(${g},${g * 0.82},${g * 0.62})`
+      : `rgb(${g * 0.86},${g * 0.88},${g * 0.9})`;
+    const r = 1.2 + Math.random() * 4.4;
+    ctx.beginPath();
+    ctx.ellipse(
+      Math.random() * size,
+      Math.random() * size,
+      r,
+      r * (0.6 + Math.random() * 0.5),
+      Math.random() * Math.PI,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+  }
+  return canvas;
+}
+
 function FloorPieces({ rough }: { rough: THREE.Texture }) {
+  const { soil, soilNormal } = useMemo(() => {
+    const c = gravelCanvas(256);
+    const map = new THREE.CanvasTexture(c);
+    map.colorSpace = THREE.SRGBColorSpace;
+    map.wrapS = THREE.RepeatWrapping;
+    map.wrapT = THREE.RepeatWrapping;
+    map.repeat.set(2, 2);
+    const n = normalFrom(c, 3.2);
+    n.repeat.set(2, 2);
+    return { soil: map, soilNormal: n };
+  }, []);
+
   const leaf = useMemo(() => {
     const shape = new THREE.Shape();
     shape.moveTo(0, 0);
@@ -777,28 +914,49 @@ function FloorPieces({ rough }: { rough: THREE.Texture }) {
   const plant = useMemo(() => {
     const rng = (n: number) => (((Math.sin(n * 45.31) * 43758.5453) % 1) + 1) % 1;
     const base = ROOM.floorY + 1.05;
-    const stems: Array<{ tube: THREE.BufferGeometry; tip: THREE.Vector3; dir: THREE.Vector3 }> = [];
+    const stems: Array<{
+      tube: THREE.BufferGeometry;
+      tip: THREE.Vector3;
+      dir: THREE.Vector3;
+      scale: number;
+      dark: boolean;
+    }> = [];
 
-    for (let i = 0; i < 9; i += 1) {
-      const a2 = (i / 9) * Math.PI * 2 + rng(i) * 0.5;
-      const lean = 0.55 + rng(i + 3) * 1.15;
-      const rise = 1.5 + rng(i + 6) * 1.75;
+    /*
+     * Eighteen stems, not nine, and half the thickness.
+     *
+     * A houseplant is mostly stem: sparse thick ones with one big leaf each
+     * read as a prop, which is what the first two attempts looked like. Each
+     * stem leaves the crown of the trunk, not the pot, and arcs out — so the
+     * leaf at its tip is carried, not floating near it.
+     */
+    for (let i = 0; i < 18; i += 1) {
+      const a2 = (i / 18) * Math.PI * 2 + rng(i) * 0.7;
+      const lean = 0.4 + rng(i + 3) * 1.35;
+      const rise = 1.05 + rng(i + 6) * 2.0;
+      const crown = new THREE.Vector3(0, base + 0.5, 0);
       const mid = new THREE.Vector3(
-        Math.cos(a2) * lean * 0.35,
-        base + rise * 0.55,
-        Math.sin(a2) * lean * 0.35,
+        Math.cos(a2) * lean * 0.32,
+        base + 0.5 + rise * 0.58,
+        Math.sin(a2) * lean * 0.32,
       );
-      const tip = new THREE.Vector3(Math.cos(a2) * lean, base + rise, Math.sin(a2) * lean);
+      const tip = new THREE.Vector3(
+        Math.cos(a2) * lean,
+        base + 0.5 + rise,
+        Math.sin(a2) * lean,
+      );
       const curve = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(0, base - 0.1, 0),
-        new THREE.Vector3(Math.cos(a2) * 0.12, base + rise * 0.22, Math.sin(a2) * 0.12),
+        new THREE.Vector3(0, base - 0.06, 0),
+        crown,
         mid,
         tip,
       ]);
       stems.push({
-        tube: new THREE.TubeGeometry(curve, 26, 0.032, 6, false),
+        tube: new THREE.TubeGeometry(curve, 30, 0.017, 6, false),
         tip,
         dir: tip.clone().sub(mid).normalize(),
+        scale: 0.4 + rng(i + 11) * 0.28,
+        dark: i % 3 === 0,
       });
     }
     return { stems, base };
@@ -811,9 +969,13 @@ function FloorPieces({ rough }: { rough: THREE.Texture }) {
           <cylinderGeometry args={[0.62, 0.48, 1.1, 26]} />
           <meshStandardMaterial color="#d9cfc0" roughness={0.9} roughnessMap={rough} />
         </mesh>
-        <mesh position={[0, ROOM.floorY + 1.06, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <circleGeometry args={[0.6, 24]} />
-          <meshStandardMaterial color="#3a2c1e" roughness={0.97} />
+        {/*
+          Soil, domed slightly and topped with grit. A flat brown disc is the
+          giveaway that a plant was placed rather than planted.
+        */}
+        <mesh position={[0, ROOM.floorY + 0.96, 0]} receiveShadow>
+          <sphereGeometry args={[0.6, 28, 16, 0, Math.PI * 2, 0, Math.PI / 2.4]} />
+          <meshStandardMaterial map={soil} normalMap={soilNormal} roughness={0.99} />
         </mesh>
         {/* Trunk. */}
         <mesh position={[0, plant.base + 0.25, 0]} castShadow>
@@ -829,15 +991,15 @@ function FloorPieces({ rough }: { rough: THREE.Texture }) {
               geometry={leaf}
               position={st.tip}
               rotation={[
-                Math.atan2(st.dir.y, 1) * 0.6 - 0.5,
+                Math.atan2(st.dir.y, 1) * 0.7 - 0.42,
                 -Math.atan2(st.dir.z, st.dir.x),
-                0.35,
+                0.3 + (i % 3) * 0.2,
               ]}
-              scale={0.62 + (i % 4) * 0.09}
+              scale={st.scale}
               castShadow
             >
               <meshStandardMaterial
-                color={i % 3 === 0 ? '#2f5230' : '#3d6b39'}
+                color={st.dark ? '#2c4e2d' : '#3d6b39'}
                 roughness={0.66}
                 side={THREE.DoubleSide}
               />
@@ -915,7 +1077,25 @@ function useDusk(): THREE.CanvasTexture {
 }
 
 function Window({ rough }: { rough: THREE.Texture }) {
-  const dusk = useDusk();
+  const drawn = useDusk();
+  const [dusk, setDusk] = useState<THREE.Texture>(drawn);
+  useEffect(() => {
+    let live = true;
+    new THREE.TextureLoader().load(
+      'window.jpg',
+      (t) => {
+        if (!live) return;
+        t.colorSpace = THREE.SRGBColorSpace;
+        t.anisotropy = 8;
+        setDusk(t);
+      },
+      undefined,
+      () => undefined,
+    );
+    return () => {
+      live = false;
+    };
+  }, []);
   const frame = useMemo(() => {
     const outer = roundedShape(WINDOW.w + 0.4, WINDOW.h + 0.4, 0.05);
     outer.holes.push(new THREE.Path(roundedShape(WINDOW.w, WINDOW.h, 0.03).getPoints(8)));
@@ -1824,6 +2004,7 @@ function Plant({ rough }: { rough: THREE.Texture }) {
 export default function Room() {
   const wood = useWood();
   const wall = useWall();
+  const plaster = usePlaster();
   const props = useMemo(() => {
     const t = mottle(256, 0.35, 1100);
     t.repeat.set(3, 3);
@@ -1841,7 +2022,13 @@ export default function Room() {
         receiveShadow
       >
         <planeGeometry args={[ROOM.x1 - ROOM.x0, ROOM.wallTop - ROOM.floorY]} />
-        <meshStandardMaterial map={wall.map} roughnessMap={wall.rough} roughness={0.96} />
+        <meshStandardMaterial
+          map={wall.map}
+          roughnessMap={wall.rough}
+          normalMap={plaster}
+          normalScale={new THREE.Vector2(0.85, 0.85)}
+          roughness={0.96}
+        />
       </mesh>
 
       <mesh geometry={top} receiveShadow castShadow>
@@ -1869,7 +2056,7 @@ export default function Room() {
         </mesh>
       ))}
 
-      <Shell rough={props} />
+      <Shell rough={props} plaster={plaster} />
 
       <DeskMat />
       <Lamp x={-2.55} z={-0.95} rough={props} />
