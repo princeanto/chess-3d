@@ -27,7 +27,7 @@ function halfWidthAt(t: number): number {
  * character of the shell.
  */
 function sectionExponent(t: number): number {
-  return 3.9 - 1.6 * t;
+  return 3.5 - 1.4 * t;
 }
 
 /**
@@ -46,6 +46,18 @@ function sectionExponent(t: number): number {
 /** How far the shell is lowered so its feet meet the desk. */
 const BODY_DROP = 0.1;
 
+/**
+ * The two ends of the profile's front edge.
+ *
+ * Everything about the face is derived from these: its slope, its tilt, the
+ * plane the panel is flattened onto and the depth the screen group sits at.
+ * They used to be repeated as literals in four places and drifted apart every
+ * time the profile moved.
+ */
+const FACE_BOTTOM = { x: 0.1, y: 0.47 };
+const FACE_TOP = { x: 0.23, y: 2.26 };
+const FACE_SLOPE = (FACE_TOP.x - FACE_BOTTOM.x) / (FACE_TOP.y - FACE_BOTTOM.y);
+
 /*
  * The face.
  *
@@ -58,9 +70,9 @@ const BODY_DROP = 0.1;
  * it — too little for the panel to reach the bezel's corners and still roll
  * into the dome, so the top of the surround was sitting on curved shell.
  */
-export const SCREEN_SIZE = { w: 1.56, h: 1.17 };
+export const SCREEN_SIZE = { w: 1.44, h: 1.08 };
 /** World height of the tube's centre. */
-export const SCREEN_Y = 1.37;
+export const SCREEN_Y = 1.38;
 /**
  * How far the face leans back, in radians.
  *
@@ -69,7 +81,7 @@ export const SCREEN_Y = 1.37;
  * the viewer. With the sign the other way the whole chin was rotated *into* the
  * shell, which is why the CD slot and speakers were invisible.
  */
-export const FACE_TILT = -0.077;
+export const FACE_TILT = -Math.atan(FACE_SLOPE);
 
 /**
  * The flat front panel.
@@ -86,11 +98,13 @@ export const FACE_TILT = -0.077;
  *
  * The rectangle has to cover the bezel's corners with the mask still at full
  * strength, or the surround ends up part on flat panel and part on curved
- * shell, and the band has to be wide enough that the roll off its edge reads as
- * a radius rather than as a crease.
+ * shell. It also has to *stop short of the silhouette*: at half-width 1.05
+ * against a shell 1.04 wide at the face, the mask was still at full strength
+ * where the front wraps to the side, so the panel ran edge to edge and its
+ * boundary landed on the silhouette as a knife edge instead of rolling into the
+ * dome. Full strength out to the bezel at 0.845, nothing left by 1.00.
  */
-const FACE_SLOPE = 0.14 / 1.82;
-const PANEL = { cy: 1.35, halfW: 1.05, halfH: 0.95, radius: 0.34, band: 0.16 };
+const PANEL = { cy: 1.31, halfW: 0.9225, halfH: 0.898, radius: 0.12, band: 0.078 };
 
 /**
  * The hole the tube sits in.
@@ -102,9 +116,9 @@ const PANEL = { cy: 1.35, halfW: 1.05, halfH: 0.95, radius: 0.34, band: 0.16 };
  */
 const APERTURE = {
   cy: SCREEN_Y + BODY_DROP,
-  halfW: SCREEN_SIZE.w / 2 + 0.03,
-  halfH: SCREEN_SIZE.h / 2 + 0.03,
-  radius: 0.12,
+  halfW: SCREEN_SIZE.w / 2 + 0.04,
+  halfH: SCREEN_SIZE.h / 2 + 0.04,
+  radius: 0.13,
 };
 
 function inAperture(px: number, py: number): boolean {
@@ -160,6 +174,12 @@ function spanAt(x: number): [number, number] {
   return lo === Infinity ? [0, 0] : [lo, hi];
 }
 
+/** World Z of the face plane at a given height in the shell's own frame. */
+function faceZ(py: number): number {
+  const x = FACE_BOTTOM.x + (py - FACE_BOTTOM.y) * FACE_SLOPE;
+  return 0.11 - (x - PROFILE_X0);
+}
+
 /**
  * How far out the flank sits at a given height and depth.
  *
@@ -177,7 +197,7 @@ function flankX(y: number, z: number): number {
   const q = Math.min(1, Math.abs(y - cy) / ry);
   const w = 0.5 + 0.5 * ((y - cy) / ry);
   const ease = w * w * (3 - 2 * w);
-  const n = 5 + (sectionExponent(t) - 5) * ease;
+  const n = 4.2 + (sectionExponent(t) - 4.2) * ease;
   return halfWidthAt(t) * Math.pow(Math.max(0, 1 - Math.pow(q, n)), 1 / n);
 }
 
@@ -244,7 +264,7 @@ function undersideY(px: number, z: number): number {
   for (let k = 0; k < 4; k += 1) {
     const w = 0.5 + 0.5 * ((y - cy) / ry);
     const ease = w * w * (3 - 2 * w);
-    const n = 5 + (sectionExponent(t) - 5) * ease;
+    const n = 4.2 + (sectionExponent(t) - 4.2) * ease;
     y = cy - ry * Math.pow(Math.max(0, 1 - Math.pow(q, n)), 1 / n);
   }
   return y;
@@ -283,7 +303,7 @@ function bodySurface(): THREE.BufferGeometry {
        */
       const w = 0.5 + 0.5 * sn;
       const ease = w * w * (3 - 2 * w);
-      const k = 2 / (5 + (sectionExponent(t) - 5) * ease);
+      const k = 2 / (4.2 + (sectionExponent(t) - 4.2) * ease);
       const px = Math.sign(c) * Math.pow(Math.abs(c), k) * rx;
       const py = cy + Math.sign(sn) * Math.pow(Math.abs(sn), k) * ry;
       /*
@@ -295,7 +315,7 @@ function bodySurface(): THREE.BufferGeometry {
        * dragged to the front, back of the machine included, and the shell grew
        * flat fins out of its flanks. The real gap to close is at most 0.014.
        */
-      const zFace = 0.11 - (py - 0.44) * FACE_SLOPE;
+      const zFace = faceZ(py);
       const gap = zFace - z;
       let pz = z;
       if (gap > 0 && gap < 0.18) {
@@ -317,9 +337,16 @@ function bodySurface(): THREE.BufferGeometry {
       const b = i * NA + ((j + 1) % NA);
       const c = (i + 1) * NA + j;
       const d = (i + 1) * NA + ((j + 1) % NA);
-      // Drop the quad only when the whole of it is inside the hole, so the rim
-      // keeps a complete row of triangles for the bezel to land on.
-      if (cut[a] && cut[b] && cut[c] && cut[d]) continue;
+      /*
+       * Drop the quad if *any* corner is inside the hole.
+       *
+       * Requiring all four kept a jagged fringe of shell reaching a quad's width
+       * back inside the opening, and since the tube is recessed that fringe
+       * showed as white shapes lying across the picture's corners. Erring
+       * outward instead makes the hole up to a quad larger than the aperture,
+       * which the bezel's annulus still covers with room to spare.
+       */
+      if (cut[a] || cut[b] || cut[c] || cut[d]) continue;
       index.push(a, c, b, b, c, d);
     }
   }
@@ -399,8 +426,8 @@ const KEYCAP_LIVE = '#bcd6dc';
  */
 function bodyProfile(): THREE.Shape {
   const p = new THREE.Shape();
-  p.moveTo(0.09, 0.44);
-  p.lineTo(0.23, 2.26); // front face, leaning back the way the screen does
+  p.moveTo(FACE_BOTTOM.x, FACE_BOTTOM.y);
+  p.lineTo(FACE_TOP.x, FACE_TOP.y); // front face, leaning back like the screen
   p.quadraticCurveTo(0.34, 2.45, 0.68, 2.52); // brow
   /*
    * The back, fitted to a photograph rather than drawn by eye.
@@ -421,8 +448,18 @@ function bodyProfile(): THREE.Shape {
    * quarter, which turned the shell into an egg balanced on a stalk.
    */
   p.lineTo(0.62, 0.18);
-  p.bezierCurveTo(0.4, 0.19, 0.24, 0.28, 0.16, 0.36);
-  p.quadraticCurveTo(0.11, 0.4, 0.09, 0.44);
+  /*
+   * A real radius where the face meets the underside.
+   *
+   * The old corner turned two nearly perpendicular runs straight into each
+   * other, and sweeping that put a hard fold right across the bottom of the
+   * front — a crease you could see from any angle. Curving into the face's
+   * bottom end leaves a couple of degrees between the tangents instead of forty.
+   * Starting the face as high as 0.54 to get the radius cost the chin a third of
+   * its depth and crowded the wordmark into the CD slot; 0.47 is enough.
+   */
+  p.bezierCurveTo(0.42, 0.19, 0.26, 0.24, 0.17, 0.31);
+  p.bezierCurveTo(0.12, 0.36, 0.093, 0.41, FACE_BOTTOM.x, FACE_BOTTOM.y);
   return p;
 }
 
@@ -493,7 +530,7 @@ function baseSeamY(z: number): number {
  * shell is dropped by BODY_DROP. The face slopes, so this is only correct at
  * one height, which is why the group carrying it is tilted to match.
  */
-const FRONT_Z = 0.11 - (SCREEN_Y + BODY_DROP - 0.44) * (0.14 / 1.82);
+const FRONT_Z = faceZ(SCREEN_Y + BODY_DROP);
 
 function Body() {
   const shell = useMemo(() => bodySurface(), []);
@@ -612,7 +649,14 @@ const roundedShape = (w: number, h: number, r: number): THREE.Shape => {
  */
 function BezelRing() {
   const geometry = useMemo(() => {
-    const outer = roundedShape(SCREEN_SIZE.w + 0.13, SCREEN_SIZE.h + 0.13, 0.16);
+    /*
+     * The border has to be wider than the hole can overshoot.
+     *
+     * The aperture is cut a quad wider than nominal, so at 0.065 a side the
+     * ring stopped just short of the cut at the corners and left two notches
+     * showing above the tube. 0.12 covers it with room.
+     */
+    const outer = roundedShape(SCREEN_SIZE.w + 0.24, SCREEN_SIZE.h + 0.24, 0.22);
     outer.holes.push(
       new THREE.Path(roundedShape(SCREEN_SIZE.w, SCREEN_SIZE.h, 0.1).getPoints(48)),
     );
@@ -731,18 +775,18 @@ function Chin() {
 
   return (
     <group>
-      <mesh position={[0, ceiling - 0.13, z]}>
-        <planeGeometry args={[0.42, 0.16]} />
+      <mesh position={[0, ceiling - 0.16, z]}>
+        <planeGeometry args={[0.4, 0.15]} />
         <meshBasicMaterial map={mark} transparent toneMapped={false} />
       </mesh>
 
       {/* Tray-loading CD slot, centred under the wordmark. */}
-      <mesh position={[0, ceiling - 0.32, z]}>
-        <boxGeometry args={[0.78, 0.11, 0.015]} />
+      <mesh position={[0, ceiling - 0.3, z]}>
+        <boxGeometry args={[0.74, 0.1, 0.015]} />
         <meshStandardMaterial color="#aab4b6" roughness={0.6} />
       </mesh>
-      <mesh position={[0, ceiling - 0.32, z + 0.008]}>
-        <boxGeometry args={[0.72, 0.022, 0.015]} />
+      <mesh position={[0, ceiling - 0.3, z + 0.008]}>
+        <boxGeometry args={[0.68, 0.02, 0.015]} />
         <meshStandardMaterial color="#394245" roughness={0.95} />
       </mesh>
 
@@ -753,7 +797,7 @@ function Chin() {
       </mesh>
       {/* The light sits beside the button, not under it: any lower and it falls
           off the bottom of the chin, where the shell has already curved away. */}
-      <mesh position={[0.5, ceiling - 0.42, z + 0.004]}>
+      <mesh position={[0.5, ceiling - 0.4, z + 0.004]}>
         <sphereGeometry args={[0.018, 12, 10]} />
         <meshBasicMaterial color="#7ef0b0" toneMapped={false} />
       </mesh>
@@ -765,9 +809,9 @@ function Chin() {
         around each one, which is most of what gives the front its face.
       */}
       {[-0.64, 0.64].map((x) => (
-        <group key={x} position={[x, ceiling - 0.26, z]} scale={[1, 1, 0.26]}>
+        <group key={x} position={[x, ceiling - 0.28, z]} scale={[1, 1, 0.26]}>
           <mesh castShadow>
-            <sphereGeometry args={[0.15, 26, 20]} />
+            <sphereGeometry args={[0.13, 26, 20]} />
             <meshPhysicalMaterial color={FROST} roughness={0.42} clearcoat={0.5} />
           </mesh>
           {/*
@@ -778,7 +822,7 @@ function Chin() {
             cap has been turned to face forward.
           */}
           <mesh rotation={[Math.PI / 2, 0, 0]}>
-            <sphereGeometry args={[0.154, 30, 14, 0, Math.PI * 2, 0, 0.82]} />
+            <sphereGeometry args={[0.134, 30, 14, 0, Math.PI * 2, 0, 0.82]} />
             <meshStandardMaterial map={grille} roughness={0.8} />
           </mesh>
         </group>
