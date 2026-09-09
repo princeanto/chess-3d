@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { OrbitControls } from '@react-three/drei';
 import { createState, step, TICK, type Input, type State } from '@/lib/game/engine';
 import { createScreenCanvas, renderScreen, VIEW_WIDTH } from '@/lib/game/screen';
 import { isMuted, setMuted, sfx } from '@/lib/game/audio';
@@ -21,7 +22,17 @@ const DUCK_CODES = new Set(['ArrowDown', 'KeyS']);
  * makes the machine appear to swing past the frame, because the camera keeps
  * staring at where it was aimed for the old shot.
  */
-function CameraRig({ view }: { view: number }) {
+function CameraRig({
+  view,
+  free,
+  look,
+}: {
+  view: number;
+  /** True while the mouse owns the camera; the rig keeps its hands off. */
+  free: boolean;
+  /** Where the camera is aimed, shared with the free-look controls. */
+  look: React.MutableRefObject<THREE.Vector3>;
+}) {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
   const from = useRef({
     pos: new THREE.Vector3(...VIEWS[DEFAULT_VIEW].position),
@@ -30,19 +41,28 @@ function CameraRig({ view }: { view: number }) {
   });
   const start = useRef(0);
   const active = useRef(view);
+  const wasFree = useRef(false);
 
   useEffect(() => {
-    if (active.current === view) return;
+    if (free) {
+      wasFree.current = true;
+      return;
+    }
+    // Coming back from free look counts as a change even if the framed view
+    // has not: the camera is wherever the user left it, so it has to fly home.
+    if (active.current === view && !wasFree.current) return;
     from.current = {
       pos: camera.position.clone(),
-      target: new THREE.Vector3(...VIEWS[active.current].target),
+      target: look.current.clone(),
       fov: camera.fov,
     };
     active.current = view;
+    wasFree.current = false;
     start.current = performance.now();
-  }, [view, camera]);
+  }, [view, free, camera, look]);
 
   useFrame(() => {
+    if (free) return;
     const target = VIEWS[view];
     const t = start.current === 0 ? 1 : Math.min(1, (performance.now() - start.current) / VIEW_MS);
     const e = ease(t);
@@ -52,8 +72,9 @@ function CameraRig({ view }: { view: number }) {
       new THREE.Vector3(...target.position),
       e,
     );
-    const look = from.current.target.clone().lerp(new THREE.Vector3(...target.target), e);
-    camera.lookAt(look);
+    const aim = from.current.target.clone().lerp(new THREE.Vector3(...target.target), e);
+    camera.lookAt(aim);
+    look.current.copy(aim);
 
     const fov = from.current.fov + (target.fov - from.current.fov) * e;
     if (Math.abs(camera.fov - fov) > 0.01) {
@@ -63,6 +84,32 @@ function CameraRig({ view }: { view: number }) {
   });
 
   return null;
+}
+
+/**
+ * Mouse control of the camera, for looking the machine over.
+ *
+ * Deliberately not the default: every framed view is one that was composed on
+ * purpose, and the game itself wants the screen square on. This is the escape
+ * hatch for inspecting the object, so it stays off until asked for.
+ */
+function FreeLook({ look }: { look: React.MutableRefObject<THREE.Vector3> }) {
+  return (
+    <OrbitControls
+      makeDefault
+      target={look.current}
+      enableDamping
+      dampingFactor={0.08}
+      minDistance={1.4}
+      maxDistance={16}
+      // Stop just above the desk, so the camera never ends up underneath it.
+      maxPolarAngle={Math.PI / 2 - 0.03}
+      onChange={(e) => {
+        const controls = e?.target as { target?: THREE.Vector3 } | undefined;
+        if (controls?.target) look.current.copy(controls.target);
+      }}
+    />
+  );
 }
 
 function Lighting() {
@@ -106,6 +153,8 @@ function Lighting() {
 
 export default function Game() {
   const [view, setView] = useState(DEFAULT_VIEW);
+  const [free, setFree] = useState(false);
+  const look = useRef(new THREE.Vector3(...VIEWS[DEFAULT_VIEW].target));
   const [phase, setPhase] = useState<State['phase']>('ready');
   const [score, setScore] = useState(0);
   const [best, setBest] = useState(0);
@@ -291,10 +340,12 @@ export default function Game() {
   }, []);
 
   const hint = useMemo(() => {
+    // Free look changes what the mouse does, so it gets to say so.
+    if (free) return 'Drag to orbit · scroll to zoom · right-drag to pan';
     if (phase === 'ready') return 'Press space, or click the spacebar on screen';
     if (phase === 'dead') return 'Press space to run again';
     return 'Space to jump · ↓ to duck';
-  }, [phase]);
+  }, [phase, free]);
 
   return (
     <div className="fixed inset-0 bg-black">
@@ -316,7 +367,8 @@ export default function Game() {
           scene.fog = new THREE.Fog('#000000', 14, 30);
         }}
       >
-        <CameraRig view={view} />
+        <CameraRig view={view} free={free} look={look} />
+        {free && <FreeLook look={look} />}
         <Lighting />
         <Machine
           pressedRef={pressed}
@@ -326,7 +378,7 @@ export default function Game() {
         />
       </Canvas>
 
-      {/* Overlay chrome. Nothing here rotates the scene — that is the buttons' job. */}
+      {/* Overlay chrome. Only Free look hands the scene to the mouse. */}
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-5 sm:p-7">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -348,10 +400,13 @@ export default function Game() {
             {VIEWS.map((v, i) => (
               <button
                 key={v.id}
-                onClick={() => setView(i)}
-                aria-pressed={view === i}
+                onClick={() => {
+                  setFree(false);
+                  setView(i);
+                }}
+                aria-pressed={!free && view === i}
                 className={`min-h-[38px] rounded-full px-4 text-[13px] transition-colors ${
-                  view === i
+                  !free && view === i
                     ? 'bg-[#eef4f6] font-semibold text-[#0a0d0f]'
                     : 'bg-white/10 text-[#dfe7ea] hover:bg-white/20'
                 }`}
@@ -359,6 +414,18 @@ export default function Game() {
                 {v.label}
               </button>
             ))}
+            <button
+              onClick={() => setFree(true)}
+              aria-pressed={free}
+              title="Drag to orbit, scroll to zoom"
+              className={`min-h-[38px] rounded-full px-4 text-[13px] transition-colors ${
+                free
+                  ? 'bg-[#eef4f6] font-semibold text-[#0a0d0f]'
+                  : 'bg-white/10 text-[#dfe7ea] hover:bg-white/20'
+              }`}
+            >
+              Free look
+            </button>
           </div>
 
           <div className="flex items-center gap-4">
