@@ -17,7 +17,15 @@ import { roundedShape } from './Machine';
  * render look like a render.
  */
 
-const DESK = { w: 8.4, d: 7.4, cz: 0.25, thickness: 0.1 };
+/*
+ * 7.2 by 6.2, pushed back against the wall.
+ *
+ * It was 8.4 by 7.4 — near enough two metres square at this scale, which is a
+ * dining table, not a desk. The depth was the worse of the two: nobody sits at
+ * something two metres deep. Trimming it means the back edge has to move back
+ * with it, or the desk ends up standing a metre off the wall.
+ */
+const DESK = { w: 7.2, d: 6.2, cz: -0.15, thickness: 0.1 };
 const WALL_Z = -3.62;
 
 /**
@@ -484,7 +492,7 @@ function Speaker({
 function Clock({ rough }: { rough: THREE.Texture }) {
   const body = useMemo(() => roundedBox(0.38, 0.26, 0.16, 0.035, 0.012), []);
   return (
-    <group position={[-1.72, 0, 0.62]} rotation={[0, 0.14, 0]}>
+    <group position={[-1.6, 0, 0.4]} rotation={[0, 0.14, 0]}>
       <mesh geometry={body} position={[0, 0.13, 0]} castShadow>
         <meshStandardMaterial color="#26262a" roughness={0.68} roughnessMap={rough} />
       </mesh>
@@ -511,7 +519,7 @@ function DeskMat() {
     return t;
   }, []);
   const pad = useMemo(() => {
-    const g = new THREE.ExtrudeGeometry(roundedShape(6.2, 2.15, 0.1), {
+    const g = new THREE.ExtrudeGeometry(roundedShape(5.8, 2.0, 0.1), {
       depth: 0.014,
       bevelEnabled: true,
       bevelThickness: 0.005,
@@ -523,7 +531,7 @@ function DeskMat() {
     return g;
   }, []);
   return (
-    <group position={[0.15, 0.004, 1.42]}>
+    <group position={[0.12, 0.004, 1.05]}>
       <mesh geometry={pad} receiveShadow>
         <meshStandardMaterial color="#33322f" roughness={0.99} roughnessMap={felt} />
       </mesh>
@@ -694,14 +702,14 @@ function Shell({ rough, plaster }: { rough: THREE.Texture; plaster: THREE.Textur
 /** A rug under the desk, and the chair pulled out from it. */
 function Rug({ rough }: { rough: THREE.Texture }) {
   const border = useMemo(() => {
-    const outer = roundedShape(8.8, 5.6, 0.34);
-    outer.holes.push(new THREE.Path(roundedShape(8.3, 5.1, 0.3).getPoints(40)));
+    const outer = roundedShape(7.9, 4.9, 0.34);
+    outer.holes.push(new THREE.Path(roundedShape(7.4, 4.4, 0.3).getPoints(40)));
     const g = new THREE.ExtrudeGeometry(outer, { depth: 0.004, bevelEnabled: false, curveSegments: 12 });
     g.rotateX(-Math.PI / 2);
     return g;
   }, []);
   const geometry = useMemo(() => {
-    const g = new THREE.ExtrudeGeometry(roundedShape(9.4, 6.2, 0.4), {
+    const g = new THREE.ExtrudeGeometry(roundedShape(8.4, 5.4, 0.4), {
       depth: 0.05,
       bevelEnabled: true,
       bevelThickness: 0.014,
@@ -713,7 +721,7 @@ function Rug({ rough }: { rough: THREE.Texture }) {
     return g;
   }, []);
   return (
-    <group position={[-0.18, ROOM.floorY, 2.5]} rotation={[0, 0.035, 0]}>
+    <group position={[-0.15, ROOM.floorY, 1.95]} rotation={[0, 0.035, 0]}>
       <mesh geometry={geometry} receiveShadow>
         <meshStandardMaterial color="#cfc5b3" roughness={0.98} roughnessMap={rough} />
       </mesh>
@@ -743,7 +751,7 @@ function Chair({ rough }: { rough: THREE.Texture }) {
   const hubY = rugTop + 0.3;
 
   return (
-    <group position={[0.85, 0, 4.35]} rotation={[0, Math.PI + 0.34, 0]}>
+    <group position={[0.8, 0, 3.55]} rotation={[0, Math.PI + 0.34, 0]}>
       <mesh geometry={shell} position={[0, seatY - 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} castShadow>
         <meshStandardMaterial color="#4a4c50" roughness={0.78} roughnessMap={rough} />
       </mesh>
@@ -1708,15 +1716,15 @@ function Lived({ rough }: { rough: THREE.Texture }) {
       </group>
 
       {/* A ring where the mug has been set down more than once. */}
-      <mesh position={[2.95, 0.004, 1.72]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh position={[2.7, 0.004, 1.28]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.19, 0.235, 40]} />
         <meshStandardMaterial color="#6b5334" transparent opacity={0.32} roughness={0.95} />
       </mesh>
 
       {/* Two loose sheets, dropped rather than placed. */}
       {[
-        { x: -1.95, z: 3.15, r: -0.5 },
-        { x: -1.55, z: 3.42, r: 0.28 },
+        { x: -1.8, z: 2.45, r: -0.5 },
+        { x: -1.45, z: 2.7, r: 0.28 },
       ].map((q, i) => (
         <mesh
           key={i}
@@ -2051,7 +2059,7 @@ function PenCup({ rough }: { rough: THREE.Texture }) {
   }, []);
 
   return (
-    <group position={[-2.35, 0, 0.05]}>
+    <group position={[-2.2, 0, -0.15]}>
       <mesh position={[0, 0.24, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[0.17, 0.145, 0.48, 28, 1, true]} />
         <meshStandardMaterial
@@ -2085,7 +2093,7 @@ function PenCup({ rough }: { rough: THREE.Texture }) {
 function Sketchbook({ rough }: { rough: THREE.Texture }) {
   const cover = useMemo(() => roundedBox(1.15, 1.5, 0.11, 0.05, 0.014), []);
   return (
-    <group position={[-3.28, 0, 1.75]} rotation={[0, 0.19, 0]}>
+    <group position={[-3.0, 0, 1.45]} rotation={[0, 0.19, 0]}>
       <mesh geometry={cover} position={[0, 0.055, 0]} rotation={[-Math.PI / 2, 0, 0]} castShadow receiveShadow>
         <meshStandardMaterial color="#33312e" roughness={0.78} roughnessMap={rough} />
       </mesh>
@@ -2118,7 +2126,7 @@ function ColourFan() {
     return hues.map((colour, i) => ({ colour, angle: -0.5 + i * 0.115 }));
   }, []);
   return (
-    <group position={[2.92, 0, 0.2]} rotation={[0, -0.5, 0]}>
+    <group position={[2.75, 0, 0.05]} rotation={[0, -0.5, 0]}>
       {chips.map((c, i) => (
         // Each chip pivots about the rivet at one end, so they fan rather than
         // stack — the swing is what makes the object readable from above.
@@ -2139,7 +2147,7 @@ function ColourFan() {
 
 function Mug({ rough }: { rough: THREE.Texture }) {
   return (
-    <group position={[3.5, 0, 1.15]} rotation={[0, 0.4, 0]}>
+    <group position={[3.2, 0, 0.85]} rotation={[0, 0.4, 0]}>
       <mesh position={[0, 0.26, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[0.22, 0.185, 0.52, 30, 1, true]} />
         <meshStandardMaterial
@@ -2170,7 +2178,7 @@ function Mug({ rough }: { rough: THREE.Texture }) {
 function PaperAndScale({ rough }: { rough: THREE.Texture }) {
   return (
     <group>
-      <group position={[-2.5, 0, 2.98]} rotation={[0, -0.22, 0]}>
+      <group position={[-2.3, 0, 2.35]} rotation={[0, -0.22, 0]}>
         <mesh position={[0, 0.035, 0]} castShadow receiveShadow>
           <boxGeometry args={[0.62, 0.07, 0.62]} />
           <meshStandardMaterial color="#e8d477" roughness={0.92} roughnessMap={rough} />
@@ -2183,7 +2191,7 @@ function PaperAndScale({ rough }: { rough: THREE.Texture }) {
 
       {/* Triangular scale rule: a three-sided prism is exactly a 3-segment cylinder. */}
       <mesh
-        position={[2.75, 0.06, 2.62]}
+        position={[2.5, 0.06, 2.1]}
         rotation={[0, 0.34, Math.PI / 2]}
         castShadow
       >
@@ -2431,10 +2439,10 @@ export default function Room() {
       </mesh>
 
       <DeskMat />
-      <Lamp x={-2.55} z={-0.95} rough={props} />
-      <Lamp x={2.55} z={-0.95} rough={props} />
-      <Speaker x={-3.45} z={-1.1} flip={1} rough={props} />
-      <Speaker x={3.45} z={-1.1} flip={-1} rough={props} />
+      <Lamp x={-2.4} z={-1.2} rough={props} />
+      <Lamp x={2.4} z={-1.2} rough={props} />
+      <Speaker x={-3.15} z={-1.35} flip={1} rough={props} />
+      <Speaker x={3.15} z={-1.35} flip={-1} rough={props} />
       <Clock rough={props} />
       <PenCup rough={props} />
       <Sketchbook rough={props} />

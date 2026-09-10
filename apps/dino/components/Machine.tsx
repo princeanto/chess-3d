@@ -1098,7 +1098,7 @@ function Keyboard({
   }, [depth]);
 
   return (
-    <group position={[0, 0, 1.3]} rotation={[-0.045, 0, 0]} scale={0.5}>
+    <group position={[0, 0, 0.95]} rotation={[-0.045, 0, 0]} scale={0.5}>
       <mesh geometry={shell} castShadow receiveShadow>
         <meshPhysicalMaterial
           color={BONDI_DEEP}
@@ -1288,7 +1288,7 @@ function Mouse() {
   }, []);
 
   return (
-    <group position={[1.9, 0, 1.3]} rotation={[0, -0.18, 0]}>
+    <group position={[1.9, 0, 0.95]} rotation={[0, -0.18, 0]}>
       <mesh geometry={body} castShadow receiveShadow>
         <meshPhysicalMaterial
           color={BONDI}
