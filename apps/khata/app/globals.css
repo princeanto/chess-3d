@@ -1,0 +1,139 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Warm paper, not bank-app blue.
+ *
+ * This is a ledger you keep, not a product being sold to you, so the palette is
+ * ink on paper with exactly two loud colours — one for money leaving, one for
+ * money arriving — and everything else in greys that stay out of the way.
+ */
+:root {
+  --paper: #f6f3ec;
+  --surface: #fffdf8;
+  --sunk: #ece7dc;
+  --line: #e0d9cb;
+  --ink: #1e1b16;
+  --muted: #6f675a;
+  --faint: #a29a8a;
+  --out: #b04a37;
+  --in: #2c7a58;
+  --warn: #b8791f;
+  --accent: #1e1b16;
+  color-scheme: light;
+}
+
+:root[data-theme='dark'],
+:root:not([data-theme='light']) {
+  @media (prefers-color-scheme: dark) {
+    --paper: #14120e;
+    --surface: #1d1a15;
+    --sunk: #262219;
+    --line: #322d24;
+    --ink: #f2ece0;
+    --muted: #a9a08f;
+    --faint: #6f6759;
+    --out: #e0765c;
+    --in: #58bd90;
+    --warn: #e0a748;
+    --accent: #f2ece0;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --paper: #14120e;
+  --surface: #1d1a15;
+  --sunk: #262219;
+  --line: #322d24;
+  --ink: #f2ece0;
+  --muted: #a9a08f;
+  --faint: #6f6759;
+  --out: #e0765c;
+  --in: #58bd90;
+  --warn: #e0a748;
+  --accent: #f2ece0;
+  color-scheme: dark;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  /* Stops the whole app bouncing when a list is scrolled to its end on iOS. */
+  overscroll-behavior-y: none;
+}
+
+body {
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.mono {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  /* Digits must not shuffle sideways as a total counts up. */
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.tight {
+  letter-spacing: -0.025em;
+}
+
+/* Tap targets on a phone should not flash blue. */
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+input,
+textarea {
+  /* Anything under 16px makes iOS Safari zoom the page on focus. */
+  font-size: 16px;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise {
+  animation: rise 0.28s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise {
+    animation: none;
+  }
+}
+
+/* The scanning bar, which is the only thing in the app that moves on its own. */
+@keyframes sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+.sweep::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 33%;
+  background: linear-gradient(90deg, transparent, var(--ink), transparent);
+  opacity: 0.35;
+  animation: sweep 1.4s linear infinite;
+}

@@ -1,13 +1,14 @@
-# Two apps
+# Four apps
 
-One repo, two unrelated apps, deployed independently from their own
+One repo, four unrelated apps, deployed independently from their own
 subdirectories.
 
 | | | |
 | --- | --- | --- |
 | **[Gambit](apps/chess)** | 3D chess with a built-in engine | [chess-3d-dusky.vercel.app](https://chess-3d-dusky.vercel.app) |
 | **[Legible](apps/legible)** | WCAG contrast auditor for design systems | [legible-eight.vercel.app](https://legible-eight.vercel.app) |
-| **[Runner](apps/dino)** | Offline-first endless runner | — |
+| **[Runner](apps/dino)** | Offline-first endless runner | [runner-zeta-seven.vercel.app](https://runner-zeta-seven.vercel.app) |
+| **[Khata](apps/khata)** | Reads your bank mail and keeps your books | — |
 
 Each app is standalone: its own `package.json`, its own lockfile, its own
 `node_modules`. There is no workspace tooling, because there is nothing to
@@ -17,6 +18,7 @@ share — one app needs three.js and a chess engine, the other needs neither.
 cd apps/chess   && npm install && npm run dev   # localhost:3000
 cd apps/legible && npm install && npm run dev   # localhost:3000
 cd apps/dino    && npm install && npm run dev   # localhost:3000
+cd apps/khata   && npm install && npm run dev   # localhost:3000
 ```
 
 Both ship with real test suites that run from the command line:
@@ -24,6 +26,7 @@ Both ship with real test suites that run from the command line:
 ```bash
 cd apps/chess   && npm test    # perft to depth 5 + tactics + self-play
 cd apps/legible && npm test    # colour conversion, gamut, APCA, the fix search
+cd apps/khata   && npm test    # parsing, reconciliation, insight
 ```
 
 ---
@@ -76,3 +79,25 @@ load is the strongest form of "works offline".
 The simulation runs on a fixed 120Hz timestep, decoupled from rendering. A
 variable-dt integrator makes jump height depend on frame rate, so the same
 input clears an obstacle on a 60Hz laptop and clips it on a 144Hz monitor.
+
+### Khata — [apps/khata](apps/khata)
+
+A personal accountant that reads the bank alerts already sitting in your Gmail
+and turns them into a ledger: what you spent, what you owe, what auto-debit
+failed, and what money left that shouldn't have.
+
+No server, and no Google Cloud console. A ~90-line Apps Script runs inside your
+own Google account with a hand-declared `gmail.readonly` scope — read-only, so
+it cannot send or delete — and returns matching messages. Every piece of
+intelligence lives in the app, so the script is pasted once and never touched
+again.
+
+The load-bearing problem is reconciliation, not fetching. One UPI payment
+generates three emails — bank alert, payment app, merchant — and counting all
+three triples your spending, while merging on amount-and-time swallows the
+double-swipe you most want reported. The bank's own reference settles it in both
+directions.
+
+The ledger is cached on the device, encrypted with AES-GCM under a passphrase
+that only exists in memory. Questions are answered with arithmetic, locally;
+nothing is sent to a model or a server.
