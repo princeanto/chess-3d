@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import * as THREE from 'three';
-import { frustumY, roundedShape } from './Machine';
+import { roundedShape } from './Machine';
 
 /**
  * The room the machine sits in: a warm desk under a washed wall.
@@ -17,7 +17,7 @@ import { frustumY, roundedShape } from './Machine';
  * render look like a render.
  */
 
-const DESK = { w: 8.4, d: 7.4, cz: 0.25, thickness: 0.14 };
+const DESK = { w: 8.4, d: 7.4, cz: 0.25, thickness: 0.1 };
 const WALL_Z = -3.62;
 
 /**
@@ -304,8 +304,8 @@ function roundedBox(w: number, h: number, d: number, r: number, bevel = 0.02) {
 /* --------------------------------- desk ---------------------------------- */
 
 function deskTop(): THREE.BufferGeometry {
-  const bevel = 0.035;
-  const g = new THREE.ExtrudeGeometry(roundedShape(DESK.w, DESK.d, 0.3), {
+  const bevel = 0.022;
+  const g = new THREE.ExtrudeGeometry(roundedShape(DESK.w, DESK.d, 0.16), {
     depth: DESK.thickness,
     bevelEnabled: true,
     bevelThickness: bevel,
@@ -730,22 +730,27 @@ function Chair({ rough }: { rough: THREE.Texture }) {
   const cushion = useMemo(() => roundedBox(1.5, 1.38, 0.2, 0.3, 0.07), []);
   const backFrame = useMemo(() => roundedBox(1.5, 1.9, 0.12, 0.4, 0.04), []);
   const backPad = useMemo(() => roundedBox(1.34, 1.72, 0.17, 0.36, 0.06), []);
-  const arm = useMemo(() => roundedBox(0.16, 0.5, 0.62, 0.06, 0.03), []);
-  // Seat height comes from the desk: its top is 2.88 above the floor, which is
-  // 740mm, so a 450mm seat sits 1.75 units up.
-  const seatY = ROOM.floorY + 1.75;
+  const armPad = useMemo(() => roundedBox(0.15, 0.09, 0.66, 0.045, 0.02), []);
+
+  /*
+   * It stands on the rug, not on the floorboards.
+   *
+   * Every height was measured from ROOM.floorY while the rug it sits on is
+   * 0.055 thick, so the castors were buried to their axles in it.
+   */
+  const rugTop = ROOM.floorY + 0.055;
+  const seatY = rugTop + 1.72;
+  const hubY = rugTop + 0.3;
 
   return (
     <group position={[0.85, 0, 4.35]} rotation={[0, Math.PI + 0.34, 0]}>
-      {/* Seat: a shell with a cushion proud of it, not one flat slab. */}
       <mesh geometry={shell} position={[0, seatY - 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} castShadow>
-        <meshStandardMaterial color="#4a4c50" roughness={0.72} roughnessMap={rough} />
+        <meshStandardMaterial color="#4a4c50" roughness={0.78} roughnessMap={rough} />
       </mesh>
       <mesh geometry={cushion} position={[0, seatY + 0.11, 0.02]} rotation={[-Math.PI / 2, 0, 0]} castShadow>
-        <meshStandardMaterial color="#eae5dc" roughness={0.86} roughnessMap={rough} />
+        <meshStandardMaterial color="#eae5dc" roughness={0.88} roughnessMap={rough} />
       </mesh>
 
-      {/* The spine, which is what was missing: the back has to join the seat. */}
       <mesh position={[0, seatY + 0.22, -0.72]} rotation={[0.34, 0, 0]} castShadow>
         <boxGeometry args={[0.26, 0.62, 0.16]} />
         <meshStandardMaterial color="#3d3f42" roughness={0.5} metalness={0.35} />
@@ -753,50 +758,61 @@ function Chair({ rough }: { rough: THREE.Texture }) {
 
       <group position={[0, seatY + 1.08, -0.9]} rotation={[-0.19, 0, 0]}>
         <mesh geometry={backFrame} castShadow>
-          <meshStandardMaterial color="#4a4c50" roughness={0.7} roughnessMap={rough} />
+          <meshStandardMaterial color="#4a4c50" roughness={0.72} roughnessMap={rough} />
         </mesh>
         <mesh geometry={backPad} position={[0, 0, 0.06]} castShadow>
-          <meshStandardMaterial color="#eae5dc" roughness={0.86} roughnessMap={rough} />
+          <meshStandardMaterial color="#eae5dc" roughness={0.88} roughnessMap={rough} />
         </mesh>
       </group>
 
-      {/* Armrests. */}
-      {[-0.86, 0.86].map((x) => (
-        <group key={x} position={[x, seatY + 0.12, -0.12]}>
-          <mesh position={[0, 0.24, -0.2]} castShadow>
-            <boxGeometry args={[0.1, 0.5, 0.12]} />
-            <meshStandardMaterial color="#3d3f42" roughness={0.5} metalness={0.3} />
+      {/*
+        Armrests the ordinary way round: a stanchion up from the side of the
+        seat, a pad lying flat along the top of it. They were a post with a
+        block stuck to its side, which is why they read as luggage.
+      */}
+      {[-0.84, 0.84].map((x) => (
+        <group key={x}>
+          <mesh position={[x, seatY + 0.28, -0.16]} castShadow>
+            <boxGeometry args={[0.085, 0.56, 0.11]} />
+            <meshStandardMaterial color="#3a3c40" roughness={0.52} metalness={0.3} />
           </mesh>
-          <mesh geometry={arm} position={[0, 0.52, 0.04]} castShadow>
-            <meshStandardMaterial color="#2f3134" roughness={0.62} roughnessMap={rough} />
+          <mesh geometry={armPad} position={[x, seatY + 0.58, 0.04]} castShadow>
+            <meshStandardMaterial color="#2f3134" roughness={0.68} roughnessMap={rough} />
           </mesh>
         </group>
       ))}
 
-      {/* Gas lift: a chrome ram inside a black sleeve. */}
-      <mesh position={[0, seatY - 0.42, 0]} castShadow>
-        <cylinderGeometry args={[0.075, 0.075, 0.72, 18]} />
-        <meshStandardMaterial color="#b9bcc0" roughness={0.24} metalness={0.85} />
+      {/*
+        The column reaches the hub. It used to stop 0.17 short of the base,
+        which left the whole chair hanging above its own wheels.
+      */}
+      <mesh position={[0, hubY + 0.3, 0]} castShadow>
+        <cylinderGeometry args={[0.13, 0.155, 0.6, 22]} />
+        <meshStandardMaterial color="#2c2e31" roughness={0.44} metalness={0.4} />
       </mesh>
-      <mesh position={[0, seatY - 0.92, 0]} castShadow>
-        <cylinderGeometry args={[0.13, 0.15, 0.62, 20]} />
-        <meshStandardMaterial color="#2c2e31" roughness={0.42} metalness={0.4} />
+      <mesh position={[0, (hubY + 0.58 + seatY - 0.1) / 2, 0]} castShadow>
+        <cylinderGeometry args={[0.072, 0.072, seatY - 0.1 - (hubY + 0.58), 18]} />
+        <meshStandardMaterial color="#b9bcc0" roughness={0.26} metalness={0.85} />
+      </mesh>
+      <mesh position={[0, seatY - 0.14, 0]} castShadow>
+        <boxGeometry args={[0.5, 0.12, 0.44]} />
+        <meshStandardMaterial color="#33353a" roughness={0.5} metalness={0.35} />
       </mesh>
 
-      {/* Five arms, each with a fork and a castor that actually meets the floor. */}
       {[0, 1, 2, 3, 4].map((i) => {
         const a2 = (i / 5) * Math.PI * 2;
         return (
           <group key={i} rotation={[0, a2, 0]}>
-            <mesh position={[0, ROOM.floorY + 0.3, 0.46]} rotation={[0.12, 0, 0]} castShadow>
+            <mesh position={[0, hubY - 0.06, 0.46]} rotation={[0.1, 0, 0]} castShadow>
               <boxGeometry args={[0.17, 0.11, 0.94]} />
               <meshStandardMaterial color="#33353a" roughness={0.46} metalness={0.4} />
             </mesh>
-            <mesh position={[0, ROOM.floorY + 0.19, 0.9]} castShadow>
+            <mesh position={[0, rugTop + 0.19, 0.9]} castShadow>
               <boxGeometry args={[0.09, 0.2, 0.1]} />
               <meshStandardMaterial color="#26282b" roughness={0.5} />
             </mesh>
-            <mesh position={[0, ROOM.floorY + 0.1, 0.9]} rotation={[0, 0, Math.PI / 2]}>
+            {/* Radius 0.1 centred 0.1 up, so it meets the rug and no more. */}
+            <mesh position={[0, rugTop + 0.1, 0.9]} rotation={[0, 0, Math.PI / 2]}>
               <cylinderGeometry args={[0.1, 0.1, 0.07, 16]} />
               <meshStandardMaterial color="#1e2022" roughness={0.6} />
             </mesh>
@@ -1144,6 +1160,33 @@ function Window({ rough }: { rough: THREE.Texture }) {
         <boxGeometry args={[WINDOW.w + 0.74, 0.16, 0.5]} />
         <meshStandardMaterial color="#efe5d2" roughness={0.86} roughnessMap={rough} />
       </mesh>
+
+      {/* A rod across the head of the opening, with a finial at each end. */}
+      <mesh position={[0, WINDOW.h / 2 + 0.42, 0.3]} rotation={[0, 0, Math.PI / 2]} castShadow>
+        <cylinderGeometry args={[0.045, 0.045, WINDOW.w + 1.5, 16]} />
+        <meshStandardMaterial color="#3a3733" roughness={0.42} metalness={0.55} />
+      </mesh>
+      {[-1, 1].map((side) => (
+        <mesh
+          key={side}
+          position={[side * (WINDOW.w / 2 + 0.75), WINDOW.h / 2 + 0.42, 0.3]}
+          castShadow
+        >
+          <sphereGeometry args={[0.085, 16, 12]} />
+          <meshStandardMaterial color="#3a3733" roughness={0.38} metalness={0.6} />
+        </mesh>
+      ))}
+      {/* Brackets back to the wall. */}
+      {[-1, 1].map((side) => (
+        <mesh
+          key={`b${side}`}
+          position={[side * (WINDOW.w / 2 + 0.42), WINDOW.h / 2 + 0.42, 0.15]}
+          castShadow
+        >
+          <boxGeometry args={[0.07, 0.07, 0.3]} />
+          <meshStandardMaterial color="#3a3733" roughness={0.45} metalness={0.5} />
+        </mesh>
+      ))}
 
       {/*
         One panel with folds waved into it.
@@ -1571,16 +1614,15 @@ function Cables({ rough }: { rough: THREE.Texture }) {
     () =>
       flex(
         [
-          // Out across the open floor where it can be seen, not tucked behind
-          // the desk where every cable in the room was hiding.
-          [5.6, ROOM.floorY + 0.05, 3.1],
-          [4.7, ROOM.floorY + 0.05, 4.1],
-          [2.6, ROOM.floorY + 0.05, 4.7],
-          [0.2, ROOM.floorY + 0.05, 4.4],
-          [-2.2, ROOM.floorY + 0.05, 2.7],
-          [-3.1, ROOM.floorY + 0.05, 0.4],
-          [-2.9, ROOM.floorY + 0.06, -1.6],
-          [-2.5, ROOM.floorY + 0.06, -2.0],
+          // Round the back of the desk. Taken across the open floor it ran
+          // straight through the chair's castors.
+          [5.6, ROOM.floorY + 0.05, 3.05],
+          [5.95, ROOM.floorY + 0.05, 1.4],
+          [5.8, ROOM.floorY + 0.05, -0.9],
+          [4.6, ROOM.floorY + 0.05, -2.5],
+          [2.2, ROOM.floorY + 0.06, -2.85],
+          [-0.6, ROOM.floorY + 0.06, -2.6],
+          [-2.5, ROOM.floorY + 0.06, -2.05],
         ],
         0.032,
       ),
@@ -2014,9 +2056,17 @@ export default function Room() {
     return t;
   }, []);
   const top = useMemo(() => deskTop(), []);
-  const leg = useMemo(() => frustumY(0.19, 0.19, 0.13, 0.13, 2.7), []);
-  const legX = DESK.w / 2 - 0.62;
-  const legZ = DESK.d / 2 - 0.62;
+  /*
+   * A thinner top on slim steel legs, set in from the corners.
+   *
+   * It was a thick slab on four tapered wooden posts, which is a kitchen table.
+   * Bringing the frame inboard and squaring the section is most of what makes a
+   * desk look designed rather than joined.
+   */
+  const legTop = -(DESK.thickness + 0.044);
+  const legH = legTop + 2.88;
+  const legX = DESK.w / 2 - 0.95;
+  const legZ = DESK.d / 2 - 0.95;
 
   return (
     <group>
@@ -2054,8 +2104,16 @@ export default function Room() {
         [-legX, DESK.cz + legZ],
         [legX, DESK.cz + legZ],
       ].map(([x, z]) => (
-        <mesh key={`${x},${z}`} geometry={leg} position={[x, -2.87, z]} castShadow>
-          <meshStandardMaterial color="#6b4a28" roughness={0.9} roughnessMap={props} />
+        <mesh key={`${x},${z}`} position={[x, legTop - legH / 2, z]} castShadow>
+          <boxGeometry args={[0.11, legH, 0.11]} />
+          <meshStandardMaterial color="#2f3134" roughness={0.36} metalness={0.62} />
+        </mesh>
+      ))}
+      {/* A stretcher down each side, low, tying the frame together. */}
+      {[-legX, legX].map((x) => (
+        <mesh key={`s${x}`} position={[x, -2.24, DESK.cz]} castShadow>
+          <boxGeometry args={[0.075, 0.075, legZ * 2]} />
+          <meshStandardMaterial color="#2f3134" roughness={0.36} metalness={0.62} />
         </mesh>
       ))}
 
