@@ -1759,19 +1759,45 @@ function useFretboard(): THREE.CanvasTexture {
     canvas.width = 64;
     canvas.height = 1024;
     const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#241813';
+    const grain = ctx.createLinearGradient(0, 0, 64, 0);
+    grain.addColorStop(0, '#2a1c15');
+    grain.addColorStop(0.5, '#3a2820');
+    grain.addColorStop(1, '#241812');
+    ctx.fillStyle = grain;
     ctx.fillRect(0, 0, 64, 1024);
-    // Frets close up as they climb, the way the scale actually divides.
+    for (let i = 0; i < 120; i += 1) {
+      ctx.strokeStyle = `rgba(20,12,8,${0.05 + Math.random() * 0.12})`;
+      ctx.lineWidth = 0.6 + Math.random();
+      const x = Math.random() * 64;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x + (Math.random() - 0.5) * 8, 1024);
+      ctx.stroke();
+    }
+    /*
+     * Frets by the seventeenth root, so they close up toward the body the way
+     * a scale actually divides. Evenly spaced they read as a ladder.
+     */
     let pos = 0;
-    for (let i = 0; i < 20; i += 1) {
+    for (let i = 1; i <= 19; i += 1) {
+      const prev = pos;
       pos += (1024 - pos) / 17.817;
-      ctx.fillStyle = '#c9c3b4';
-      ctx.fillRect(0, 1024 - pos - 2, 64, 3);
-      if ([3, 5, 7, 9, 15, 17].includes(i + 1)) {
-        ctx.fillStyle = '#e6dfcd';
-        ctx.beginPath();
-        ctx.arc(32, 1024 - pos + (1024 - pos) / 40 + 12, 5, 0, Math.PI * 2);
-        ctx.fill();
+      ctx.fillStyle = '#cfcabc';
+      ctx.fillRect(0, 1024 - pos - 1.5, 64, 3);
+      if ([3, 5, 7, 9, 12, 15, 17].includes(i)) {
+        const mid = 1024 - (prev + pos) / 2;
+        ctx.fillStyle = '#efe8d6';
+        if (i === 12) {
+          for (const dx of [-13, 13]) {
+            ctx.beginPath();
+            ctx.arc(32 + dx, mid, 4.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        } else {
+          ctx.beginPath();
+          ctx.arc(32, mid, 5, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     }
     const t = new THREE.CanvasTexture(canvas);
@@ -1780,117 +1806,213 @@ function useFretboard(): THREE.CanvasTexture {
   }, []);
 }
 
+/** The dreadnought outline, as a closed shape. */
+function guitarOutline(inset = 0): THREE.Shape {
+  const k = 1 - inset;
+  const P = (x: number, y: number): [number, number] => [x * k, y * k];
+  const g = new THREE.Shape();
+  g.moveTo(...P(0, -0.82));
+  g.bezierCurveTo(...P(0.36, -0.83), ...P(0.6, -0.7), ...P(0.62, -0.45));
+  g.bezierCurveTo(...P(0.64, -0.22), ...P(0.46, -0.06), ...P(0.42, 0.06));
+  g.bezierCurveTo(...P(0.4, 0.16), ...P(0.48, 0.28), ...P(0.52, 0.4));
+  g.bezierCurveTo(...P(0.56, 0.55), ...P(0.44, 0.72), ...P(0.22, 0.785));
+  g.bezierCurveTo(...P(0.15, 0.805), ...P(0.08, 0.81), ...P(0, 0.81));
+  g.bezierCurveTo(...P(-0.08, 0.81), ...P(-0.15, 0.805), ...P(-0.22, 0.785));
+  g.bezierCurveTo(...P(-0.44, 0.72), ...P(-0.56, 0.55), ...P(-0.52, 0.4));
+  g.bezierCurveTo(...P(-0.48, 0.28), ...P(-0.4, 0.16), ...P(-0.42, 0.06));
+  g.bezierCurveTo(...P(-0.46, -0.06), ...P(-0.64, -0.22), ...P(-0.62, -0.45));
+  g.bezierCurveTo(...P(-0.6, -0.7), ...P(-0.36, -0.83), ...P(0, -0.82));
+  return g;
+}
+
+const SOUNDHOLE = { y: 0.3, r: 0.145 };
+
 /**
- * An electric hanging on the wall.
+ * A black acoustic on a wall hanger.
  *
- * The body is one closed outline with a waist in it rather than two circles
- * overlapped — the pinch is the whole silhouette, and a pair of discs never
- * reads as a guitar. Everything else hangs off that: the neck leaves the upper
- * bout, the bridge sits a third up from the tail, and the strings run between
- * the two.
+ * A dreadnought, so the outline is a symmetric figure-of-eight with the waist
+ * pinched between two bouts — no cutaways, no horns. The body is deep: an
+ * acoustic is a box with air in it, and building it as a slab is what makes a
+ * guitar look like a cardboard cut-out.
  */
 function Guitar({ rough }: { rough: THREE.Texture }) {
   const board = useFretboard();
 
-  const body = useMemo(() => {
-    const g = new THREE.Shape();
-    g.moveTo(0, -0.72);
-    g.bezierCurveTo(0.42, -0.73, 0.6, -0.5, 0.57, -0.24);
-    g.bezierCurveTo(0.56, -0.04, 0.35, 0.02, 0.35, 0.17);
-    g.bezierCurveTo(0.35, 0.37, 0.53, 0.5, 0.46, 0.66);
-    g.bezierCurveTo(0.4, 0.79, 0.18, 0.81, 0, 0.79);
-    g.bezierCurveTo(-0.18, 0.81, -0.4, 0.79, -0.46, 0.66);
-    g.bezierCurveTo(-0.53, 0.5, -0.35, 0.37, -0.35, 0.17);
-    g.bezierCurveTo(-0.35, 0.02, -0.56, -0.04, -0.57, -0.24);
-    g.bezierCurveTo(-0.6, -0.5, -0.42, -0.73, 0, -0.72);
-    const geo = new THREE.ExtrudeGeometry(g, {
-      depth: 0.1,
+  /*
+   * The hole goes through the body, not just through a plate laid on it.
+   *
+   * ExtrudeGeometry caps both ends, so the box had a solid face across its
+   * front at 0.185 — in front of the soundboard, the rosette and the hole
+   * alike. The guitar rendered as a black slab. Same trap as the plant pot's
+   * lid; a cap you did not ask for is still a cap.
+   */
+  const sides = useMemo(() => {
+    const shape = guitarOutline();
+    const hole = new THREE.Path();
+    hole.absarc(0, SOUNDHOLE.y, SOUNDHOLE.r, 0, Math.PI * 2, true);
+    shape.holes.push(hole);
+    const g = new THREE.ExtrudeGeometry(shape, {
+      depth: 0.3,
       bevelEnabled: true,
       bevelThickness: 0.035,
       bevelSize: 0.03,
       bevelSegments: 4,
-      curveSegments: 24,
+      curveSegments: 40,
     });
-    geo.computeVertexNormals();
-    return geo;
+    g.translate(0, 0, -0.15);
+    g.computeVertexNormals();
+    return g;
   }, []);
 
-  const neckLen = 1.36;
-  const neckBase = 0.74;
+  // Cream binding, a shade proud of the sides, all the way round.
+  const binding = useMemo(() => {
+    const outer = guitarOutline();
+    outer.holes.push(new THREE.Path(guitarOutline(0.026).getPoints(120)));
+    return new THREE.ShapeGeometry(outer, 40);
+  }, []);
+
+  const pickguard = useMemo(() => {
+    const g = new THREE.Shape();
+    g.moveTo(0.15, 0.4);
+    g.bezierCurveTo(0.34, 0.36, 0.44, 0.2, 0.4, 0.02);
+    g.bezierCurveTo(0.37, -0.1, 0.26, -0.14, 0.2, -0.08);
+    g.bezierCurveTo(0.17, 0.02, 0.2, 0.14, 0.15, 0.4);
+    return new THREE.ShapeGeometry(g, 20);
+  }, []);
+
+  const neckLen = 1.34;
+  const neckBase = 0.78;
+  const nutY = neckBase + neckLen;
+  const black = '#1c1c1e';
 
   return (
-    <group position={[-5.35, 1.05, WALL_Z + 0.2]}>
-      <mesh geometry={body} castShadow>
-        <meshStandardMaterial color="#8c2f24" roughness={0.28} roughnessMap={rough} metalness={0.12} />
+    <group position={[-5.3, 1.05, WALL_Z + 0.24]} scale={0.9}>
+      {/* Body: sides and back, then the top laid on the front of them. */}
+      <mesh geometry={sides} castShadow receiveShadow>
+        <meshStandardMaterial color={black} roughness={0.34} roughnessMap={rough} metalness={0.06} />
       </mesh>
-      {/* Scratchplate, offset the way they always are. */}
-      <mesh position={[0.09, -0.12, 0.14]} rotation={[0, 0, 0.2]}>
-        <planeGeometry args={[0.62, 0.72]} />
-        <meshStandardMaterial color="#efe7d2" roughness={0.35} />
+      <mesh geometry={binding} position={[0, 0, 0.187]}>
+        <meshStandardMaterial color="#e6dfcb" roughness={0.42} />
       </mesh>
-      {/* Two pickups and a bridge. */}
-      {[-0.06, 0.16].map((y) => (
-        <mesh key={y} position={[0.02, y, 0.152]}>
-          <boxGeometry args={[0.42, 0.09, 0.03]} />
-          <meshStandardMaterial color="#26262a" roughness={0.5} metalness={0.35} />
+
+      {/* The back of the box, seen down through the hole. */}
+      <mesh position={[0, SOUNDHOLE.y, -0.1]}>
+        <circleGeometry args={[SOUNDHOLE.r + 0.04, 40]} />
+        <meshStandardMaterial color="#0a0a0b" roughness={0.98} />
+      </mesh>
+      {/* Rosette rings. */}
+      {[
+        [SOUNDHOLE.r + 0.03, '#c9a86a'],
+        [SOUNDHOLE.r + 0.048, '#e6dfcb'],
+        [SOUNDHOLE.r + 0.062, '#c9a86a'],
+      ].map(([r, c]) => (
+        <mesh key={String(r)} position={[0, SOUNDHOLE.y, 0.189]}>
+          <ringGeometry args={[Number(r) - 0.008, Number(r), 48]} />
+          <meshStandardMaterial color={String(c)} roughness={0.4} metalness={0.2} />
         </mesh>
       ))}
-      <mesh position={[0.02, -0.3, 0.152]}>
-        <boxGeometry args={[0.36, 0.07, 0.05]} />
-        <meshStandardMaterial color="#b8bcc0" roughness={0.28} metalness={0.8} />
+
+      <mesh geometry={pickguard} position={[0, 0, 0.191]}>
+        <meshStandardMaterial color="#141416" roughness={0.22} metalness={0.15} />
       </mesh>
 
-      {/* Neck, then the fingerboard laid on its face. */}
-      <mesh position={[0, neckBase + neckLen / 2, 0.03] } castShadow>
-        <boxGeometry args={[0.15, neckLen, 0.09]} />
-        <meshStandardMaterial color="#c69a5e" roughness={0.44} roughnessMap={rough} />
+      {/* Bridge: a wing block, a bone saddle, six pins. */}
+      <mesh position={[0, -0.28, 0.212]} castShadow>
+        <boxGeometry args={[0.44, 0.115, 0.055]} />
+        <meshStandardMaterial color="#141416" roughness={0.36} />
       </mesh>
-      <mesh position={[0, neckBase + neckLen / 2, 0.082]}>
-        <planeGeometry args={[0.14, neckLen]} />
-        <meshStandardMaterial map={board} roughness={0.42} />
+      {[-0.245, 0.245].map((x) => (
+        <mesh key={x} position={[x, -0.28, 0.207]}>
+          <cylinderGeometry args={[0.028, 0.028, 0.045, 14]} />
+          <meshStandardMaterial color="#141416" roughness={0.36} />
+        </mesh>
+      ))}
+      <mesh position={[0, -0.245, 0.234]}>
+        <boxGeometry args={[0.36, 0.022, 0.03]} />
+        <meshStandardMaterial color="#efe7d4" roughness={0.3} />
+      </mesh>
+      {[-0.1, -0.06, -0.02, 0.02, 0.06, 0.1].map((x) => (
+        <mesh key={`pin${x}`} position={[x, -0.312, 0.234]}>
+          <cylinderGeometry args={[0.014, 0.012, 0.05, 10]} />
+          <meshStandardMaterial color="#efe7d4" roughness={0.34} />
+        </mesh>
+      ))}
+
+      {/* Heel, where the neck meets the box. */}
+      <mesh position={[0, neckBase - 0.04, 0.06]} castShadow>
+        <boxGeometry args={[0.2, 0.2, 0.24]} />
+        <meshStandardMaterial color={black} roughness={0.38} />
       </mesh>
 
-      {/* Headstock, tipped back off the neck. */}
-      <group position={[0, neckBase + neckLen + 0.14, 0.02]} rotation={[0.22, 0, 0]}>
+      {/* Neck, tapering to the nut, with the fingerboard on its face. */}
+      <mesh position={[0, neckBase + neckLen / 2, 0.14]} castShadow>
+        <boxGeometry args={[0.145, neckLen, 0.085]} />
+        <meshStandardMaterial color="#232326" roughness={0.4} roughnessMap={rough} />
+      </mesh>
+      <mesh position={[0, neckBase + neckLen / 2, 0.186]}>
+        <planeGeometry args={[0.135, neckLen]} />
+        <meshStandardMaterial map={board} roughness={0.4} />
+      </mesh>
+      {/* Nut. */}
+      <mesh position={[0, nutY + 0.012, 0.185]}>
+        <boxGeometry args={[0.14, 0.028, 0.05]} />
+        <meshStandardMaterial color="#efe7d4" roughness={0.32} />
+      </mesh>
+
+      {/* Headstock, tipped back, three tuners a side. */}
+      <group position={[0, nutY + 0.2, 0.16]} rotation={[0.24, 0, 0]}>
         <mesh castShadow>
-          <boxGeometry args={[0.2, 0.34, 0.055]} />
-          <meshStandardMaterial color="#8c2f24" roughness={0.3} metalness={0.12} />
+          <boxGeometry args={[0.21, 0.38, 0.05]} />
+          <meshStandardMaterial color={black} roughness={0.3} metalness={0.08} />
         </mesh>
         {[0, 1, 2].map((i) =>
           [-1, 1].map((side) => (
-            <mesh
-              key={`${i}${side}`}
-              position={[side * 0.13, 0.09 - i * 0.09, 0]}
-              rotation={[0, 0, Math.PI / 2]}
-            >
-              <cylinderGeometry args={[0.017, 0.017, 0.07, 10]} />
-              <meshStandardMaterial color="#c8ccd0" roughness={0.24} metalness={0.85} />
-            </mesh>
+            <group key={`${i}${side}`} position={[side * 0.105, 0.11 - i * 0.1, 0]}>
+              <mesh rotation={[0, 0, Math.PI / 2]}>
+                <cylinderGeometry args={[0.016, 0.016, 0.09, 10]} />
+                <meshStandardMaterial color="#cdd2d6" roughness={0.22} metalness={0.88} />
+              </mesh>
+              <mesh position={[side * 0.075, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+                <boxGeometry args={[0.05, 0.03, 0.075]} />
+                <meshStandardMaterial color="#e9e3d2" roughness={0.3} />
+              </mesh>
+            </group>
           )),
         )}
       </group>
 
-      {/* Six strings, bridge to nut. */}
-      {[-0.05, -0.03, -0.01, 0.01, 0.03, 0.05].map((x) => (
-        <mesh key={x} position={[x, (neckBase + neckLen + 0.02 - 0.3) / 2 - 0.14, 0.1]}>
-          <boxGeometry args={[0.006, neckBase + neckLen + 0.32, 0.006]} />
-          <meshStandardMaterial color="#d8d2c4" roughness={0.3} metalness={0.7} />
+      {/* Six strings, bridge pins to nut, thinning across the set. */}
+      {[
+        [-0.056, 0.0055],
+        [-0.034, 0.0047],
+        [-0.011, 0.004],
+        [0.011, 0.0033],
+        [0.034, 0.0027],
+        [0.056, 0.0022],
+      ].map(([x, r]) => (
+        <mesh key={`s${x}`} position={[x, (nutY - 0.28) / 2 - 0.01, 0.217]}>
+          <cylinderGeometry args={[r, r, nutY + 0.3, 6]} />
+          <meshStandardMaterial color="#d6cdb8" roughness={0.3} metalness={0.65} />
         </mesh>
       ))}
 
-      {/* The hanger it sits in. */}
-      <group position={[0, neckBase + neckLen + 0.02, -0.09]}>
+      {/* The hanger, and the strap button on the tail. */}
+      <group position={[0, nutY + 0.06, -0.04]}>
         <mesh castShadow>
-          <boxGeometry args={[0.1, 0.1, 0.22]} />
+          <boxGeometry args={[0.09, 0.09, 0.3]} />
           <meshStandardMaterial color="#2e2b28" roughness={0.5} metalness={0.3} />
         </mesh>
         {[-1, 1].map((side) => (
-          <mesh key={side} position={[side * 0.13, 0.03, 0.02]} rotation={[0, 0, side * 0.5]}>
-            <boxGeometry args={[0.07, 0.2, 0.07]} />
-            <meshStandardMaterial color="#3a3733" roughness={0.6} />
+          <mesh key={side} position={[side * 0.12, 0.02, 0.06]} rotation={[0, 0, side * 0.55]}>
+            <boxGeometry args={[0.06, 0.2, 0.06]} />
+            <meshStandardMaterial color="#3a3733" roughness={0.62} />
           </mesh>
         ))}
       </group>
+      <mesh position={[0, -0.83, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.028, 0.022, 0.05, 12]} />
+        <meshStandardMaterial color="#cdd2d6" roughness={0.28} metalness={0.8} />
+      </mesh>
     </group>
   );
 }
