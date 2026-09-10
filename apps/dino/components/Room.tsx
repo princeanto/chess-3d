@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { roundedShape } from './Machine';
 
 /**
@@ -25,6 +26,36 @@ import { roundedShape } from './Machine';
  * something two metres deep. Trimming it means the back edge has to move back
  * with it, or the desk ends up standing a metre off the wall.
  */
+/*
+ * Materials the scene shares.
+ *
+ * Written inline, a mesh inside a `.map()` gets its own material instance every
+ * time — the plant alone was thirty-six of them for two appearances. Each one
+ * carries a shader setup and a uniform block, and every light in the scene is
+ * paid for in all of them.
+ */
+const M = {
+  stem: new THREE.MeshStandardMaterial({ color: '#4c6b3a', roughness: 0.84 }),
+  leaf: new THREE.MeshStandardMaterial({
+    color: '#3d6b39',
+    roughness: 0.66,
+    side: THREE.DoubleSide,
+  }),
+  leafDark: new THREE.MeshStandardMaterial({
+    color: '#2c4e2d',
+    roughness: 0.66,
+    side: THREE.DoubleSide,
+  }),
+  darkMetal: new THREE.MeshStandardMaterial({ color: '#33353a', roughness: 0.46, metalness: 0.4 }),
+  castor: new THREE.MeshStandardMaterial({ color: '#1e2022', roughness: 0.6 }),
+  fork: new THREE.MeshStandardMaterial({ color: '#26282b', roughness: 0.5 }),
+  chrome: new THREE.MeshStandardMaterial({ color: '#cdd2d6', roughness: 0.22, metalness: 0.88 }),
+  tunerButton: new THREE.MeshStandardMaterial({ color: '#e9e3d2', roughness: 0.3 }),
+  string: new THREE.MeshStandardMaterial({ color: '#d6cdb8', roughness: 0.3, metalness: 0.65 }),
+  guitarBlack: new THREE.MeshStandardMaterial({ color: '#141416', roughness: 0.36 }),
+  bone: new THREE.MeshStandardMaterial({ color: '#efe7d4', roughness: 0.34 }),
+};
+
 const DESK = { w: 7.2, d: 6.2, cz: -0.15, thickness: 0.1 };
 const WALL_Z = -3.62;
 
@@ -86,7 +117,7 @@ function normalFrom(height: HTMLCanvasElement, strength = 2.2): THREE.CanvasText
 }
 
 /** Plaster: trowel sweeps and a fine aggregate, as a height field. */
-function plasterHeight(size = 512): HTMLCanvasElement {
+function plasterHeight(size = 256): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
@@ -110,7 +141,7 @@ function plasterHeight(size = 512): HTMLCanvasElement {
     ctx.stroke();
   }
   // Aggregate.
-  for (let i = 0; i < 14000; i += 1) {
+  for (let i = 0; i < 4000; i += 1) {
     ctx.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '0,0,0'},${
       0.05 + Math.random() * 0.13
     })`;
@@ -168,17 +199,17 @@ function mottle(size = 256, strength = 0.25, blobs = 900): THREE.CanvasTexture {
 function useWood(): { map: THREE.CanvasTexture; rough: THREE.CanvasTexture } {
   return useMemo(() => {
     const canvas = document.createElement('canvas');
-    canvas.width = 1024;
-    canvas.height = 1024;
+    canvas.width = 512;
+    canvas.height = 512;
     const ctx = canvas.getContext('2d')!;
     ctx.fillStyle = '#9c7b52';
-    ctx.fillRect(0, 0, 1024, 1024);
+    ctx.fillRect(0, 0, 512, 512);
 
     // Grain: long wandering lines, each a shallow sine with its own phase, so
     // it does not read as corduroy. Fine and low contrast; oak at this distance
     // is mostly tone, not stripes.
-    for (let i = 0; i < 520; i += 1) {
-      const y = Math.random() * 1024;
+    for (let i = 0; i < 260; i += 1) {
+      const y = Math.random() * 512;
       const amp = 3 + Math.random() * 14;
       const phase = Math.random() * Math.PI * 2;
       const dark = Math.random() < 0.45;
@@ -187,7 +218,7 @@ function useWood(): { map: THREE.CanvasTexture; rough: THREE.CanvasTexture } {
         : `rgba(206, 172, 128, ${0.03 + Math.random() * 0.1})`;
       ctx.lineWidth = 0.5 + Math.random() * 1.9;
       ctx.beginPath();
-      for (let x = 0; x <= 1024; x += 14) {
+      for (let x = 0; x <= 512; x += 10) {
         const yy = y + Math.sin(x / 280 + phase) * amp + Math.sin(x / 57 + phase) * 1.4;
         if (x === 0) ctx.moveTo(x, yy);
         else ctx.lineTo(x, yy);
@@ -196,28 +227,28 @@ function useWood(): { map: THREE.CanvasTexture; rough: THREE.CanvasTexture } {
     }
 
     // Board seams. A single slab of timber this wide would not exist.
-    for (const y of [212, 468, 726, 946]) {
+    for (const y of [106, 234, 363, 473]) {
       ctx.strokeStyle = 'rgba(58, 36, 16, 0.4)';
       ctx.lineWidth = 1.6;
       ctx.beginPath();
       ctx.moveTo(0, y);
-      ctx.lineTo(1024, y);
+      ctx.lineTo(512, y);
       ctx.stroke();
       ctx.strokeStyle = 'rgba(226, 196, 152, 0.16)';
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(0, y + 2);
-      ctx.lineTo(1024, y + 2);
+      ctx.lineTo(512, y + 2);
       ctx.stroke();
     }
 
     // Open pores, so it is not glass-smooth at close range.
-    for (let i = 0; i < 2600; i += 1) {
+    for (let i = 0; i < 1100; i += 1) {
       ctx.fillStyle = `rgba(64, 42, 20, ${0.03 + Math.random() * 0.09})`;
       ctx.beginPath();
       ctx.ellipse(
-        Math.random() * 1024,
-        Math.random() * 1024,
+        Math.random() * 512,
+        Math.random() * 512,
         0.6 + Math.random() * 3.4,
         0.4 + Math.random() * 0.9,
         0,
@@ -228,12 +259,12 @@ function useWood(): { map: THREE.CanvasTexture; rough: THREE.CanvasTexture } {
     }
 
     // The lamps' pool, baked so it stays where it is framed.
-    const pool = ctx.createRadialGradient(512, 330, 40, 512, 470, 640);
+    const pool = ctx.createRadialGradient(256, 165, 20, 256, 235, 320);
     pool.addColorStop(0, 'rgba(255, 230, 192, 0.24)');
     pool.addColorStop(0.45, 'rgba(190, 152, 106, 0.06)');
     pool.addColorStop(1, 'rgba(20, 14, 8, 0.4)');
     ctx.fillStyle = pool;
-    ctx.fillRect(0, 0, 1024, 1024);
+    ctx.fillRect(0, 0, 512, 512);
 
     const map = new THREE.CanvasTexture(canvas);
     map.colorSpace = THREE.SRGBColorSpace;
@@ -246,7 +277,7 @@ function useWood(): { map: THREE.CanvasTexture; rough: THREE.CanvasTexture } {
 
 function usePlaster(): THREE.CanvasTexture {
   return useMemo(() => {
-    const t = normalFrom(plasterHeight(512), 2.6);
+    const t = normalFrom(plasterHeight(256), 2.6);
     t.repeat.set(5, 3);
     return t;
   }, []);
@@ -319,7 +350,7 @@ function deskTop(): THREE.BufferGeometry {
     bevelThickness: bevel,
     bevelSize: bevel,
     bevelSegments: 3,
-    curveSegments: 22,
+    curveSegments: 16,
   });
   g.rotateX(-Math.PI / 2);
   // Sit the top face on zero, where everything else already stands.
@@ -545,40 +576,40 @@ function DeskMat() {
 function useFloorBoards(): THREE.CanvasTexture {
   return useMemo(() => {
     const canvas = document.createElement('canvas');
-    canvas.width = 1024;
-    canvas.height = 1024;
+    canvas.width = 512;
+    canvas.height = 512;
     const ctx = canvas.getContext('2d')!;
     ctx.fillStyle = '#b9a храм'.slice(0, 7);
     ctx.fillStyle = '#b9a488';
-    ctx.fillRect(0, 0, 1024, 1024);
+    ctx.fillRect(0, 0, 512, 512);
     // Boards, with staggered end joints so it is laid rather than printed.
-    const bw = 1024 / 9;
+    const bw = 512 / 9;
     for (let b = 0; b < 9; b += 1) {
       const shade = 0.9 + ((b * 37) % 20) / 100;
       ctx.fillStyle = `rgba(${Math.round(185 * shade)}, ${Math.round(164 * shade)}, ${Math.round(136 * shade)}, 1)`;
-      ctx.fillRect(b * bw, 0, bw - 1.5, 1024);
+      ctx.fillRect(b * bw, 0, bw - 1.5, 512);
       ctx.strokeStyle = 'rgba(74, 56, 36, 0.5)';
       ctx.lineWidth = 1.4;
       ctx.beginPath();
       ctx.moveTo(b * bw, 0);
-      ctx.lineTo(b * bw, 1024);
+      ctx.lineTo(b * bw, 512);
       ctx.stroke();
-      let y = ((b * 211) % 400) - 200;
-      while (y < 1024) {
+      let y = ((b * 211) % 200) - 100;
+      while (y < 512) {
         ctx.beginPath();
         ctx.moveTo(b * bw, y);
         ctx.lineTo(b * bw + bw - 1.5, y);
         ctx.stroke();
-        y += 330 + ((b * 97) % 160);
+        y += 165 + ((b * 97) % 80);
       }
     }
-    for (let i = 0; i < 900; i += 1) {
+    for (let i = 0; i < 420; i += 1) {
       ctx.strokeStyle = `rgba(96, 74, 48, ${0.02 + Math.random() * 0.07})`;
       ctx.lineWidth = 0.5 + Math.random();
-      const x = Math.random() * 1024;
+      const x = Math.random() * 512;
       ctx.beginPath();
-      ctx.moveTo(x, Math.random() * 1024);
-      ctx.lineTo(x + (Math.random() - 0.5) * 6, Math.random() * 1024);
+      ctx.moveTo(x, Math.random() * 512);
+      ctx.lineTo(x + (Math.random() - 0.5) * 6, Math.random() * 512);
       ctx.stroke();
     }
     const t = new THREE.CanvasTexture(canvas);
@@ -811,18 +842,24 @@ function Chair({ rough }: { rough: THREE.Texture }) {
         const a2 = (i / 5) * Math.PI * 2;
         return (
           <group key={i} rotation={[0, a2, 0]}>
-            <mesh position={[0, hubY - 0.06, 0.46]} rotation={[0.1, 0, 0]} castShadow>
+            <mesh
+              position={[0, hubY - 0.06, 0.46]}
+              rotation={[0.1, 0, 0]}
+              material={M.darkMetal}
+              castShadow
+            >
               <boxGeometry args={[0.17, 0.11, 0.94]} />
-              <meshStandardMaterial color="#33353a" roughness={0.46} metalness={0.4} />
             </mesh>
-            <mesh position={[0, rugTop + 0.19, 0.9]} castShadow>
+            <mesh position={[0, rugTop + 0.19, 0.9]} material={M.fork} castShadow>
               <boxGeometry args={[0.09, 0.2, 0.1]} />
-              <meshStandardMaterial color="#26282b" roughness={0.5} />
             </mesh>
             {/* Radius 0.1 centred 0.1 up, so it meets the rug and no more. */}
-            <mesh position={[0, rugTop + 0.1, 0.9]} rotation={[0, 0, Math.PI / 2]}>
+            <mesh
+              position={[0, rugTop + 0.1, 0.9]}
+              rotation={[0, 0, Math.PI / 2]}
+              material={M.castor}
+            >
               <cylinderGeometry args={[0.1, 0.1, 0.07, 16]} />
-              <meshStandardMaterial color="#1e2022" roughness={0.6} />
             </mesh>
           </group>
         );
@@ -940,14 +977,22 @@ function FloorPieces({ rough }: { rough: THREE.Texture }) {
         tip,
       ]);
       stems.push({
-        tube: new THREE.TubeGeometry(curve, 30, 0.017, 6, false),
+        tube: new THREE.TubeGeometry(curve, 22, 0.016, 5, false),
         tip,
         dir: tip.clone().sub(mid).normalize(),
         scale: 0.4 + rng(i + 11) * 0.28,
         dark: i % 3 === 0,
       });
     }
-    return { stems, base };
+    /*
+     * One mesh for eighteen stems.
+     *
+     * They are static and share a material, so there is no reason for them to
+     * be eighteen draw calls and eighteen materials.
+     */
+    const merged = mergeGeometries(stems.map((st) => st.tube));
+    stems.forEach((st) => st.tube.dispose());
+    return { stems, base, merged };
   }, []);
 
   return (
@@ -990,11 +1035,9 @@ function FloorPieces({ rough }: { rough: THREE.Texture }) {
           <cylinderGeometry args={[0.055, 0.085, 0.8, 12]} />
           <meshStandardMaterial color="#5e6b3f" roughness={0.85} />
         </mesh>
+        <mesh geometry={plant.merged} material={M.stem} castShadow />
         {plant.stems.map((st, i) => (
           <group key={i}>
-            <mesh geometry={st.tube} castShadow>
-              <meshStandardMaterial color="#4c6b3a" roughness={0.84} />
-            </mesh>
             <mesh
               geometry={leaf}
               position={st.tip}
@@ -1004,14 +1047,9 @@ function FloorPieces({ rough }: { rough: THREE.Texture }) {
                 0.3 + (i % 3) * 0.2,
               ]}
               scale={st.scale}
+              material={st.dark ? M.leafDark : M.leaf}
               castShadow
-            >
-              <meshStandardMaterial
-                color={st.dark ? '#2c4e2d' : '#3d6b39'}
-                roughness={0.66}
-                side={THREE.DoubleSide}
-              />
-            </mesh>
+            />
           </group>
         ))}
       </group>
@@ -1241,10 +1279,6 @@ function SunThroughWindow() {
         distance={26}
         decay={1.5}
         color="#ffb877"
-        castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
-        shadow-bias={-0.0012}
       />
     </>
   );
@@ -1271,7 +1305,7 @@ interface AdSpec {
  * are the design trade rather than aperitifs.
  */
 function adTexture(spec: AdSpec, w: number, h: number): THREE.CanvasTexture {
-  const scale = 250;
+  const scale = 170;
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(w * scale);
   canvas.height = Math.round(h * scale);
@@ -1535,11 +1569,18 @@ function Sheet({ slot, index }: { slot: Slot; index: number }) {
   const y = box.cy + (slot.v - 0.5) * box.h;
   const z = WALL_Z + 0.014 + (index % 5) * 0.003;
 
-  const drawn = useMemo(
-    () => (slot.record ? recordTexture() : adTexture(ADS[(slot.ad ?? index) % ADS.length], w, h)),
-    [slot, index, w, h],
-  );
-  const [map, setMap] = useState<THREE.Texture>(drawn);
+  /*
+   * Only draw a fallback for slots that have no file.
+   *
+   * Ten of the twenty-two do, so ten poster canvases were being rendered at
+   * startup and then thrown away the moment the real image arrived.
+   */
+  const drawn = useMemo(() => {
+    if (slot.record) return recordTexture();
+    if (slot.file) return null;
+    return adTexture(ADS[(slot.ad ?? index) % ADS.length], w, h);
+  }, [slot, index, w, h]);
+  const [map, setMap] = useState<THREE.Texture | null>(drawn);
 
   useEffect(() => {
     if (!slot.file) return;
@@ -1563,14 +1604,14 @@ function Sheet({ slot, index }: { slot: Slot; index: number }) {
   if (slot.record) {
     return (
       <mesh position={[x, y, z]} castShadow>
-        <circleGeometry args={[Math.min(w, h) / 2, 64]} />
+        <circleGeometry args={[Math.min(w, h) / 2, 48]} />
         <meshStandardMaterial map={map} transparent roughness={0.35} />
       </mesh>
     );
   }
 
   return (
-    <mesh position={[x, y, z]} castShadow>
+    <mesh position={[x, y, z]} castShadow visible={map !== null}>
       <planeGeometry args={[w, h]} />
       <meshStandardMaterial map={map} roughness={0.9} />
     </mesh>
@@ -1740,24 +1781,6 @@ function Lived({ rough }: { rough: THREE.Texture }) {
   );
 }
 
-/**
- * Bounce.
- *
- * Light in this room only ever travelled one way. Real rooms are lit twice: once
- * by the source and again by everything the source hits. Two dim warm fills —
- * one under the desk, one off the wall behind the machine — are the cheap
- * version, and they are most of what was still reading as CG.
- */
-function Bounce() {
-  return (
-    <>
-      <pointLight position={[0, -1.15, 1.6]} intensity={2.6} distance={9} decay={2} color="#c98d52" />
-      <pointLight position={[0, 1.5, -2.9]} intensity={2.2} distance={8} decay={2} color="#d59a63" />
-      <pointLight position={[-4.6, 0.9, 2.2]} intensity={1.8} distance={8} decay={2} color="#c98352" />
-    </>
-  );
-}
-
 /* -------------------------------- guitar --------------------------------- */
 
 /** Frets and inlays, drawn once and mapped down the fingerboard. */
@@ -1865,7 +1888,7 @@ function Guitar({ rough }: { rough: THREE.Texture }) {
       bevelThickness: 0.035,
       bevelSize: 0.03,
       bevelSegments: 4,
-      curveSegments: 40,
+      curveSegments: 24,
     });
     g.translate(0, 0, -0.15);
     g.computeVertexNormals();
@@ -1930,9 +1953,8 @@ function Guitar({ rough }: { rough: THREE.Texture }) {
         <meshStandardMaterial color="#141416" roughness={0.36} />
       </mesh>
       {[-0.245, 0.245].map((x) => (
-        <mesh key={x} position={[x, -0.28, 0.207]}>
+        <mesh key={x} position={[x, -0.28, 0.207]} material={M.guitarBlack}>
           <cylinderGeometry args={[0.028, 0.028, 0.045, 14]} />
-          <meshStandardMaterial color="#141416" roughness={0.36} />
         </mesh>
       ))}
       <mesh position={[0, -0.245, 0.234]}>
@@ -1940,9 +1962,8 @@ function Guitar({ rough }: { rough: THREE.Texture }) {
         <meshStandardMaterial color="#efe7d4" roughness={0.3} />
       </mesh>
       {[-0.1, -0.06, -0.02, 0.02, 0.06, 0.1].map((x) => (
-        <mesh key={`pin${x}`} position={[x, -0.312, 0.234]}>
+        <mesh key={`pin${x}`} position={[x, -0.312, 0.234]} material={M.bone}>
           <cylinderGeometry args={[0.014, 0.012, 0.05, 10]} />
-          <meshStandardMaterial color="#efe7d4" roughness={0.34} />
         </mesh>
       ))}
 
@@ -1976,13 +1997,15 @@ function Guitar({ rough }: { rough: THREE.Texture }) {
         {[0, 1, 2].map((i) =>
           [-1, 1].map((side) => (
             <group key={`${i}${side}`} position={[side * 0.105, 0.11 - i * 0.1, 0]}>
-              <mesh rotation={[0, 0, Math.PI / 2]}>
+              <mesh rotation={[0, 0, Math.PI / 2]} material={M.chrome}>
                 <cylinderGeometry args={[0.016, 0.016, 0.09, 10]} />
-                <meshStandardMaterial color="#cdd2d6" roughness={0.22} metalness={0.88} />
               </mesh>
-              <mesh position={[side * 0.075, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+              <mesh
+                position={[side * 0.075, 0, 0]}
+                rotation={[0, 0, Math.PI / 2]}
+                material={M.tunerButton}
+              >
                 <boxGeometry args={[0.05, 0.03, 0.075]} />
-                <meshStandardMaterial color="#e9e3d2" roughness={0.3} />
               </mesh>
             </group>
           )),
@@ -1998,9 +2021,12 @@ function Guitar({ rough }: { rough: THREE.Texture }) {
         [0.034, 0.0027],
         [0.056, 0.0022],
       ].map(([x, r]) => (
-        <mesh key={`s${x}`} position={[x, (nutY - 0.28) / 2 - 0.01, 0.217]}>
+        <mesh
+          key={`s${x}`}
+          position={[x, (nutY - 0.28) / 2 - 0.01, 0.217]}
+          material={M.string}
+        >
           <cylinderGeometry args={[r, r, nutY + 0.3, 6]} />
-          <meshStandardMaterial color="#d6cdb8" roughness={0.3} metalness={0.65} />
         </mesh>
       ))}
 
@@ -2024,7 +2050,6 @@ function Guitar({ rough }: { rough: THREE.Texture }) {
     </group>
   );
 }
-
 /* --------------------------------- room ---------------------------------- */
 
 
@@ -2317,17 +2342,17 @@ function Plant({ rough }: { rough: THREE.Texture }) {
       </mesh>
       {strands.map((s, si) => (
         <group key={si}>
-          <mesh geometry={s.tube}>
-            <meshStandardMaterial color="#4a6b3c" roughness={0.85} />
-          </mesh>
+          <mesh geometry={s.tube} material={M.stem} />
           {s.leaves.map((l, i) => (
-            <mesh key={i} geometry={leaf} position={l.p} rotation={l.rot} scale={l.s} castShadow>
-              <meshStandardMaterial
-                color={l.dark ? '#2f5230' : '#3d6b39'}
-                roughness={0.62}
-                side={THREE.DoubleSide}
-              />
-            </mesh>
+            <mesh
+              key={i}
+              geometry={leaf}
+              position={l.p}
+              rotation={l.rot}
+              scale={l.s}
+              material={l.dark ? M.leafDark : M.leaf}
+              castShadow
+            />
           ))}
         </group>
       ))}
@@ -2458,7 +2483,6 @@ export default function Room() {
       <Guitar rough={props} />
       <Cables rough={props} />
       <Lived rough={props} />
-      <Bounce />
     </group>
   );
 }

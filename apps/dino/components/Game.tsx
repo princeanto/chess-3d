@@ -185,8 +185,8 @@ function Lighting() {
         their painted-in gradients were doing. Warm but close to neutral, so the
         same paint reads the same on both walls.
       */}
-      <ambientLight intensity={1.15} color="#fff1e0" />
-      <hemisphereLight args={['#fff4e6', '#6b5a48', 0.75]} />
+      <ambientLight intensity={1.42} color="#fff1e0" />
+      <hemisphereLight args={['#fff4e6', '#6b5a48', 0.9]} />
       {/* Same direction as before, moved out so its shadow camera can cover the
           whole room rather than just the desk. */}
       <directionalLight
@@ -195,8 +195,8 @@ function Lighting() {
         position={[9.2, 22.6, 14.8]}
         intensity={1.35}
         color="#ffe2c0"
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
+        shadow-mapSize-width={1536}
+        shadow-mapSize-height={1536}
         shadow-bias={-0.0006}
         shadow-normalBias={0.025}
       />
@@ -205,12 +205,17 @@ function Lighting() {
         Bondi went to beige and the machine stopped being blue at all; these are
         what keep the colour in it without cooling the room.
       */}
-      <directionalLight position={[-5, 3.5, -6]} intensity={0.7} color="#8fc8dc" />
-      <directionalLight position={[-3.5, 3, 6]} intensity={0.45} color="#a8d4e4" />
-      {/* Colour for its own sake, low and from the corners — the accent the
-          room gets instead of walls painted in different tones. */}
-      <pointLight position={[-5.4, 0.9, 4.6]} intensity={7} distance={11} decay={2} color="#5fb8d8" />
-      <pointLight position={[5.6, 1.3, -2.6]} intensity={6} distance={11} decay={2} color="#e2657f" />
+      {/*
+        One cool fill, one accent.
+
+        There were sixteen lights in this scene and every material compiles a
+        shader that handles all of them, so each one was being paid for on every
+        fragment of every surface. The three bounce fills are folded into the
+        ambient above, one of the two cool directionals is gone, and one of the
+        two accents with it.
+      */}
+      <directionalLight position={[-5, 3.5, -6]} intensity={0.8} color="#8fc8dc" />
+      <pointLight position={[5.6, 1.3, -2.6]} intensity={7} distance={12} decay={2} color="#e2657f" />
     </>
   );
 }
@@ -424,6 +429,18 @@ export default function Game() {
           far: 100,
         }}
         onCreated={({ gl, scene }) => {
+          /*
+           * Do not stop and read the compiler log for every shader.
+           *
+           * three.js calls getProgramInfoLog after linking each program to
+           * check for errors, and that call blocks until the driver has
+           * finished compiling. Profiling startup, it was two thirds of every
+           * sample taken — the single largest cost in getting a first frame up,
+           * ahead of all the texture generation put together. Switched off, the
+           * programs link in parallel and errors surface at draw time instead,
+           * which is a trade worth making in a build that is already green.
+           */
+          gl.debug.checkShaderErrors = false;
           gl.toneMapping = THREE.ACESFilmicToneMapping;
           gl.toneMappingExposure = 0.94;
           gl.shadowMap.type = THREE.PCFSoftShadowMap;

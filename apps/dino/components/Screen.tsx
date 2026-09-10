@@ -89,8 +89,8 @@ export default function Screen({
         The screen throws light into the room. Without this the tube reads as a
         printed sticker rather than something that is switched on.
       */}
-      <pointLight position={[0, 0.1, 0.9]} intensity={1.1} distance={3.4} color="#eaf2ff" />
-      <pointLight position={[0, -0.6, 1.6]} intensity={0.5} distance={4} color="#dce8ff" />
+      {/* One, not two. Every light in the scene is paid for by every material. */}
+      <pointLight position={[0, 0, 1.1]} intensity={1.4} distance={4} color="#e6efff" />
     </group>
   );
 }

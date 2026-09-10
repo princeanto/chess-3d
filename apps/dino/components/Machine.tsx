@@ -1,10 +1,34 @@
 'use client';
 
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { LIVE_CODES, layoutKeys, type PlacedKey } from '@/lib/scene/keys';
 import Room from './Room';
+
+/**
+ * The room, built after the first frame rather than during it.
+ *
+ * Everything in it — plaster, floorboards, wood grain, posters, normal maps —
+ * is generated on the CPU when it mounts, and until that finishes nothing at
+ * all is on screen. The machine and its screen are what matter; they paint
+ * immediately and the room arrives a beat later, which turns a blank ten
+ * seconds into a game you can already play.
+ */
+function DeferredRoom() {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    // Two frames: one to paint, one to be sure it was presented.
+    const a = requestAnimationFrame(() => {
+      const b = requestAnimationFrame(() => setShow(true));
+      cleanup.current = b;
+    });
+    return () => cancelAnimationFrame(a);
+  }, []);
+  const cleanup = useRef(0);
+  useEffect(() => () => cancelAnimationFrame(cleanup.current), []);
+  return show ? <Room /> : null;
+}
 
 /**
  * Half-width of the machine at a given depth. 0 is the face, 1 is the tail.
@@ -301,8 +325,17 @@ function bodySurface(): THREE.BufferGeometry {
   const pts = PROFILE;
   const X0 = PROFILE_X0;
   const X1 = PROFILE_X1;
-  const NZ = 168;
-  const NA = 184;
+  /*
+   * 112 by 128, down from 168 by 184.
+   *
+   * That was 61,824 triangles for a single object — a third of everything in
+   * the scene — and the shell is a smooth swept surface with no detail the
+   * extra rings resolve. The seam between the two plastics still falls inside
+   * a quad at this density, which was the reason for going high in the first
+   * place.
+   */
+  const NZ = 112;
+  const NA = 128;
 
   const position: number[] = [];
   const uv: number[] = [];
@@ -919,6 +952,30 @@ export function frustumY(
   return g;
 }
 
+/*
+ * Two keycap materials for eighty keys.
+ *
+ * Written inline, each cap got its own material instance — eighty of them, each
+ * with its own shader setup and uniform block, for two distinct appearances.
+ * The same applied across the room: 396 meshes carried 396 materials.
+ */
+const CAP_MATERIAL = new THREE.MeshPhysicalMaterial({
+  color: KEYCAP,
+  roughness: 0.36,
+  clearcoat: 0.55,
+  clearcoatRoughness: 0.16,
+  transparent: true,
+  opacity: 0.96,
+});
+const CAP_MATERIAL_LIVE = new THREE.MeshPhysicalMaterial({
+  color: KEYCAP_LIVE,
+  roughness: 0.36,
+  clearcoat: 0.55,
+  clearcoatRoughness: 0.16,
+  transparent: true,
+  opacity: 0.96,
+});
+
 const KEY_H = 0.062;
 const KEY_TRAVEL = 0.05;
 
@@ -980,6 +1037,7 @@ function Keycap({
     <group ref={group} position={[def.x, 0, def.z]}>
       <mesh
         geometry={geometry}
+        material={live ? CAP_MATERIAL_LIVE : CAP_MATERIAL}
         castShadow
         onPointerDown={(e) => {
           if (!def.code) return;
@@ -992,16 +1050,7 @@ function Keycap({
           onRelease(def.code);
         }}
         onPointerOut={() => def.code && onRelease(def.code)}
-      >
-        <meshPhysicalMaterial
-          color={live ? KEYCAP_LIVE : KEYCAP}
-          roughness={0.36}
-          clearcoat={0.55}
-          clearcoatRoughness={0.16}
-          transparent
-          opacity={0.96}
-        />
-      </mesh>
+      />
       {label && (
         <mesh position={[0, KEY_H + 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[def.width * 0.9, def.depth * 0.9]} />
@@ -1343,7 +1392,7 @@ export default function Machine({
 }) {
   return (
     <group>
-      <Room />
+      <DeferredRoom />
       <Body />
       {/* The face plate sits on the flattened front of the shell, tilted with it. */}
       <group position={[0, SCREEN_Y, FRONT_Z]} rotation={[FACE_TILT, 0, 0]}>
