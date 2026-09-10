@@ -103,8 +103,16 @@ function FreeLook({ look }: { look: React.MutableRefObject<THREE.Vector3> }) {
       target={look.current}
       enableDamping
       dampingFactor={0.08}
-      minDistance={1.4}
-      maxDistance={16}
+      minDistance={1.2}
+      /*
+       * Far enough to reach the isometric view and past it.
+       *
+       * Capped at 16 the camera could not pull back to see the room, and
+       * switching to free look from the Room viewpoint — which sits about 50
+       * out — snapped it forward to the limit the moment the controls took
+       * over.
+       */
+      maxDistance={70}
       // Stop just above the desk, so the camera never ends up underneath it.
       maxPolarAngle={Math.PI / 2 - 0.03}
       onChange={(e) => {
