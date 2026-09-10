@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { roundedShape } from './Machine';
@@ -2170,31 +2171,174 @@ function ColourFan() {
   );
 }
 
-function Mug({ rough }: { rough: THREE.Texture }) {
+/** A soft round puff, for steam. */
+function useSteamPuff(): THREE.CanvasTexture {
+  return useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d')!;
+    // Opaque at the core. The falloff alone makes it read as vapour; starting
+    // the gradient part-transparent as well left nothing on screen at all.
+    const g = ctx.createRadialGradient(32, 32, 1, 32, 32, 31);
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.45, 'rgba(255,255,255,0.5)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 64, 64);
+    const t = new THREE.CanvasTexture(canvas);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, []);
+}
+
+/**
+ * Steam off the coffee.
+ *
+ * Six puffs on staggered phases, each rising, spreading and fading over its own
+ * cycle, drifting a little as it goes. Billboarded to the camera every frame, so
+ * they stay facing it from any viewpoint — flat cards in a fixed plane vanish
+ * edge-on the moment you orbit.
+ */
+function Steam({ map }: { map: THREE.Texture }) {
+  const group = useRef<THREE.Group>(null);
+  const puffs = useMemo(
+    () =>
+      Array.from({ length: 8 }, (_, i) => ({
+        phase: i / 8,
+        drift: Math.sin(i * 2.7) * 0.1,
+        spin: Math.cos(i * 1.9) * 0.6,
+      })),
+    [],
+  );
+
+  useFrame(({ clock, camera }) => {
+    const g = group.current;
+    if (!g) return;
+    const t = clock.getElapsedTime();
+    g.children.forEach((child, i) => {
+      const p = puffs[i];
+      // 0 at the cup, 1 at the top of the rise.
+      const u = (t * 0.34 + p.phase) % 1;
+      child.position.set(p.drift * u * 3, u * 1.05, p.drift * u * 1.6);
+      // Wider as it climbs — a column that keeps its width reads as smoke.
+      child.scale.setScalar(0.16 + u * 0.62);
+      const m = (child as THREE.Mesh).material as THREE.MeshBasicMaterial;
+      // In quickly, out slowly: steam appears at once and thins as it climbs.
+      m.opacity = Math.min(1, u * 5) * Math.pow(1 - u, 0.8);
+      child.quaternion.copy(camera.quaternion);
+      child.rotateZ(p.spin + u * 1.4);
+    });
+  });
+
   return (
-    <group position={[3.2, 0, 0.85]} rotation={[0, 0.4, 0]}>
-      <mesh position={[0, 0.26, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.22, 0.185, 0.52, 30, 1, true]} />
+    <group ref={group} position={[0, 0.6, 0]}>
+      {puffs.map((p, i) => (
+        <mesh key={i}>
+          <planeGeometry args={[1, 1]} />
+          <meshBasicMaterial
+            map={map}
+            /*
+             * Cool grey, and tone-mapped with everything else.
+             *
+             * White steam was invisible: the desk is warm and lit to near-white,
+             * so a white plume over it differed by about ten levels. Vapour in a
+             * warm room photographs cool and slightly darker than the highlight
+             * it crosses, and that difference is the whole reason you can see it.
+             */
+            color="#bcd2d8"
+            transparent
+            opacity={0}
+            depthWrite={false}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/**
+ * A proper mug: a lathed body with a rolled lip, a foot it stands on, and a
+ * handle that meets the wall at both ends.
+ *
+ * It had been a bare cylinder with a torus stuck to the side, which is why it
+ * read as a paper cup.
+ */
+function Mug({ rough }: { rough: THREE.Texture }) {
+  const puff = useSteamPuff();
+
+  const body = useMemo(() => {
+    // Radius against height: a foot, a belly that swells, a waist, a rolled lip.
+    const pts: Array<[number, number]> = [
+      [0, 0],
+      [0.17, 0],
+      [0.185, 0.02],
+      [0.2, 0.07],
+      [0.225, 0.2],
+      [0.232, 0.34],
+      [0.225, 0.46],
+      [0.216, 0.55],
+      [0.222, 0.575],
+      [0.222, 0.59],
+      // Back down the inside, so the wall has thickness at the rim.
+      [0.2, 0.585],
+      [0.198, 0.5],
+      [0.206, 0.34],
+      [0.198, 0.15],
+      [0.17, 0.07],
+      [0, 0.065],
+    ];
+    const g = new THREE.LatheGeometry(
+      pts.map(([r, y]) => new THREE.Vector2(r, y)),
+      44,
+    );
+    g.computeVertexNormals();
+    return g;
+  }, []);
+
+  const handle = useMemo(() => {
+    // A D-shape, so it meets the body square at the top and bottom.
+    const curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0.2, 0.47, 0),
+      new THREE.Vector3(0.34, 0.44, 0),
+      new THREE.Vector3(0.4, 0.32, 0),
+      new THREE.Vector3(0.35, 0.19, 0),
+      new THREE.Vector3(0.2, 0.16, 0),
+    ]);
+    return new THREE.TubeGeometry(curve, 26, 0.032, 10, false);
+  }, []);
+
+  return (
+    /*
+     * Held in from the desk's right edge and forward of the speaker.
+     *
+     * At 3.2 the cup ran off the side of every framing that included it, and a
+     * prop you cannot see is not a prop. Coming forward matters as much: the
+     * plume has to rise against wood and wall, because white steam crossing the
+     * white speaker cabinet is invisible however opaque you make it.
+     */
+    <group position={[2.15, 0, 1.5]} rotation={[0, 0.55, 0]}>
+      <mesh geometry={body} castShadow receiveShadow>
         <meshStandardMaterial
-          color="#e8e4dc"
-          roughness={0.42}
+          color="#f1ece2"
+          roughness={0.3}
           roughnessMap={rough}
           side={THREE.DoubleSide}
         />
       </mesh>
-      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[0.185, 24]} />
-        <meshStandardMaterial color="#d8d4cc" roughness={0.5} />
+      <mesh geometry={handle} castShadow>
+        <meshStandardMaterial color="#f1ece2" roughness={0.3} roughnessMap={rough} />
       </mesh>
-      {/* Coffee, a little below the rim. */}
-      <mesh position={[0, 0.44, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[0.208, 26]} />
-        <meshStandardMaterial color="#3a2317" roughness={0.28} />
+      {/* Coffee, a little below the rim, with the crema on it. */}
+      <mesh position={[0, 0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.2, 36]} />
+        <meshStandardMaterial color="#3a2317" roughness={0.24} metalness={0.05} />
       </mesh>
-      <mesh position={[0.24, 0.29, 0]} rotation={[0, Math.PI / 2, 0]}>
-        <torusGeometry args={[0.115, 0.028, 10, 22, Math.PI * 1.25]} />
-        <meshStandardMaterial color="#e8e4dc" roughness={0.42} />
+      <mesh position={[0, 0.502, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.13, 0.198, 36]} />
+        <meshStandardMaterial color="#6b4a2c" roughness={0.5} transparent opacity={0.5} />
       </mesh>
+      <Steam map={puff} />
     </group>
   );
 }

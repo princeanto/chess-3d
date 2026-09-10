@@ -223,6 +223,37 @@ function Lighting() {
 export default function Game() {
   const [view, setView] = useState(DEFAULT_VIEW);
   const [free, setFree] = useState(false);
+
+  /*
+   * The loading screen, driven by what has actually happened.
+   *
+   * Two milestones: the renderer coming up, and the room finishing its build.
+   * The number eases toward whichever it has reached rather than counting on a
+   * timer, so it stalls where the work stalls and finishes when the work does —
+   * a bar that fills on a clock is just a lie with a progress indicator on it.
+   */
+  const [stage, setStage] = useState(0);
+  const [shown, setShown] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    if (loaded) return undefined;
+    let raf = 0;
+    const tick = () => {
+      setShown((v) => {
+        const target = stage * 100;
+        const next = v + Math.max(0.4, (target - v) * 0.09);
+        if (next >= 99.5 && stage >= 1) {
+          setLoaded(true);
+          return 100;
+        }
+        return Math.min(next, target);
+      });
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [stage, loaded]);
+  const onRoomReady = useCallback(() => setStage(1), []);
   const look = useRef(new THREE.Vector3(...VIEWS[DEFAULT_VIEW].target));
   const [phase, setPhase] = useState<State['phase']>('ready');
   const [score, setScore] = useState(0);
@@ -429,6 +460,7 @@ export default function Game() {
           far: 100,
         }}
         onCreated={({ gl, scene }) => {
+          setStage((v) => Math.max(v, 0.55));
           /*
            * Do not stop and read the compiler log for every shader.
            *
@@ -471,6 +503,7 @@ export default function Game() {
           onPress={press}
           onRelease={release}
           screen={<Screen canvas={canvasReady} dirty={dirty} />}
+          onRoomReady={onRoomReady}
         />
       </Canvas>
 
@@ -498,6 +531,40 @@ export default function Game() {
           backgroundSize: '160px 160px',
         }}
       />
+
+      {/*
+        The loading screen. Sits over everything until the room is built, then
+        fades out of the way.
+      */}
+      <div
+        aria-hidden={loaded}
+        className="pointer-events-none absolute inset-0 z-20 bg-[#17150f] transition-opacity duration-500"
+        style={{ opacity: loaded ? 0 : 1, visibility: loaded ? 'hidden' : 'visible' }}
+      >
+        <div className="absolute left-5 top-5 sm:left-7 sm:top-7">
+          <p className="text-[19px] font-semibold tracking-tight text-[#f2ede2]">Runner</p>
+          <p className="mt-0.5 text-[12px] text-[#8d8371]">Runs with no connection</p>
+        </div>
+
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="mono text-[clamp(84px,17vw,220px)] font-semibold leading-none tracking-tighter tabular-nums text-[#f4efe4]">
+            {String(Math.floor(shown)).padStart(2, '0')}
+          </span>
+        </div>
+
+        <div className="absolute inset-x-5 bottom-6 sm:inset-x-7">
+          <div className="flex items-end justify-between">
+            <p className="mono text-[11px] tracking-[0.3em] text-[#d8a94b]">LOADING</p>
+            <p className="mono text-[11px] tracking-[0.2em] text-[#8d8371]">BONDI BLUE · 1998</p>
+          </div>
+          <div className="mt-2 h-px w-full bg-[#3a3428]">
+            <div
+              className="h-px bg-[#d8a94b] transition-[width] duration-150 ease-out"
+              style={{ width: `${shown}%` }}
+            />
+          </div>
+        </div>
+      </div>
 
       {/*
         Scrim behind the heading, and the band below for the controls.

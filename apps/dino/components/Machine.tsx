@@ -15,16 +15,19 @@ import Room from './Room';
  * immediately and the room arrives a beat later, which turns a blank ten
  * seconds into a game you can already play.
  */
-function DeferredRoom() {
+function DeferredRoom({ onReady }: { onReady?: () => void }) {
   const [show, setShow] = useState(false);
   useEffect(() => {
     // Two frames: one to paint, one to be sure it was presented.
     const a = requestAnimationFrame(() => {
-      const b = requestAnimationFrame(() => setShow(true));
+      const b = requestAnimationFrame(() => {
+        setShow(true);
+        onReady?.();
+      });
       cleanup.current = b;
     });
     return () => cancelAnimationFrame(a);
-  }, []);
+  }, [onReady]);
   const cleanup = useRef(0);
   useEffect(() => () => cancelAnimationFrame(cleanup.current), []);
   return show ? <Room /> : null;
@@ -164,11 +167,19 @@ const PANEL = {
  * *front* of the panel — a black surround standing proud of the case — because
  * anything set back was simply occluded by the solid shell.
  */
+/*
+ * No margin, because the cut already overshoots.
+ *
+ * A quad is dropped if any of its corners is inside, so the hole comes out up
+ * to one quad larger than this — and dropping the shell from 184 segments to
+ * 128 made every quad half again as wide. With 0.04 of margin on top, the hole
+ * grew past the bezel and opened a gap above the screen.
+ */
 const APERTURE = {
   cy: SCREEN_Y + BODY_DROP,
-  halfW: SCREEN_SIZE.w / 2 + 0.04,
-  halfH: SCREEN_SIZE.h / 2 + 0.04,
-  radius: 0.13,
+  halfW: SCREEN_SIZE.w / 2,
+  halfH: SCREEN_SIZE.h / 2,
+  radius: 0.1,
 };
 
 function inAperture(px: number, py: number): boolean {
@@ -712,11 +723,11 @@ function BezelRing() {
     /*
      * The border has to be wider than the hole can overshoot.
      *
-     * The aperture is cut a quad wider than nominal, so at 0.065 a side the
-     * ring stopped just short of the cut at the corners and left two notches
-     * showing above the tube. 0.12 covers it with room.
+     * The aperture is cut a quad wider than nominal, and a quad got wider when
+     * the shell's tessellation came down. 0.16 a side covers the overshoot with
+     * room to spare; 0.065 left notches above the tube and 0.12 left a gap.
      */
-    const outer = roundedShape(SCREEN_SIZE.w + 0.24, SCREEN_SIZE.h + 0.24, 0.22);
+    const outer = roundedShape(SCREEN_SIZE.w + 0.32, SCREEN_SIZE.h + 0.32, 0.24);
     outer.holes.push(
       new THREE.Path(roundedShape(SCREEN_SIZE.w, SCREEN_SIZE.h, 0.1).getPoints(48)),
     );
@@ -835,29 +846,29 @@ function Chin() {
 
   return (
     <group>
-      <mesh position={[0, ceiling - 0.16, z]}>
-        <planeGeometry args={[0.4, 0.15]} />
+      <mesh position={[0, ceiling - 0.12, z]}>
+        <planeGeometry args={[0.36, 0.13]} />
         <meshBasicMaterial map={mark} transparent toneMapped={false} />
       </mesh>
 
       {/* Tray-loading CD slot, centred under the wordmark. */}
-      <mesh position={[0, ceiling - 0.3, z]}>
-        <boxGeometry args={[0.74, 0.1, 0.015]} />
+      <mesh position={[0, ceiling - 0.34, z]}>
+        <boxGeometry args={[0.7, 0.095, 0.015]} />
         <meshStandardMaterial color="#aab4b6" roughness={0.6} />
       </mesh>
-      <mesh position={[0, ceiling - 0.3, z + 0.008]}>
-        <boxGeometry args={[0.68, 0.02, 0.015]} />
+      <mesh position={[0, ceiling - 0.34, z + 0.008]}>
+        <boxGeometry args={[0.64, 0.02, 0.015]} />
         <meshStandardMaterial color="#394245" roughness={0.95} />
       </mesh>
 
       {/* Power button and its light: to the right of the tray, not the left. */}
-      <mesh position={[0.5, ceiling - 0.3, z + 0.004]} rotation={[Math.PI / 2, 0, 0]}>
+      <mesh position={[0.45, ceiling - 0.34, z + 0.004]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.044, 0.044, 0.016, 20]} />
         <meshStandardMaterial color="#8b989b" roughness={0.55} />
       </mesh>
       {/* The light sits beside the button, not under it: any lower and it falls
           off the bottom of the chin, where the shell has already curved away. */}
-      <mesh position={[0.5, ceiling - 0.4, z + 0.004]}>
+      <mesh position={[0.45, ceiling - 0.47, z + 0.004]}>
         <sphereGeometry args={[0.018, 12, 10]} />
         <meshBasicMaterial color="#7ef0b0" toneMapped={false} />
       </mesh>
@@ -868,8 +879,13 @@ function Chin() {
         They are not flat discs set into the panel: the shell swells forward
         around each one, which is most of what gives the front its face.
       */}
-      {[-0.64, 0.64].map((x) => (
-        <group key={x} position={[x, ceiling - 0.28, z]} scale={[1, 1, 0.26]}>
+      {/*
+        Moved out and down. At 0.64 with a 0.13 radius the pods reached in to
+        0.51, and the power button at 0.5 reached out to 0.544 — they were
+        inside one another.
+      */}
+      {[-0.7, 0.7].map((x) => (
+        <group key={x} position={[x, ceiling - 0.34, z]} scale={[1, 1, 0.26]}>
           <mesh castShadow>
             <sphereGeometry args={[0.13, 26, 20]} />
             <meshPhysicalMaterial color={FROST} roughness={0.42} clearcoat={0.5} />
@@ -1384,15 +1400,17 @@ export default function Machine({
   onPress,
   onRelease,
   screen,
+  onRoomReady,
 }: {
   pressedRef: React.MutableRefObject<Set<string>>;
   onPress: (code: string) => void;
   onRelease: (code: string) => void;
   screen: React.ReactNode;
+  onRoomReady?: () => void;
 }) {
   return (
     <group>
-      <DeferredRoom />
+      <DeferredRoom onReady={onRoomReady} />
       <Body />
       {/* The face plate sits on the flattened front of the shell, tilted with it. */}
       <group position={[0, SCREEN_Y, FRONT_Z]} rotation={[FACE_TILT, 0, 0]}>
