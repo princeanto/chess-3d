@@ -929,20 +929,36 @@ function FloorPieces({ rough }: { rough: THREE.Texture }) {
   return (
     <group>
       <group position={[-5.5, 0, 2.9]}>
+        {/*
+          The pot is a shell, not a solid.
+          
+          As a capped cylinder it had a lid: a disc across the top at 1.1, with
+          the soil sitting at 1.0 underneath it. The gravel has been in the
+          scene all along, hidden under the pot's own top face.
+        */}
         <mesh position={[0, ROOM.floorY + 0.55, 0]} castShadow receiveShadow>
-          <cylinderGeometry args={[0.62, 0.48, 1.1, 26]} />
-          <meshStandardMaterial color="#d9cfc0" roughness={0.9} roughnessMap={rough} />
+          <cylinderGeometry args={[0.62, 0.48, 1.1, 30, 1, true]} />
+          <meshStandardMaterial
+            color="#d9cfc0"
+            roughness={0.9}
+            roughnessMap={rough}
+            side={THREE.DoubleSide}
+          />
         </mesh>
-        {/*
-          Soil, domed slightly and topped with grit. A flat brown disc is the
-          giveaway that a plant was placed rather than planted.
-        */}
-        {/*
-          Flat, and set a little below the rim. It was a hemisphere before,
-          which is not how anybody fills a pot.
-        */}
-        <mesh position={[0, ROOM.floorY + 1.0, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-          <circleGeometry args={[0.585, 40]} />
+        {/* A base, so it is not see-through at a grazing angle. */}
+        <mesh position={[0, ROOM.floorY + 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[0.48, 30]} />
+          <meshStandardMaterial color="#bdb3a4" roughness={0.95} />
+        </mesh>
+        {/* A rolled rim, to give the wall some thickness. */}
+        <mesh position={[0, ROOM.floorY + 1.1, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.615, 0.022, 10, 34]} />
+          <meshStandardMaterial color="#ded4c5" roughness={0.88} roughnessMap={rough} />
+        </mesh>
+
+        {/* Soil and grit, flat and set below the rim. */}
+        <mesh position={[0, ROOM.floorY + 0.99, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+          <circleGeometry args={[0.6, 44]} />
           <meshStandardMaterial map={soil} normalMap={soilNormal} roughness={0.99} />
         </mesh>
         {/* Trunk. */}
