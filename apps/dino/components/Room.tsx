@@ -2338,6 +2338,20 @@ export default function Room() {
     t.repeat.set(3, 3);
     return t;
   }, []);
+  const groundShadow = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d')!;
+    ctx.clearRect(0, 0, 256, 256);
+    const g = ctx.createRadialGradient(128, 128, 10, 128, 128, 122);
+    g.addColorStop(0, 'rgba(58, 42, 26, 0.72)');
+    g.addColorStop(0.45, 'rgba(58, 42, 26, 0.34)');
+    g.addColorStop(1, 'rgba(58, 42, 26, 0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 256, 256);
+    return new THREE.CanvasTexture(canvas);
+  }, []);
   const top = useMemo(() => deskTop(), []);
   /*
    * A thinner top on slim steel legs, set in from the corners.
@@ -2401,6 +2415,20 @@ export default function Room() {
       ))}
 
       <Shell rough={props} plaster={plaster} />
+
+      {/*
+        A soft shadow under the whole box, so the diorama rests on the sweep
+        instead of hanging in it. Painted, not cast: no light in this scene is
+        below the room, and a shadow map wide enough to cover it would be
+        coarse everywhere else.
+      */}
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0.5, ROOM.floorY - 1.15, (ROOM.z0 + ROOM.z1) / 2 + 0.9]}
+      >
+        <planeGeometry args={[21, 19]} />
+        <meshBasicMaterial map={groundShadow} transparent opacity={0.72} depthWrite={false} />
+      </mesh>
 
       <DeskMat />
       <Lamp x={-2.55} z={-0.95} rough={props} />

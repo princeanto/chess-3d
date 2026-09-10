@@ -15,6 +15,34 @@ import Screen from './Screen';
 /** Fractal noise, inline, so the grain costs no request and no library. */
 const GRAIN = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E")`;
 
+/** The sweep behind the diorama, painted once. */
+function backdrop(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#ded6c9';
+  ctx.fillRect(0, 0, 512, 512);
+  const g = ctx.createRadialGradient(256, 190, 30, 256, 250, 400);
+  g.addColorStop(0, '#fbf8f2');
+  g.addColorStop(0.45, '#f1ece2');
+  g.addColorStop(1, '#d3cabb');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 512, 512);
+  // A little tooth, so it is a surface and not a gradient.
+  for (let i = 0; i < 4000; i += 1) {
+    ctx.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '120,105,88'},${
+      Math.random() * 0.03
+    })`;
+    ctx.beginPath();
+    ctx.arc(Math.random() * 512, Math.random() * 512, 0.6 + Math.random() * 2.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  const t = new THREE.CanvasTexture(canvas);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 const JUMP_CODES = new Set(['Space', 'ArrowUp', 'KeyW']);
 const DUCK_CODES = new Set(['ArrowDown', 'KeyS']);
 
@@ -384,7 +412,7 @@ export default function Game() {
   }, [phase, free]);
 
   return (
-    <div className="fixed inset-0 bg-[#f4f2ee]">
+    <div className="fixed inset-0 bg-[#eee8dd]">
       <Canvas
         shadows
         dpr={[1, 2]}
@@ -399,9 +427,15 @@ export default function Game() {
           gl.toneMapping = THREE.ACESFilmicToneMapping;
           gl.toneMappingExposure = 0.94;
           gl.shadowMap.type = THREE.PCFSoftShadowMap;
-          // White surround: the room is a diorama, and a black void around it read
-          // as a hole rather than as a backdrop.
-          scene.background = new THREE.Color('#f4f2ee');
+          /*
+           * A backdrop rather than a colour.
+           *
+           * Flat white is not a background, it is the absence of one — the room
+           * sat on nothing and read as a cut-out pasted on paper. This is the
+           * lit sweep a product shot is photographed against: brightest a
+           * little above the subject, falling off warm toward the corners.
+           */
+          scene.background = backdrop();
           /*
            * No fog.
            *
@@ -436,7 +470,7 @@ export default function Game() {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(125% 95% at 50% 44%, rgba(0,0,0,0) 38%, rgba(0,0,0,0.16) 72%, rgba(0,0,0,0.44) 100%)',
+            'radial-gradient(125% 95% at 50% 42%, rgba(58,44,28,0) 40%, rgba(58,44,28,0.1) 74%, rgba(48,36,22,0.26) 100%)',
         }}
       />
       <div
@@ -462,7 +496,7 @@ export default function Game() {
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 h-28"
         style={{
-          background: 'linear-gradient(to bottom, rgba(248,247,244,0.85), rgba(248,247,244,0))',
+          background: 'linear-gradient(to bottom, rgba(250,246,238,0.88), rgba(250,246,238,0))',
         }}
       />
 
