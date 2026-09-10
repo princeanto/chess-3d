@@ -1668,27 +1668,43 @@ function Lived({ rough }: { rough: THREE.Texture }) {
   return (
     <group>
       {/*
-        Boards leaning on the side wall, turned to face it.
+        Boards leaning against the side wall.
 
-        Stood square in the corner they read as panels hanging in the air: the
-        desk hid their feet and nothing said which surface they rested against.
+        They were tilted the wrong way. The group is turned a quarter turn about
+        Y, so a positive tilt about the board's own X takes its top *away* from
+        the wall and drives its bottom edge into it — which is what they were
+        doing, standing half inside the plaster with their feet nowhere near the
+        floor. Leaning is the other way round: the top rests on the wall and the
+        foot stands out on the boards.
+
+        Each one is placed from its own geometry rather than by eye: a board of
+        height h at angle t has its centre at h/2·cos t above the floor and
+        h/2·sin t out from the wall, which puts the top against the plaster and
+        the foot on the ground however the numbers change.
       */}
-      <group position={[ROOM.x0 + 0.14, 0, -2.55]} rotation={[0, Math.PI / 2, 0]}>
+      <group position={[ROOM.x0, 0, -2.45]} rotation={[0, Math.PI / 2, 0]}>
         {[
-          { w: 2.5, h: 3.3, lean: 0.15, c: '#e8dfcb', off: 0 },
-          { w: 2.0, h: 2.7, lean: 0.2, c: '#b9a488', off: 0.34 },
-          { w: 2.7, h: 2.2, lean: 0.26, c: '#5f6f5a', off: 0.66 },
-        ].map((b, i) => (
-          <mesh
-            key={i}
-            position={[b.off * 0.5, ROOM.floorY + (b.h / 2) * Math.cos(b.lean), b.off]}
-            rotation={[b.lean, 0, 0]}
-            castShadow
-          >
-            <boxGeometry args={[b.w, b.h, 0.07]} />
-            <meshStandardMaterial color={b.c} roughness={0.88} roughnessMap={rough} />
-          </mesh>
-        ))}
+          { w: 2.3, h: 3.1, lean: 0.17, c: '#e8dfcb', off: 0 },
+          { w: 1.85, h: 2.5, lean: 0.23, c: '#b9a488', off: 0.4 },
+          { w: 2.5, h: 2.0, lean: 0.3, c: '#5f6f5a', off: 0.78 },
+        ].map((b, i) => {
+          const half = b.h / 2;
+          return (
+            <mesh
+              key={i}
+              position={[
+                b.off * 0.55,
+                ROOM.floorY + half * Math.cos(b.lean),
+                half * Math.sin(b.lean) + 0.05 + i * 0.1,
+              ]}
+              rotation={[-b.lean, 0, 0]}
+              castShadow
+            >
+              <boxGeometry args={[b.w, b.h, 0.07]} />
+              <meshStandardMaterial color={b.c} roughness={0.88} roughnessMap={rough} />
+            </mesh>
+          );
+        })}
       </group>
 
       {/* A ring where the mug has been set down more than once. */}
