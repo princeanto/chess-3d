@@ -1375,27 +1375,27 @@ interface Slot {
 }
 
 const CLUSTER: Slot[] = [
-  { u: 0.129, v: 0.836, w: 0.182, h: 0.219, file: 'think-big.png', ad: 0 },
-  { u: 0.315, v: 0.88, w: 0.141, h: 0.164, ad: 7 },
+  { u: 0.129, v: 0.836, w: 0.182, h: 0.219, file: 'think-big.jpg', ad: 0 },
+  { u: 0.315, v: 0.88, w: 0.141, h: 0.164, file: 'zenitsu.jpg', ad: 7 },
   { u: 0.315, v: 0.723, w: 0.141, h: 0.133, ad: 11 },
-  { u: 0.498, v: 0.906, w: 0.174, h: 0.188, file: 'iron-man.jpg', ad: 4 },
-  { u: 0.672, v: 0.903, w: 0.158, h: 0.18, ad: 17 },
+  { u: 0.498, v: 0.906, w: 0.174, h: 0.188, file: 'zenitsu-sun.jpg', ad: 4 },
+  { u: 0.672, v: 0.903, w: 0.158, h: 0.18, file: 'silhouette.jpg', ad: 17 },
   { u: 0.851, v: 0.852, w: 0.149, h: 0.141, ad: 13 },
-  { u: 0.098, v: 0.539, w: 0.196, h: 0.25, file: 'naruto.jpg', ad: 10 },
+  { u: 0.098, v: 0.539, w: 0.196, h: 0.25, file: 'itachi.jpg', ad: 10 },
   { u: 0.29, v: 0.575, w: 0.141, h: 0.148, ad: 3 },
   { u: 0.406, v: 0.591, w: 0.075, h: 0.133, ad: 15 },
   { u: 0.56, v: 0.656, w: 0.226, h: 0.213, record: true },
   { u: 0.743, v: 0.641, w: 0.066, h: 0.234, ad: 6 },
-  { u: 0.859, v: 0.653, w: 0.149, h: 0.227, file: 'demon-slayer.jpg', ad: 8 },
-  { u: 0.556, v: 0.367, w: 0.224, h: 0.297, file: 'arr.jpg', ad: 12 },
-  { u: 0.76, v: 0.43, w: 0.149, h: 0.172, ad: 16 },
+  { u: 0.859, v: 0.653, w: 0.149, h: 0.227, file: 'iron-man.jpg', ad: 8 },
+  { u: 0.556, v: 0.367, w: 0.224, h: 0.297, file: 'deku.jpg', ad: 12 },
+  { u: 0.76, v: 0.43, w: 0.149, h: 0.172, file: 'naruto.jpg', ad: 16 },
   { u: 0.9, v: 0.45, w: 0.083, h: 0.148, ad: 5 },
   { u: 0.929, v: 0.301, w: 0.141, h: 0.117, ad: 2 },
   { u: 0.34, v: 0.34, w: 0.191, h: 0.195, ad: 1 },
   { u: 0.141, v: 0.273, w: 0.191, h: 0.141, ad: 14 },
   { u: 0.287, v: 0.109, w: 0.083, h: 0.188, ad: 9 },
-  { u: 0.431, v: 0.102, w: 0.174, h: 0.203, file: 'deku.jpg', ad: 2 },
-  { u: 0.63, v: 0.114, w: 0.191, h: 0.195, file: 'never-give-up.jpg', ad: 9 },
+  { u: 0.431, v: 0.102, w: 0.174, h: 0.203, file: 'never-give-up.jpg', ad: 2 },
+  { u: 0.63, v: 0.114, w: 0.191, h: 0.195, file: 'gorgeous.jpg', ad: 9 },
   { u: 0.834, v: 0.125, w: 0.182, h: 0.172, ad: 6 },
 ];
 
@@ -1405,8 +1405,12 @@ const CLUSTER: Slot[] = [
  * Off to the right of the machine rather than centred on the wall: centred, its
  * whole lower half sat behind the iMac. The shelves live on the left now, so
  * nothing crosses it.
+ *
+ * The box keeps the reference's own proportion — it is very nearly square. Set
+ * wider, as it was, every slot came out stretched half again in x, which turned
+ * a wall of portrait posters into a wall of landscape ones.
  */
-const CLUSTER_BOX = { cx: 1.7, cy: 2.72, w: 6.3, h: 4.35 };
+const CLUSTER_BOX = { cx: 2.2, cy: 2.72, w: 4.09, h: 4.35 };
 
 /** The record at the centre of it. */
 function recordTexture(): THREE.CanvasTexture {

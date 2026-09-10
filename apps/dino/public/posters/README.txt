@@ -1,17 +1,15 @@
-Drop your poster images here.
+Posters on the gallery wall.
 
-Filenames the wall looks for, and where each lands in the cluster:
+The ten files here are the user's own set, taken from ~/Downloads/poster and
+centre-cropped to the aspect of the slot each one lands in, so the traced
+layout stays intact and nothing is stretched to fit.
 
-  arr.jpg            large, low centre  (the magazine-cover slot)
-  iron-man.jpg       top centre
-  think-big.png      upper left, tall
-  naruto.jpg         left, tallest
-  demon-slayer.jpg   right of the record
-  deku.jpg           bottom, centre-left
-  never-give-up.jpg  bottom, centre-right
+  think-big.jpg      upper left        never-give-up.jpg  bottom centre-left
+  zenitsu.jpg        upper left, small gorgeous.jpg       bottom centre-right
+  zenitsu-sun.jpg    top centre        itachi.jpg         left, tallest
+  silhouette.jpg     top right         iron-man.jpg       right of the record
+  deku.jpg           large, low centre naruto.jpg         mid right
 
-Any format a browser can decode. Portrait crops suit every slot but the
-top-centre and bottom-right ones, which are close to square.
-
-A slot with no file falls back to a drawn sheet, so nothing breaks if one
-is missing.
+Slots with no file fall back to a drawn sheet, so the wall never breaks if one
+is removed. Long edge 520px, ~300 kB for the set — this app precaches for
+offline use, so anything much larger is felt.
