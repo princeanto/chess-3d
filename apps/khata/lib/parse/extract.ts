@@ -290,12 +290,19 @@ const NOISE_SUFFIX =
   /\b(pvt|private|ltd|limited|llp|inc|incorporated|india|technologies|solutions|enterprises)\b/gi;
 
 const MERCHANT_PATTERNS: RegExp[] = [
+  /*
+   * "towards VPA someone@okicici (A NAME)" — the form HDFC's alerts actually
+   * take. The bank has already resolved the handle to the registered name, so
+   * the name in brackets is the best counterparty this mail will ever offer.
+   */
+  /\bVPA\s+[A-Za-z0-9._-]+@[A-Za-z]{2,}\s*\(([^)\n]{2,40})\)/i,
+  // The same with no name attached: the handle stands in for one.
+  /\b(?:to|towards|from|by)\s+VPA\s+([A-Za-z0-9._-]+@[A-Za-z]{2,})/i,
   // HDFC and friends put a whole UPI string after "Info:".
   /\bInfo\s*[:-]\s*([^\n]{3,70})/i,
   /\btowards\s+([^\n.,]{3,45})/i,
   /\bat\s+([A-Za-z0-9][A-Za-z0-9 &.'@_*-]{2,45}?)\s+on\b/i,
   /\b(?:paid|sent|transferred)\s+to\s+([A-Za-z0-9][A-Za-z0-9 &.'@_-]{2,45}?)(?=\s+on\b|[.,\n]|$)/i,
-  /\bto\s+VPA\s+([A-Za-z0-9._-]+@[A-Za-z]{2,})/i,
   /\bfrom\s+([A-Za-z0-9][A-Za-z0-9 &.'@_-]{2,45}?)(?=\s+on\b|[.,\n]|$)/i,
   /\bmerchant\s*[:-]\s*([^\n.,]{3,45})/i,
 ];

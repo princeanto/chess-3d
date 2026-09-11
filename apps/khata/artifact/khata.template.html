@@ -131,6 +131,34 @@ button { font: inherit; color: inherit; }
   border-bottom: 1px solid var(--slip-edge);
 }
 .slip b { color: var(--ink); font-weight: 600; }
+.slip[hidden] { display: none; }
+.slip .act {
+  display: inline-block;
+  margin: 10px 10px 0 0;
+  padding: 9px 16px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--on-lal);
+  background: var(--lal);
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.slip .fine { display: block; margin-top: 8px; font-size: 12.5px; color: var(--ink-3); }
+.bar { display: block; height: 3px; margin-top: 10px; overflow: hidden; border-radius: 3px; background: var(--slip-edge); }
+.bar span { display: block; height: 100%; background: var(--lal); transition: width 0.3s ease; }
+.cover .sync {
+  margin-left: 6px;
+  padding: 0;
+  font-size: 13px;
+  color: var(--on-lal);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.cover .sync:disabled { opacity: 0.6; cursor: default; text-decoration: none; }
 
 main { flex: 1; padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
 main > * { animation: fade 0.16s ease both; }
@@ -607,7 +635,11 @@ button.item:hover .nm { text-decoration: underline; text-decoration-color: var(-
 
   function viewNow() {
     var b = state.books;
-    if (!b.txns.length) return blank('Nothing read yet', 'No bank alerts were found in the period read.');
+    if (!b.txns.length) {
+      return state.phase === 'searching' || state.phase === 'reading'
+        ? blank('Reading your mail', 'Entries appear here as each conversation is read.')
+        : blank('Nothing read yet', 'No bank alerts were found in the period read.');
+    }
 
     // This month, unless it is empty — then the latest month that is not, labelled as such.
     var current = K.istMonthKey(state.now);
@@ -674,7 +706,10 @@ button.item:hover .nm { text-decoration: underline; text-decoration-color: var(-
         '<p class="cov">' + (cov.accounts.length
           ? 'In ' + esc(K.formatMonth(month)) + ', heard from <b>' + cov.accounts.map(esc).join(', ') + '</b> — ' + cov.txnCount + ' entries.'
           : 'No account could be identified this month.') +
-        ' Khata only sees accounts that email you; a card whose alerts go to SMS won’t appear here.</p>');
+        ' Khata only sees accounts that email you; a card whose alerts go to SMS won’t appear here.</p>' +
+        (state.mode === 'live'
+          ? '<button class="again" data-act="erase">Erase what this page has stored</button>'
+          : ''));
   }
 
   /* ------------------------------- ledger -------------------------------- */
@@ -851,6 +886,8 @@ button.item:hover .nm { text-decoration: underline; text-decoration-color: var(-
     else if (act === 'open') openSheet(el.dataset.id);
     else if (act === 'close') closeSheet();
     else if (act === 'unfilter') { state.filter = null; render(); }
+    else if (act === 'connect' || act === 'sync' || act === 'retry') sync();
+    else if (act === 'erase') erase();
     else if (act === 'try') runAsk(el.dataset.q);
     else if (act === 'reset') { state.answer = null; state.question = ''; render(); document.getElementById('aq').focus(); }
     else if (act === 'leak') {
@@ -878,15 +915,362 @@ button.item:hover .nm { text-decoration: underline; text-decoration-color: var(-
 
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSheet(); });
 
+  /* ------------------------------ the cache ------------------------------ */
+
+  /*
+   * What each email meant, keyed by Gmail message id — never what it said.
+   * Bodies are parsed the moment they arrive and dropped; this store holds
+   * amounts, dates, senders and subject lines, in this browser only.
+   */
+  var vault = (function () {
+    function open() {
+      return new Promise(function (resolve, reject) {
+        var req = indexedDB.open('khata', 1);
+        req.onupgradeneeded = function () { req.result.createObjectStore('kv'); };
+        req.onsuccess = function () { resolve(req.result); };
+        req.onerror = function () { reject(req.error); };
+      });
+    }
+    function run(mode, work) {
+      try {
+        return open().then(function (db) {
+          return new Promise(function (resolve, reject) {
+            var tx = db.transaction('kv', mode);
+            var req = work(tx.objectStore('kv'));
+            tx.oncomplete = function () { db.close(); resolve(req.result); };
+            tx.onerror = tx.onabort = function () { db.close(); reject(tx.error); };
+          });
+        });
+      } catch (e) {
+        return Promise.reject(e);
+      }
+    }
+    // Storage can be refused outright (private windows, blocked site data);
+    // the page then works for the session and simply forgets on close.
+    return {
+      load: function () { return run('readonly', function (s) { return s.get('ledger'); }).catch(function () { return null; }); },
+      save: function (v) { return run('readwrite', function (s) { return s.put(v, 'ledger'); }).catch(function () {}); },
+      erase: function () { return run('readwrite', function (s) { return s.delete('ledger'); }).catch(function () {}); },
+    };
+  })();
+
+  /* ------------------------------ Gmail ------------------------------ */
+
+  /*
+   * Two tools, both read-only, and nothing else is in this page's manifest —
+   * it cannot send, forward, label, trash or delete anything, because it was
+   * never granted the tools that do.
+   */
+  var SERVER = 'Gmail';
+  var mcp = null;
+  var ledger = { parsed: {}, lastSyncAt: 0 };
+  var running = false;
+
+  var DENIALS = ['needs_reauth', 'server_not_connected', 'selection_required', 'not_in_manifest',
+    'blocked_by_policy', 'approval_required', 'not_granted', 'capability_disabled', 'capability_removed'];
+
+  function payloadOf(result) {
+    var p = result && result.payload;
+    if (typeof p === 'string') { try { p = JSON.parse(p); } catch (e) { p = null; } }
+    return p && typeof p === 'object' ? p : {};
+  }
+
+  // One retry, only for failures the runtime stamps retryable, after a jittered wait.
+  function read(tool, input) {
+    var once = function () { return mcp.callTool(SERVER, tool, input).then(payloadOf); };
+    return once().catch(function (err) {
+      if (!err || !err.retryable) throw err;
+      var wait = Math.min(err.retryAfterMs || 1500, 60000) + Math.random() * 900;
+      return new Promise(function (r) { setTimeout(r, wait); }).then(once);
+    });
+  }
+
+  function toMessage(m) {
+    return {
+      id: String(m.id),
+      threadId: String(m.threadId || ''),
+      from: m.sender || '',
+      subject: m.subject || '',
+      date: Number(m.internalDate) || Date.parse(m.date) || 0,
+      body: m.plaintextBody || m.snippet || '',
+    };
+  }
+
+  /*
+   * Worth fetching in full: a conversation with an unread-by-Khata message
+   * from a known bank or payment app, or with a rupee amount in its snippet.
+   * The search is broad on purpose; this is where newsletters get left behind
+   * without costing a request each.
+   */
+  var MONEYISH = /(?:₹|\bRs\.?|\bINR)\s?\d/i;
+  function worthReading(thread) {
+    return (thread.messages || []).some(function (m) {
+      return !ledger.parsed[m.id] && (K.identifySender(m.sender || '') || MONEYISH.test(m.snippet || ''));
+    });
+  }
+
+  function rebuild() {
+    if (state.mode !== 'live') return;
+    state.now = Date.now();
+    state.books = K.buildFromParsed(Object.keys(ledger.parsed).map(function (k) { return ledger.parsed[k]; }), { now: state.now });
+    // Never pull a field out from under someone typing in it.
+    var active = document.activeElement;
+    if (!(active && active.tagName === 'INPUT' && document.getElementById('view').contains(active))) render();
+    paint();
+  }
+
+  function save(complete) {
+    if (complete) ledger.lastSyncAt = Date.now();
+    return vault.save({ v: K.PARSER_VERSION, parsed: ledger.parsed, lastSyncAt: ledger.lastSyncAt });
+  }
+
+  function sync() {
+    if (!mcp || running) return;
+    running = true;
+    state.problem = null;
+    if (state.mode !== 'live') {
+      // Sample entries leave before a single real one arrives; the two never share a page.
+      state.mode = 'live';
+      rebuild();
+    }
+    state.phase = 'searching';
+    state.progress = { found: 0, estimate: 0, read: 0, toRead: 0, skipped: 0 };
+    paint();
+
+    // A full year the first time; afterwards only the days since the last complete read.
+    var days = ledger.lastSyncAt ? Math.max(3, Math.ceil((Date.now() - ledger.lastSyncAt) / 864e5) + 2) : 365;
+    var query = K.gmailQuery(days);
+    var threads = [];
+
+    function page(token) {
+      return read('search_threads', token ? { query: query, pageSize: 50, pageToken: token } : { query: query, pageSize: 50 })
+        .then(function (res) {
+          threads = threads.concat(res.threads || []);
+          if (!state.progress.estimate && res.resultCountEstimate) state.progress.estimate = Number(res.resultCountEstimate) || 0;
+          state.progress.found = threads.length;
+          paint();
+          if (res.nextPageToken && threads.length < 4000) return page(res.nextPageToken);
+        });
+    }
+
+    page(null).then(function () {
+      var queue = threads.filter(worthReading);
+      state.phase = 'reading';
+      state.progress.toRead = queue.length;
+      paint();
+      var next = 0;
+      var sinceRender = 0;
+      function worker() {
+        if (next >= queue.length) return Promise.resolve();
+        var thread = queue[next++];
+        return read('get_thread', { threadId: thread.id, messageFormat: 'PLAIN_TEXT' })
+          .then(function (res) {
+            (res.messages || []).forEach(function (m) {
+              var message = toMessage(m);
+              // Parsed here, and the text goes no further than this line.
+              ledger.parsed[message.id] = K.safeParse(message);
+            });
+          })
+          .catch(function (err) {
+            // A denial will fail every call, so it ends the read; anything else
+            // costs one conversation, counted and reported.
+            if (err && DENIALS.indexOf(err.code) >= 0) throw err;
+            state.progress.skipped += 1;
+          })
+          .then(function () {
+            state.progress.read += 1;
+            sinceRender += 1;
+            if (sinceRender >= 8) {
+              sinceRender = 0;
+              rebuild();
+              if (state.progress.read % 40 === 0) save(false);
+            } else {
+              paint();
+            }
+            return worker();
+          });
+      }
+      return Promise.all([worker(), worker(), worker(), worker()]);
+    })
+      .then(function () { return save(true); })
+      .then(function () { state.phase = 'idle'; })
+      .catch(function (err) {
+        state.phase = 'error';
+        state.problem = explain(err);
+        var code = err && err.code;
+        if (code === 'not_in_manifest' || code === 'server_not_connected' || code === 'blocked_by_policy') {
+          // Access withdrawn: what was read under it goes too.
+          ledger = { parsed: {}, lastSyncAt: 0 };
+          vault.erase();
+        } else if (DENIALS.indexOf(code) < 0) {
+          save(false);
+        }
+      })
+      .then(function () {
+        running = false;
+        rebuild();
+        paint();
+      });
+  }
+
+  function explain(err) {
+    var code = err && err.code;
+    var said = err && err.message ? ' (' + err.message + ')' : '';
+    switch (code) {
+      case 'needs_reauth':
+        return { title: 'Gmail needs reconnecting', detail: 'Its sign-in has lapsed. Reconnect Gmail in claude.ai → Settings → Connectors, then sync again.', again: false, hide: true };
+      case 'server_not_connected':
+        return { title: 'Gmail isn’t connected', detail: 'Add Gmail in claude.ai → Settings → Connectors, then open this page again.', again: false, hide: true };
+      case 'selection_required':
+        return { title: 'Choose a Gmail account', detail: 'More than one Gmail is connected. Pick the one Khata should read when claude.ai asks, then sync again.', again: true, hide: true };
+      case 'not_in_manifest':
+        return { title: 'Gmail is off for this page', detail: 'Access was declined or switched off, so what was read has been cleared. Reload the page to be asked again.', again: false, hide: true };
+      case 'blocked_by_policy':
+      case 'approval_required':
+        return { title: 'Blocked by your organisation', detail: 'A policy on your account stops this page reading Gmail.', again: false, hide: true };
+      case 'not_granted':
+      case 'capability_disabled':
+      case 'capability_removed':
+        return { title: 'This view can’t reach Gmail', detail: 'Open Khata inside claude.ai, where your connectors are available.', again: false, hide: true };
+      case 'server_unavailable':
+      case 'rate_limited':
+        return { title: 'Gmail didn’t answer', detail: 'That is usually brief. Everything read so far is kept — try again in a minute.', again: true };
+      case 'tool_error':
+        return { title: 'Gmail turned a request down', detail: 'Everything read so far is kept.' + said, again: true };
+      default:
+        return { title: 'Reading stopped partway', detail: 'Everything read so far is kept.' + said, again: true };
+    }
+  }
+
+  function erase() {
+    vault.erase();
+    ledger = { parsed: {}, lastSyncAt: 0 };
+    state.mode = 'sample';
+    state.phase = 'idle';
+    state.problem = null;
+    state.now = SAMPLE_NOW;
+    state.books = K.build(SAMPLE, { now: SAMPLE_NOW });
+    state.filter = null;
+    go('now');
+    paint();
+  }
+
+  /* ------------------------------ status ------------------------------ */
+
+  function ago(ms) {
+    var s = Math.max(0, Math.round((Date.now() - ms) / 1000));
+    if (s < 90) return 'just now';
+    var m = Math.round(s / 60);
+    if (m < 60) return m + 'm ago';
+    var h = Math.round(m / 60);
+    return h < 24 ? h + 'h ago' : Math.round(h / 24) + 'd ago';
+  }
+
+  function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
+
+  function accountCount() {
+    var seen = new Set();
+    state.books.txns.forEach(function (t) { if (t.account) seen.add(acct(t.account)); });
+    return seen.size;
+  }
+
+  var PRIVACY = 'Read-only: Khata can search and read your mail, never send, change or delete it. ' +
+    'Mail reaches this page through Anthropic’s Gmail connector; the ledger is built and kept in this browser, and no email text is stored.';
+
+  function paint() {
+    var status = document.getElementById('status');
+    var slip = document.getElementById('slip');
+    var p = state.progress || {};
+    var problem = state.problem;
+
+    if (state.mode === 'sample') {
+      status.textContent = 'Sample ledger · ' + plural(SAMPLE.length, 'bank email') + ' · ' + plural(accountCount(), 'account');
+      var intro = '<b>These are made-up entries</b>, dated as if today were ' + esc(K.formatDayLong(SAMPLE_NOW)) +
+        ', so you can see what Khata does. None of it is your money.';
+      if (problem && problem.hide) {
+        slip.innerHTML = '<b>' + esc(problem.title) + '.</b> ' + esc(problem.detail) +
+          (problem.again ? '<br><button class="act" data-act="retry">Try again</button>' : '');
+      } else if (mcp) {
+        slip.innerHTML = intro + '<br><button class="act" data-act="connect">Read my Gmail</button>' +
+          '<span class="fine">' + esc(PRIVACY) + '</span>';
+      } else {
+        slip.innerHTML = intro + ' Open this page in claude.ai with Gmail connected to read your own.';
+      }
+      slip.hidden = false;
+      return;
+    }
+
+    // Live.
+    var read = Object.keys(ledger.parsed).length;
+    if (state.phase === 'searching') {
+      status.textContent = 'Searching your mail…';
+      slip.innerHTML = 'Found <b>' + p.found + '</b> conversations' +
+        (p.estimate > p.found ? ' of about ' + p.estimate : '') + ' that might mention money.' +
+        '<span class="bar"><span style="width:6%"></span></span>';
+      slip.hidden = false;
+    } else if (state.phase === 'reading') {
+      var pct = p.toRead ? Math.round((p.read / p.toRead) * 100) : 100;
+      status.textContent = 'Reading your mail…';
+      slip.innerHTML = 'Read <b>' + p.read + '</b> of ' + p.toRead + ' conversations. Entries appear as they’re read.' +
+        '<span class="bar"><span style="width:' + pct + '%"></span></span>';
+      slip.hidden = false;
+    } else if (problem) {
+      status.innerHTML = esc(plural(read, 'email') + ' read') + ' · <button class="sync" data-act="sync">Sync</button>';
+      slip.innerHTML = '<b>' + esc(problem.title) + '.</b> ' + esc(problem.detail) +
+        (problem.again ? '<br><button class="act" data-act="retry">Try again</button>' : '');
+      slip.hidden = false;
+    } else {
+      status.innerHTML = esc(plural(read, 'email') + ' read · ' + plural(accountCount(), 'account') + ' · updated ' +
+        (ledger.lastSyncAt ? ago(ledger.lastSyncAt) : 'partly')) +
+        ' · <button class="sync" data-act="sync"' + (running ? ' disabled' : '') + '>Sync</button>';
+      slip.hidden = !(p.skipped > 0);
+      if (p.skipped > 0) {
+        slip.innerHTML = esc(p.skipped + (p.skipped === 1 ? ' conversation' : ' conversations') +
+          ' could not be read this time and will be tried again on the next sync.');
+      }
+    }
+  }
+
   /* --------------------------------- boot -------------------------------- */
 
+  // First paint is the sample, always — nothing below is allowed to hold it up.
+  state.mode = 'sample';
+  state.phase = 'idle';
   state.books = K.build(SAMPLE, { now: state.now });
-  var accounts = new Set(state.books.txns.filter(function (t) { return t.account; }).map(function (t) { return acct(t.account); }));
-  document.getElementById('status').textContent =
-    'Sample ledger · ' + SAMPLE.length + ' bank emails read · ' + accounts.size + ' accounts';
-  document.getElementById('slip').innerHTML =
-    '<b>These are made-up entries</b>, dated as if today were ' + esc(K.formatDayLong(state.now)) +
-    ', so you can see what Khata does. None of it is your money. Once Gmail is connected, this page reads your own bank alerts instead.';
   render();
+  paint();
+
+  // Refresh "updated 3m ago" without re-rendering anything else.
+  setInterval(function () { if (state.mode === 'live' && state.phase === 'idle') paint(); }, 60000);
+
+  var api = window.claude;
+  if (!api || typeof api.use !== 'function') return;
+
+  api.use('mcp').then(function (namespace) {
+    if (!namespace) return;
+    mcp = namespace;
+    paint();
+
+    return vault.load().then(function (stored) {
+      // Readings from an older parser are thrown away; the mail is read again.
+      if (stored && stored.v === K.PARSER_VERSION && stored.parsed && Object.keys(stored.parsed).length) {
+        ledger = { parsed: stored.parsed, lastSyncAt: stored.lastSyncAt || 0 };
+        state.mode = 'live';
+        rebuild();
+      }
+      return api.use('permissions');
+    }).then(function (permissions) {
+      var ask = permissions
+        ? permissions.state('mcp:' + SERVER).catch(function () { return 'unavailable'; })
+        : Promise.resolve('unavailable');
+      return ask.then(function (answer) {
+        // Already allowed: refresh quietly. Otherwise wait for the button, so
+        // the consent dialog follows a tap rather than ambushing the page load.
+        if (answer === 'granted' && (state.mode === 'live' || ledger.lastSyncAt === 0)) {
+          if (state.mode === 'live') sync();
+        }
+      });
+    });
+  }).catch(function () { /* the sample stays; nothing to report */ });
 })();
 </script>

@@ -13,6 +13,7 @@ export { summariseMonth, pace, coverage, months } from './insight/summary';
 export { ask, EXAMPLES } from './query/ask';
 export { formatPaise } from './parse/money';
 export { merchantKey } from './parse/extract';
+export { identifySender } from './parse/senders';
 export { CATEGORIES } from './insight/categories';
 export { REVIEW_BELOW } from './ledger/types';
 export {

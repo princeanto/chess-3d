@@ -131,6 +131,34 @@ button { font: inherit; color: inherit; }
   border-bottom: 1px solid var(--slip-edge);
 }
 .slip b { color: var(--ink); font-weight: 600; }
+.slip[hidden] { display: none; }
+.slip .act {
+  display: inline-block;
+  margin: 10px 10px 0 0;
+  padding: 9px 16px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--on-lal);
+  background: var(--lal);
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.slip .fine { display: block; margin-top: 8px; font-size: 12.5px; color: var(--ink-3); }
+.bar { display: block; height: 3px; margin-top: 10px; overflow: hidden; border-radius: 3px; background: var(--slip-edge); }
+.bar span { display: block; height: 100%; background: var(--lal); transition: width 0.3s ease; }
+.cover .sync {
+  margin-left: 6px;
+  padding: 0;
+  font-size: 13px;
+  color: var(--on-lal);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.cover .sync:disabled { opacity: 0.6; cursor: default; text-decoration: none; }
 
 main { flex: 1; padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
 main > * { animation: fade 0.16s ease both; }
@@ -486,13 +514,13 @@ button.item:hover .nm { text-decoration: underline; text-decoration-color: var(-
 </nav>
 <div id="sheet-root"></div>
 
-<script>"use strict";var Khata=(()=>{var Z=Object.defineProperty;var Ie=Object.getOwnPropertyDescriptor;var Ce=Object.getOwnPropertyNames;var De=Object.prototype.hasOwnProperty;var _e=(t,e)=>{for(var o in e)Z(t,o,{get:e[o],enumerable:!0})},Oe=(t,e,o,r)=>{if(e&&typeof e=="object"||typeof e=="function")for(let n of Ce(e))!De.call(t,n)&&n!==o&&Z(t,n,{get:()=>e[n],enumerable:!(r=Ie(e,n))||r.enumerable});return t};var Ne=t=>Oe(Z({},"__esModule",{value:!0}),t);var wt={};_e(wt,{CATEGORIES:()=>K,EXAMPLES:()=>Ee,PARSER_VERSION:()=>pe,REVIEW_BELOW:()=>R,ask:()=>Re,build:()=>$e,buildFromParsed:()=>J,coverage:()=>ve,dayGap:()=>A,daysInMonth:()=>D,formatDay:()=>$,formatDayLong:()=>Q,formatMonth:()=>L,formatPaise:()=>w,formatTime:()=>_,gmailQuery:()=>Me,istDayKey:()=>I,istMonthKey:()=>S,istParts:()=>x,merchantKey:()=>g,months:()=>Te,pace:()=>Se,parseMessage:()=>F,safeParse:()=>V,summariseMonth:()=>U});function M(...t){let e=t.join("\0"),o=2166136261,r=16777619;for(let a=0;a<e.length;a+=1){let s=e.charCodeAt(a);o^=s,o=Math.imul(o,16777619),r^=s+a,r=Math.imul(r,2246822507)}let n=(o>>>0).toString(36),i=(r>>>0).toString(36);return`${n}${i}`.slice(0,12)}var O=(t,e=2)=>String(t).padStart(e,"0");function x(t){let e=new Date(t+198e5);return{year:e.getUTCFullYear(),month:e.getUTCMonth()+1,day:e.getUTCDate(),hour:e.getUTCHours(),minute:e.getUTCMinutes()}}function I(t){let e=x(t);return`${e.year}-${O(e.month)}-${O(e.day)}`}function S(t){let e=x(t);return`${e.year}-${O(e.month)}`}function E(t){let e=x(t);return Date.UTC(e.year,e.month-1,e.day)-198e5}function C(t){let e=x(t);return Date.UTC(e.year,e.month-1,1)-198e5}function X(t,e,o,r=0,n=0){return Date.UTC(t,e-1,o,r,n)-198e5}function D(t){let[e,o]=t.split("-").map(Number);return new Date(Date.UTC(e,o,0)).getUTCDate()}var P=24*60*60*1e3;function A(t,e){return Math.round((E(e)-E(t))/P)}var N=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];function $(t){let e=x(t);return`${e.day} ${N[e.month-1]}`}function Q(t){let e=x(t);return`${e.day} ${N[e.month-1]} ${e.year}`}function _(t){let e=x(t);return`${e.hour%12===0?12:e.hour%12}:${O(e.minute)} ${e.hour<12?"am":"pm"}`}function L(t){let[e,o]=t.split("-").map(Number);return`${N[o-1]} ${e}`}function ee(t,e){let o=/\b(\d{1,2})[\s-]*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s,-]*(\d{2,4})?/i.exec(t);if(o){let n=Number(o[1]),i=N.findIndex(s=>s.toLowerCase()===o[2].toLowerCase())+1,a=o[3]?q(Number(o[3])):x(e).year;if(n>=1&&n<=31)return X(a,i,n)}let r=/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})\b/.exec(t);if(r){let n=Number(r[1]),i=Number(r[2]);if(n>12&&i>12)return null;if(n<=12&&i>12){let s=n;n=i,i=s}let a=q(Number(r[3]));if(n>=1&&n<=31&&i>=1&&i<=12)return X(a,i,n)}return null}function q(t){return t>=1e3?t:t<70?2e3+t:1900+t}var Le=t=>Math.round(t*100);function w(t,e={}){let o=t<0,r=Math.abs(t),n=Math.floor(r/100),i=r%100,a=String(n),s;if(a.length<=3)s=a;else{let l=a.slice(-3);s=a.slice(0,-3).replace(/\B(?=(\d{2})+(?!\d))/g,",")+","+l}let c=e.round&&i===0?s:`${s}.${String(i).padStart(2,"0")}`;return`${e.sign?o?"\u2212":"+":o?"\u2212":""}\u20B9${c}`}function ze(t){let[e,...o]=t.split(".");if(o.length>1||o.length===1&&!/^\d{1,2}$/.test(o[0]))return!1;if(!e.includes(","))return/^\d+$/.test(e);let r=e.split(",");if(r.some(i=>!/^\d+$/.test(i))||r[0].length<1||r[0].length>3||r[r.length-1].length!==3)return!1;let n=r.slice(1,-1);return n.length===0?!0:n.every(i=>i.length===2)||n.every(i=>i.length===3)}var te=String.raw`\d[\d,]*(?:\.\d{1,2})?`,Be=String.raw`(?:₹|\bINR\b|\bRs\.?|\bRUPEES\b)\s*`,Fe=String.raw`\s*(?:₹|\bINR\b|\bRs\b|/-)`,ne=new RegExp(`(?<!\\d)(?:${Be}(${te})|(${te})${Fe})(?!\\d)`,"gi");function z(t){let e=[];ne.lastIndex=0;let o;for(;(o=ne.exec(t))!==null;){let r=o[1]??o[2];if(!r||!ze(r))continue;let n=Number(r.replace(/,/g,""));Number.isFinite(n)&&(n<=0||n>1e9||e.push({value:Le(n),index:o.index,length:o[0].length,raw:r}))}return e}var re={amp:"&",lt:"<",gt:">",quot:'"',apos:"'",nbsp:" ",rupee:"\u20B9","#8377":"\u20B9","#x20b9":"\u20B9","#39":"'","#160":" "};function Ke(t){return t.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi,(e,o)=>{let r=o.toLowerCase();return r in re?re[r]:r.startsWith("#x")?String.fromCodePoint(parseInt(r.slice(2),16)):r.startsWith("#")?String.fromCodePoint(Number(r.slice(1))):e})}function oe(t){return Ke(t.replace(/<(script|style)[\s\S]*?<\/\1>/gi," ").replace(/<\/?(br|p|div|tr|td|th|li|h[1-6]|table)[^>]*>/gi,`
+<script>"use strict";var Khata=(()=>{var Y=Object.defineProperty;var Ce=Object.getOwnPropertyDescriptor;var De=Object.getOwnPropertyNames;var _e=Object.prototype.hasOwnProperty;var Oe=(t,e)=>{for(var a in e)Y(t,a,{get:e[a],enumerable:!0})},Ne=(t,e,a,r)=>{if(e&&typeof e=="object"||typeof e=="function")for(let n of De(e))!_e.call(t,n)&&n!==a&&Y(t,n,{get:()=>e[n],enumerable:!(r=Ce(e,n))||r.enumerable});return t};var Be=t=>Ne(Y({},"__esModule",{value:!0}),t);var $t={};Oe($t,{CATEGORIES:()=>U,EXAMPLES:()=>Ee,PARSER_VERSION:()=>pe,REVIEW_BELOW:()=>v,ask:()=>Re,build:()=>Ae,buildFromParsed:()=>X,coverage:()=>ve,dayGap:()=>M,daysInMonth:()=>D,formatDay:()=>$,formatDayLong:()=>ee,formatMonth:()=>B,formatPaise:()=>w,formatTime:()=>_,gmailQuery:()=>Me,identifySender:()=>F,istDayKey:()=>E,istMonthKey:()=>S,istParts:()=>x,merchantKey:()=>g,months:()=>Ie,pace:()=>Te,parseMessage:()=>K,safeParse:()=>J,summariseMonth:()=>j});function A(...t){let e=t.join("\0"),a=2166136261,r=16777619;for(let o=0;o<e.length;o+=1){let s=e.charCodeAt(o);a^=s,a=Math.imul(a,16777619),r^=s+o,r=Math.imul(r,2246822507)}let n=(a>>>0).toString(36),i=(r>>>0).toString(36);return`${n}${i}`.slice(0,12)}var O=(t,e=2)=>String(t).padStart(e,"0");function x(t){let e=new Date(t+198e5);return{year:e.getUTCFullYear(),month:e.getUTCMonth()+1,day:e.getUTCDate(),hour:e.getUTCHours(),minute:e.getUTCMinutes()}}function E(t){let e=x(t);return`${e.year}-${O(e.month)}-${O(e.day)}`}function S(t){let e=x(t);return`${e.year}-${O(e.month)}`}function R(t){let e=x(t);return Date.UTC(e.year,e.month-1,e.day)-198e5}function C(t){let e=x(t);return Date.UTC(e.year,e.month-1,1)-198e5}function q(t,e,a,r=0,n=0){return Date.UTC(t,e-1,a,r,n)-198e5}function D(t){let[e,a]=t.split("-").map(Number);return new Date(Date.UTC(e,a,0)).getUTCDate()}var P=24*60*60*1e3;function M(t,e){return Math.round((R(e)-R(t))/P)}var N=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];function $(t){let e=x(t);return`${e.day} ${N[e.month-1]}`}function ee(t){let e=x(t);return`${e.day} ${N[e.month-1]} ${e.year}`}function _(t){let e=x(t);return`${e.hour%12===0?12:e.hour%12}:${O(e.minute)} ${e.hour<12?"am":"pm"}`}function B(t){let[e,a]=t.split("-").map(Number);return`${N[a-1]} ${e}`}function te(t,e){let a=/\b(\d{1,2})[\s-]*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s,-]*(\d{2,4})?/i.exec(t);if(a){let n=Number(a[1]),i=N.findIndex(s=>s.toLowerCase()===a[2].toLowerCase())+1,o=a[3]?Q(Number(a[3])):x(e).year;if(n>=1&&n<=31)return q(o,i,n)}let r=/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})\b/.exec(t);if(r){let n=Number(r[1]),i=Number(r[2]);if(n>12&&i>12)return null;if(n<=12&&i>12){let s=n;n=i,i=s}let o=Q(Number(r[3]));if(n>=1&&n<=31&&i>=1&&i<=12)return q(o,i,n)}return null}function Q(t){return t>=1e3?t:t<70?2e3+t:1900+t}var ze=t=>Math.round(t*100);function w(t,e={}){let a=t<0,r=Math.abs(t),n=Math.floor(r/100),i=r%100,o=String(n),s;if(o.length<=3)s=o;else{let l=o.slice(-3);s=o.slice(0,-3).replace(/\B(?=(\d{2})+(?!\d))/g,",")+","+l}let c=e.round&&i===0?s:`${s}.${String(i).padStart(2,"0")}`;return`${e.sign?a?"\u2212":"+":a?"\u2212":""}\u20B9${c}`}function Le(t){let[e,...a]=t.split(".");if(a.length>1||a.length===1&&!/^\d{1,2}$/.test(a[0]))return!1;if(!e.includes(","))return/^\d+$/.test(e);let r=e.split(",");if(r.some(i=>!/^\d+$/.test(i))||r[0].length<1||r[0].length>3||r[r.length-1].length!==3)return!1;let n=r.slice(1,-1);return n.length===0?!0:n.every(i=>i.length===2)||n.every(i=>i.length===3)}var ne=String.raw`\d[\d,]*(?:\.\d{1,2})?`,Fe=String.raw`(?:₹|\bINR\b|\bRs\.?|\bRUPEES\b)\s*`,Ke=String.raw`\s*(?:₹|\bINR\b|\bRs\b|/-)`,re=new RegExp(`(?<!\\d)(?:${Fe}(${ne})|(${ne})${Ke})(?!\\d)`,"gi");function z(t){let e=[];re.lastIndex=0;let a;for(;(a=re.exec(t))!==null;){let r=a[1]??a[2];if(!r||!Le(r))continue;let n=Number(r.replace(/,/g,""));Number.isFinite(n)&&(n<=0||n>1e9||e.push({value:ze(n),index:a.index,length:a[0].length,raw:r}))}return e}var ie={amp:"&",lt:"<",gt:">",quot:'"',apos:"'",nbsp:" ",rupee:"\u20B9","#8377":"\u20B9","#x20b9":"\u20B9","#39":"'","#160":" "};function Ue(t){return t.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi,(e,a)=>{let r=a.toLowerCase();return r in ie?ie[r]:r.startsWith("#x")?String.fromCodePoint(parseInt(r.slice(2),16)):r.startsWith("#")?String.fromCodePoint(Number(r.slice(1))):e})}function oe(t){return Ue(t.replace(/<(script|style)[\s\S]*?<\/\1>/gi," ").replace(/<\/?(br|p|div|tr|td|th|li|h[1-6]|table)[^>]*>/gi,`
 `).replace(/<[^>]+>/g," ")).replace(/[ \t ]+/g," ").replace(/\n\s*\n\s*\n+/g,`
 
-`).replace(/^\s+|\s+$/g,"")}var Ue=[{re:/\bdebited\b/gi,dir:"debit",weight:5},{re:/\bcredited\b/gi,dir:"credit",weight:5},{re:/\bwithdrawn\b|\bwithdrawal\b/gi,dir:"debit",weight:4.5},{re:/\bdeposited\b/gi,dir:"credit",weight:4.5},{re:/\bspent\b/gi,dir:"debit",weight:4},{re:/\brefunded\b|\brefund of\b/gi,dir:"credit",weight:4},{re:/\breversed\b|\breversal of\b/gi,dir:"credit",weight:4},{re:/\bcashback\b/gi,dir:"credit",weight:3.5},{re:/\bsalary\b/gi,dir:"credit",weight:3.5},{re:/\bpurchase of\b|\bhas been used for\b/gi,dir:"debit",weight:3.5},{re:/\bpaid to\b|\bsent to\b|\btransferred to\b/gi,dir:"debit",weight:3.5},{re:/\breceived from\b|\bcredit from\b/gi,dir:"credit",weight:3.5},{re:/\bdeducted\b|\bcharged\b/gi,dir:"debit",weight:3},{re:/\bpayment of\b|\bpayment made\b/gi,dir:"debit",weight:2},{re:/\breceived\b/gi,dir:"credit",weight:2},{re:/\bpaid\b/gi,dir:"debit",weight:1.5}],je=[/\bavailable balance\b|\bavl\.? ?bal\b|\ba\/c balance\b|\bclosing balance\b/gi,/\bcredit limit\b|\bavailable limit\b|\blimit of\b/gi,/\btotal outstanding\b|\boutstanding balance\b/gi,/\breward points?\b|\bpoints? worth\b/gi,/\bminimum amount due\b|\bmin\.? amt\.? due\b/gi];function ie(t,e){let o=[];for(let{re:r,dir:n,weight:i}of e){r.lastIndex=0;let a;for(;(a=r.exec(t))!==null;)o.push({index:a.index,dir:n,weight:i}),a.index===r.lastIndex&&(r.lastIndex+=1)}return o}function Ze(t){return t.replace(/\b(credit|debit) card\b/gi,e=>" ".repeat(e.length))}function W(t,e){let o=Ze(`${t}
-${e}`),r=z(o);if(r.length===0)return null;let n=ie(o,Ue),i=ie(o,je.map(c=>({re:c,weight:6}))),a=t.length,s=null;for(let c of r){let u=0,l=0,f="",b=0;for(let h of n){let T=Math.abs(h.index-c.index);if(T>160)continue;let v=h.weight/(1+T/40);h.dir==="debit"?u+=v:l+=v,v>b&&(b=v,f=o.slice(h.index,h.index+24).trim())}let k=0;for(let h of i){let T=Math.abs(h.index-c.index);T>90||(k+=h.weight/(1+T/25))}let d=Math.max(u,l),m=c.index<a?1.2:0,p=d-k+m;d!==0&&(!s||p>s.score)&&(s={amount:c,dir:u>=l?"debit":"credit",score:p,via:f})}return!s||s.score<=0?null:{amountPaise:s.amount.value,direction:s.dir,strength:s.score,notes:[`amount \u20B9${s.amount.raw} read as ${s.dir}${s.via?` from \u201C${s.via}\u201D`:""}`]}}var We=[/\b(?:a\/c|ac|acct|account|card)\s*(?:no\.?|number|num)?\s*(?:ending(?:\s+(?:in|with))?)?\s*[xX*•·]{2,}\s*(\d{4})\b/i,/\b(?:a\/c|ac|acct|account|card)\s*(?:no\.?|number|num)?\s*(?:ending(?:\s+(?:in|with))?)\s*(\d{4})\b/i,/\b[xX*]{4,}\s*(\d{4})\b/i,/\b(?:a\/c|ac|acct|account|card)\s*(?:no\.?|number|num)\s*[:.]?\s*(\d{4})\b(?!\d)/i];function Y(t){for(let e of We){let o=e.exec(t);if(o)return o[1]}return null}var Ye=[/\b(?:rrn|utr)\s*(?:no\.?|number)?\s*[:#-]?\s*([A-Za-z0-9]{6,22})\b/i,/\b(?:upi)?\s*(?:txn|transaction)\s*(?:id|no\.?|number|ref(?:erence)?)\s*[:#-]?\s*([A-Za-z0-9]{6,22})\b/i,/\bref(?:erence)?\s*(?:no\.?|number|id)?\s*[:#-]\s*([A-Za-z0-9]{6,22})\b/i,/\bauth(?:orisation|orization)?\s*(?:code|no\.?)?\s*[:#-]?\s*([A-Za-z0-9]{6,22})\b/i];function ae(t){for(let e of Ye){let o=e.exec(t);if(o&&/\d/.test(o[1]))return o[1].toUpperCase()}if(/\bUPI\b/i.test(t)){let e=/(?<!\d)(\d{12})(?!\d)/.exec(t);if(e)return e[1]}return null}function se(t){return/\bATM\b|cash withdrawal|cash w\/?d\b/i.test(t)?"atm":/\bUPI\b|\bVPA\b|[a-z0-9._-]{3,}@(?:okhdfcbank|oksbi|okicici|okaxis|ybl|paytm|apl|ibl|axl)\b/i.test(t)?"upi":/\bNACH\b|\bACH\b|e-?mandate|auto ?debit|auto ?pay|standing instruction\b|\bSI\b/i.test(t)?"ach":/\bNEFT\b|\bIMPS\b|\bRTGS\b|net ?banking|fund transfer/i.test(t)?"netbanking":/\bcard\b|\bPOS\b|swipe|contactless|auth(?:orisation|orization)/i.test(t)?"card":"unknown"}var ce=/\b(pvt|private|ltd|limited|llp|inc|incorporated|india|technologies|solutions|enterprises)\b/gi,Ge=[/\bInfo\s*[:-]\s*([^\n]{3,70})/i,/\btowards\s+([^\n.,]{3,45})/i,/\bat\s+([A-Za-z0-9][A-Za-z0-9 &.'@_*-]{2,45}?)\s+on\b/i,/\b(?:paid|sent|transferred)\s+to\s+([A-Za-z0-9][A-Za-z0-9 &.'@_-]{2,45}?)(?=\s+on\b|[.,\n]|$)/i,/\bto\s+VPA\s+([A-Za-z0-9._-]+@[A-Za-z]{2,})/i,/\bfrom\s+([A-Za-z0-9][A-Za-z0-9 &.'@_-]{2,45}?)(?=\s+on\b|[.,\n]|$)/i,/\bmerchant\s*[:-]\s*([^\n.,]{3,45})/i];function He(t){let e=t.trim();/^UPI[/-]/i.test(e)&&(e=e.split(/[/-]/).filter(Boolean)[1]??e);let o=/^([A-Za-z0-9._-]+)@[A-Za-z]{2,}$/.exec(e);if(o&&(e=o[1].replace(/[._-]+/g," ")),e=e.replace(/\b(?:ref|rrn|utr|txn|id)\s*[:#-]?\s*[A-Za-z0-9]{6,}\b/gi," ").replace(/(?<![\d.])\d{6,}(?![\d.])/g," ").replace(/[*_]+/g," ").replace(/\s{2,}/g," ").replace(/^[\s.,:;-]+|[\s.,:;-]+$/g,""),e.length<2||/^\d+$/.test(e))return null;let r=e.replace(ce,"").replace(/\s{2,}/g," ").trim();return r.length>=3&&(e=r),(e===e.toUpperCase()||e===e.toLowerCase())&&(e=e.toLowerCase().replace(/\b[a-z]/g,n=>n.toUpperCase())),e.slice(0,40)}function B(t){for(let e of Ge){let o=e.exec(t);if(!o)continue;let r=He(o[1]);if(r)return r}return null}function g(t){return t?t.toLowerCase().replace(ce,"").replace(/[^a-z0-9]+/g,"").slice(0,24):""}var y=[[/statement|estmt|smartstatement|bill/i,"bill"],[/mandate|enach|autopay|si_|standinginstruction/i,"mandate"]],Ve=[{domain:/(^|\.)hdfcbank\.(net|com)$/i,issuer:"HDFC",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)icicibank\.com$/i,issuer:"ICICI",type:"bank",kind:"bank-alert",local:[...y,[/credit_?cards?/i,"bill"]]},{domain:/(^|\.)sbi\.co\.in$|(^|\.)alerts\.sbi\.co\.in$/i,issuer:"SBI",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)sbicard\.com$/i,issuer:"SBI Card",type:"card",kind:"bank-alert",local:y},{domain:/(^|\.)axisbank\.com$/i,issuer:"Axis",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)kotak\.com$/i,issuer:"Kotak",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)indusind\.com$/i,issuer:"IndusInd",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)idfcfirstbank\.com$/i,issuer:"IDFC First",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)yesbank\.in$/i,issuer:"Yes Bank",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)rblbank\.com$/i,issuer:"RBL",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)federalbank\.co\.in$/i,issuer:"Federal",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)aubank\.in$/i,issuer:"AU",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)bankofbaroda\.(com|co\.in)$/i,issuer:"BoB",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)pnb\.co\.in$/i,issuer:"PNB",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)canarabank\.com$/i,issuer:"Canara",type:"bank",kind:"bank-alert",local:y},{domain:/americanexpress\.com$/i,issuer:"Amex",type:"card",kind:"bank-alert",local:y},{domain:/(^|\.)citi(corp|bank)?\.com$/i,issuer:"Citi",type:"card",kind:"bank-alert",local:y},{domain:/(^|\.)onecard\.app$/i,issuer:"OneCard",type:"card",kind:"bank-alert",local:y},{domain:/(^|\.)phonepe\.com$/i,issuer:"PhonePe",type:"wallet",kind:"upi-receipt"},{domain:/(^|\.)paytm\.(com|in)$/i,issuer:"Paytm",type:"wallet",kind:"upi-receipt"},{domain:/(^|\.)amazonpay\.in$/i,issuer:"Amazon Pay",type:"wallet",kind:"upi-receipt"},{domain:/(^|\.)cred\.club$/i,issuer:"CRED",type:"wallet",kind:"upi-receipt"},{domain:/(^|\.)navi\.com$/i,issuer:"Navi",type:"wallet",kind:"upi-receipt"},{domain:/(^|\.)amazon\.(in|com)$/i,issuer:"Amazon",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)flipkart\.com$/i,issuer:"Flipkart",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)swiggy\.(in|com)$/i,issuer:"Swiggy",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)zomato\.com$/i,issuer:"Zomato",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)uber\.com$/i,issuer:"Uber",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)olacabs\.com$/i,issuer:"Ola",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)bookmyshow\.com$/i,issuer:"BookMyShow",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)blinkit\.com$/i,issuer:"Blinkit",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)zeptonow\.com$/i,issuer:"Zepto",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)netflix\.com$/i,issuer:"Netflix",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)spotify\.com$/i,issuer:"Spotify",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)apple\.com$/i,issuer:"Apple",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)google\.com$/i,issuer:"Google",type:"wallet",kind:"merchant-receipt",local:[[/googlepay|gpay/i,"upi-receipt"]]}];function ue(t){let e=/<([^>]+)>/.exec(t);return(e?e[1]:t).trim().toLowerCase()}function de(t){let e=ue(t),o=e.lastIndexOf("@");if(o<0)return null;let r=e.slice(0,o),n=e.slice(o+1);for(let i of Ve){if(!i.domain.test(n))continue;let a=i.kind;for(let[s,c]of i.local??[])if(s.test(r)){a=c;break}return{issuer:i.issuer,type:i.type,kind:a}}return null}var Je=/^(offers?|promo(tions?)?|deals?|marketing|newsletter|news|updates?|info|hello|team|support|no-?reply-?marketing)$/i;function le(t,e,o){let r=ue(t),n=r.slice(0,Math.max(0,r.lastIndexOf("@")));if(Je.test(n))return!0;let i=`${e}
-${o}`;return[/\bcashback up to\b/i,/\bup to \d+% ?(off|cashback)/i,/\bflat \d+% ?off\b/i,/\blimited (time|period) offer\b/i,/\bhurry\b|\bdon'?t miss\b|\blast chance\b/i,/\bwin (up to|a|an)\b/i,/\bapply now\b|\bshop now\b|\bbook now\b|\border now\b/i,/\bT ?& ?C ?(apply|s apply)\b/i,/\bpre-?approved\b/i,/\byou (are|'re) eligible\b/i].filter(c=>c.test(i)).length>=2}var pe=1,Xe=24*60*60*1e3,qe=[[/\b(?:payment|transaction)\s+(?:has\s+)?(?:failed|declined|was unsuccessful)|could not be processed|\bdeclined\b/i,"failure"],[/e-?mandate|standing instruction|\bNACH\b|auto\s?pay (?:is |will )|will be (?:auto[- ]?)?debited on/i,"mandate"],[/total amount due|minimum amount due|payment due date|statement (?:is|has been) generated|your bill (?:is|for)/i,"bill"],[/\b(?:will|shall) be (?:reversed|credited back)\b|\breversal (?:will be|has been|is being) (?:initiated|processed)\b|\bcredited back within\b/i,"reversal-promise"],[/\b(?:will|shall) be (?:credited|refunded|returned)\b|\brefund (?:has been |is being |will be )?(?:initiated|processed|issued)\b/i,"refund-promise"]];function Qe(t,e){for(let[o,r]of qe)if(o.test(t))return r;return e}function me(t,e,o=120){let r=e.exec(t);if(!r)return null;let n=r.index+r[0].length,i=null;for(let a of z(t)){let s=a.index>=n?a.index-n:n-a.index+40;s>o||(!i||s<i.distance)&&(i={value:a.value,distance:s})}return i?i.value:null}function be(t,e,o,r=90){let n=e.exec(t);if(!n)return null;let i=n.index+n[0].length;return ee(t.slice(i,i+r),o)}function F(t){let e=oe(t.body),o=tt(t.subject),r=`${o}
-${e}`,n=de(t.from),i=Qe(r,n?.kind??"unknown"),a={messageId:t.id,from:t.from,subject:o,date:t.date,kind:i},s={},c=le(t.from,o,e);if(i==="bill"||i==="mandate"){let l=et(r,t,a,n,i);l&&(s.obligation=l)}if(i==="refund-promise"||i==="reversal-promise"){let l=W(o,e),f=/(\d{1,2})\s*[-–to]{1,3}\s*(\d{1,2})\s*(?:working|business)?\s*days/i.exec(r),b=f?Number(f[2]):10;s.promise={id:M("promise",t.id),kind:i==="refund-promise"?"refund":"reversal",amountPaise:l?.amountPaise??null,promisedAt:t.date,expectBy:t.date+Math.ceil(b*1.5)*Xe,merchant:B(r)??n?.issuer??null,source:a}}if(!c&&i!=="bill"&&i!=="mandate"&&i!=="failure"&&i!=="refund-promise"&&i!=="reversal-promise"){let l=W(o,e);if(l){let f=Y(r),b=ae(r),k=B(r),d=[...l.notes],m=.25+Math.min(l.strength,8)*.05;n?(m+=n.type==="wallet"?.06:.14,d.push(`sender recognised as ${n.issuer}`)):d.push("sender not in the registry"),f&&(m+=.1,d.push(`account ending ${f}`)),b&&(m+=.1,d.push(`reference ${b}`)),k&&(m+=.05),!f&&!b&&(m-=.12);let p=n?{issuer:n.issuer,tail:f,type:n.type}:f?{issuer:"Unknown",tail:f,type:"bank"}:null;s.record={source:a,at:t.date,amountPaise:l.amountPaise,direction:l.direction,account:p,merchant:k??(n?.kind==="merchant-receipt"?n.issuer:null),method:se(r),reference:b,confidence:Math.max(0,Math.min(1,m)),notes:d}}}return s}function et(t,e,o,r,n){let i=me(t,/total amount due|total due|amount payable/i)??me(t,/will be (?:auto[- ]?)?debited|mandate (?:amount|for)|instruction (?:amount|of)/i)??null,a=be(t,/payment due date|due date|due on|pay by/i,e.date)??be(t,/will be (?:auto[- ]?)?debited on|debit date|on or (?:before|after)/i,e.date);if(a===null)return null;let s=Y(t),c=B(t)??r?.issuer??(n==="bill"?"Bill":"Auto-debit");return{id:M("obligation",e.id),kind:/\bEMI\b|instal?ment/i.test(t)?"emi":n,label:c,amountPaise:i,dueAt:a,account:r?{issuer:r.issuer,tail:s,type:r.type}:null,source:o}}function tt(t){return t.replace(/=\?[^?]+\?([QqBb])\?([^?]*)\?=/g,(e,o,r)=>{try{if(o.toLowerCase()==="b"){let n=typeof atob=="function"?atob(r):Buffer.from(r,"base64").toString("binary");return decodeURIComponent(n.split("").map(i=>`%${i.charCodeAt(0).toString(16).padStart(2,"0")}`).join(""))}return decodeURIComponent(r.replace(/_/g," ").replace(/=([0-9A-Fa-f]{2})/g,"%$1"))}catch{return e}})}var nt=90*60*1e3,rt=100;function it(t,e){return Math.abs(t-e)<=rt}function ot(t,e){if(t.direction!==e.direction||!it(t.amountPaise,e.amountPaise))return!1;if(t.reference&&e.reference)return t.reference===e.reference;if(Math.abs(t.at-e.at)>nt||t.source.from===e.source.from)return!1;let r=t.account?.tail,n=e.account?.tail;if(r&&n&&r!==n)return!1;let i=g(t.merchant),a=g(e.merchant);return!(i&&a&&i!==a&&!i.includes(a)&&!a.includes(i))}function at(t,e){let o=i=>i.source.kind==="bank-alert"?3:i.source.kind==="upi-receipt"?2:1,r=o(t),n=o(e);return r!==n?r>n?t:e:t.confidence>=e.confidence?t:e}function fe(t){let e=[...t].sort((n,i)=>n.at-i.at),o=new Map,r=[];for(let n of e){let i=Math.round(n.amountPaise/100),a=!1;for(let s of[-1,0,1]){let c=o.get(i+s);if(c){for(let u of c)if(u.some(l=>ot(l,n))){u.push(n),a=!0;break}if(a)break}}if(!a){let s=[n];r.push(s);let c=o.get(i);c?c.push(s):o.set(i,[s])}}return r.map(st)}function st(t){let e=t.reduce(at),o=t.map(i=>i.source),r=Math.max(...t.map(i=>i.confidence)),n=t.length>1?Math.min(.98,r+.12*(t.length-1)):r;return{id:M("txn",o[0].messageId),at:Math.min(...t.map(i=>i.at)),amountPaise:e.amountPaise,direction:e.direction,account:e.account??t.find(i=>i.account)?.account??null,merchant:e.merchant??t.find(i=>i.merchant)?.merchant??null,method:e.method!=="unknown"?e.method:t.find(i=>i.method!=="unknown")?.method??"unknown",category:"",reference:e.reference??t.find(i=>i.reference)?.reference??null,confidence:n,sources:o}}var K=["Food","Groceries","Transport","Shopping","Bills","Rent","Health","Entertainment","Travel","Education","Investment","Transfer","Income","Fees","Cash","Other"],G=[[/swiggy|zomato|dominos|pizza|mcdonald|kfc|starbucks|cafe|coffee|restaurant|eatery|biryani|barbeque|chaayos|dunkin|subway|burger/i,"Food"],[/bigbasket|blinkit|zepto|instamart|dmart|grofers|jiomart|reliance ?fresh|more ?retail|spencer|nature.?s basket|licious|country ?delight/i,"Groceries"],[/uber|ola|rapido|namma ?yatri|metro|irctc|redbus|petrol|fuel|indian ?oil|bharat ?petro|hp ?petro|shell|fastag|parking|blusmart/i,"Transport"],[/amazon|flipkart|myntra|ajio|nykaa|meesho|tatacliq|croma|decathlon|ikea|lifestyle|shoppers ?stop|westside|zara|uniqlo|hm\b/i,"Shopping"],[/airtel|jio|vodafone|\bvi\b|bsnl|electricity|\bbescom\b|\bmseb\b|\btneb\b|gas|water|broadband|act ?fibernet|hathway|tata ?play|dish ?tv|municipal|property ?tax/i,"Bills"],[/\brent\b|nobroker|nestaway|housing|landlord|society ?maintenance|maintenance ?charge/i,"Rent"],[/apollo|pharm|medplus|1mg|pharmeasy|netmeds|hospital|clinic|diagnostic|lab|doctor|practo|cult\.?fit|gym|fitness/i,"Health"],[/netflix|spotify|prime ?video|hotstar|jiocinema|sonyliv|zee5|youtube ?premium|bookmyshow|pvr|inox|cinepolis|steam|playstation|xbox|nintendo/i,"Entertainment"],[/makemytrip|goibibo|cleartrip|yatra|ixigo|airbnb|oyo|booking\.?com|indigo|vistara|air ?india|spicejet|akasa|hotel|resort/i,"Travel"],[/udemy|coursera|unacademy|byju|vedantu|upgrad|school|college|university|tuition|course|scaler|masterclass/i,"Education"],[/zerodha|groww|upstox|angel ?one|kuvera|coin|smallcase|mutual ?fund|\bsip\b|\bnps\b|\bppf\b|\belss\b|stock|nse|bse|policybazaar|\blic\b|insurance|premium/i,"Investment"],[/salary|payroll|stipend|reimbursement|interest ?credit|dividend|refund/i,"Income"],[/\bfee\b|\bcharges?\b|\bgst\b|penalty|late ?payment|interest ?charged|annual ?fee|renewal ?fee|convenience ?fee|surcharge|markup/i,"Fees"]],ct=G[G.length-1][0];function ut(t,e={}){let o=g(t.merchant);if(o&&e[o])return e[o];let r=[t.merchant??"",t.sources.map(n=>n.subject).join(" ")].join(" ");if(ct.test(r))return"Fees";if(t.method==="atm")return"Cash";for(let[n,i]of G)if(n.test(r)){if(i==="Income"&&t.direction==="debit")continue;return i}return t.direction==="credit"?/\bself\b|own account|transfer/i.test(r)?"Transfer":"Income":t.method==="netbanking"||/\bself\b|own account/i.test(r)?"Transfer":"Other"}function ge(t,e={}){return t.map(o=>({...o,category:o.edited?.category??ut(o,e)}))}var dt=[{cadence:"weekly",days:7,slack:2},{cadence:"monthly",days:30,slack:6},{cadence:"quarterly",days:91,slack:10},{cadence:"yearly",days:365,slack:20}],H=t=>{let e=[...t].sort((r,n)=>r-n),o=Math.floor(e.length/2);return e.length%2?e[o]:Math.round((e[o-1]+e[o])/2)};function lt(t){let e=[...t].sort((r,n)=>r.amountPaise-n.amountPaise),o=[];for(let r of e){let n=o[o.length-1];if(n){let i=H(n.map(s=>s.amountPaise)),a=Math.max(5e3,i*.08);if(Math.abs(r.amountPaise-i)<=a){n.push(r);continue}}o.push([r])}return o}function he(t,e=Date.now()){let o=new Map;for(let n of t){if(n.direction!=="debit")continue;let i=g(n.merchant);if(!i)continue;let a=o.get(i);a?a.push(n):o.set(i,[n])}let r=[];for(let[n,i]of o)for(let a of lt(i)){if(a.length<3)continue;let s=[...a].sort((m,p)=>m.at-p.at),c=[];for(let m=1;m<s.length;m+=1)c.push(A(s[m-1].at,s[m].at));let u=H(c),l=dt.find(m=>Math.abs(u-m.days)<=m.slack);if(!l||c.filter(m=>Math.abs(m-l.days)<=l.slack).length/c.length<.6)continue;let b=H(s.map(m=>m.amountPaise)),k=s.map(m=>m.at),d=k[k.length-1];r.push({key:`${n}:${Math.round(b/100)}`,merchant:s[s.length-1].merchant??n,amountPaise:b,cadence:l.cadence,occurrences:k,txnIds:s.map(m=>m.id),nextExpectedAt:d+l.days*P,missing:mt(k,l,e),active:A(d,e)<=l.days*2+l.slack})}return r.sort((n,i)=>i.amountPaise-n.amountPaise)}function mt(t,e,o){let r=[],n=t[0],i=t[t.length-1],a=Math.min(o,i+e.days*P);for(let s=1;;s+=1){let c=n+s*e.days*P;if(c>a)break;t.some(l=>Math.abs(A(c,l))<=e.slack)||r.push(c)}return r}var bt=25,pt=12,ft=200;function ye(t,e,o=Date.now()){let r=e.filter(s=>s.direction==="debit").sort((s,c)=>s.at-c.at),n=new Set,i=[...t].sort((s,c)=>c.dueAt-s.dueAt),a=[];for(let s of i){let c=s.dueAt-bt*P,u=s.dueAt+pt*P,l=g(s.label),f=r.find(b=>{if(n.has(b.id)||b.at<c||b.at>u||s.amountPaise!==null&&Math.abs(b.amountPaise-s.amountPaise)>ft)return!1;let k=s.account?.tail&&b.account?.tail?s.account.tail===b.account.tail:null;if(s.kind!=="bill"&&k===!1)return!1;let d=g(b.merchant),m=l&&d?d.includes(l)||l.includes(d):null;return!(s.amountPaise===null&&!m&&!k)});f?(n.add(f.id),a.push({...s,status:"cleared",clearedByTxnId:f.id})):a.push({...s,status:s.dueAt>o?"pending":"missed"})}return{obligations:a.sort((s,c)=>s.dueAt-c.dueAt),clearedTxnIds:n}}function ke(t,e=Date.now()){return t.filter(o=>o.kind!=="bill"&&o.status==="missed"&&A(o.dueAt,e)>=2)}function xe(t,e=Date.now()){let o=[];for(let r of t){if(!r.active)continue;let n=r.missing[r.missing.length-1];n!==void 0&&(A(n,e)<1||o.push({merchant:r.merchant,amountPaise:r.amountPaise,expectedAt:n,cadence:r.cadence}))}return o.sort((r,n)=>n.expectedAt-r.expectedAt)}function gt(t){let e=t.filter(r=>r.direction==="debit").sort((r,n)=>r.at-n.at),o=[];for(let r=0;r<e.length;r+=1)for(let n=r+1;n<e.length;n+=1){let i=e[r],a=e[n];if(a.at-i.at>2*P)break;if(i.amountPaise!==a.amountPaise)continue;let s=g(i.merchant),c=g(a.merchant);if(!s||s!==c||i.amountPaise<2e4)continue;let l=I(i.at)===I(a.at)?`${$(i.at)} at ${_(i.at)} and again at ${_(a.at)}`:`${$(i.at)} and again on ${$(a.at)}`;o.push({id:M("dup",i.id,a.id),kind:"duplicate",amountPaise:a.amountPaise,at:a.at,title:`${i.merchant} charged twice`,detail:`${w(i.amountPaise,{round:!0})} on ${l}. If you only meant to pay once, this is refundable.`,txnIds:[i.id,a.id]})}return o}function ht(t,e,o){let r=e.filter(i=>i.direction==="credit"),n=[];for(let i of t){if(o<i.expectBy)continue;let a=g(i.merchant);r.some(c=>{if(c.at<i.promisedAt||c.at>i.expectBy+30*P)return!1;if(i.amountPaise!==null)return Math.abs(c.amountPaise-i.amountPaise)<=200;let u=g(c.merchant);return!!(a&&u&&(u.includes(a)||a.includes(u)))})||n.push({id:M("promise",i.id),kind:i.kind==="refund"?"unrefunded":"unreversed",amountPaise:i.amountPaise??0,at:i.promisedAt,title:i.kind==="refund"?`Refund from ${i.merchant??"a merchant"} never arrived`:`Reversal from ${i.merchant??"your bank"} never arrived`,detail:`Promised on ${$(i.promisedAt)}, expected by ${$(i.expectBy)}. Nothing matching has been credited since. Worth chasing \u2014 quote the original mail.`,txnIds:[]})}return n}function yt(t){return t.filter(e=>e.direction==="debit"&&e.category==="Fees").map(e=>({id:M("fee",e.id),kind:"fee",amountPaise:e.amountPaise,at:e.at,title:`${e.merchant??e.account?.issuer??"Bank"} charged a fee`,detail:`${w(e.amountPaise,{round:!0})} on ${$(e.at)}. Most of these are waivable if you ask once.`,txnIds:[e.id]}))}function kt(t,e){let o={weekly:52,monthly:12,quarterly:4,yearly:1};return t.filter(r=>r.active&&r.occurrences.length>=6).map(r=>{let n=r.amountPaise*o[r.cadence],i=Math.max(1,Math.round(A(r.occurrences[0],e)/30));return{id:M("zombie",r.key),kind:"zombie",amountPaise:n,at:r.occurrences[r.occurrences.length-1],title:`${r.merchant} \u2014 ${w(n,{round:!0})} a year`,detail:`${w(r.amountPaise,{round:!0})} ${r.cadence}, ${r.occurrences.length} times over ${i} months. Still using it?`,txnIds:r.txnIds}}).sort((r,n)=>n.amountPaise-r.amountPaise)}function xt(t){return t.filter(e=>e.direction==="debit"&&e.sources.some(o=>/markup|foreign (?:currency|transaction)|cross ?currency|\bFX\b/i.test(o.subject))).map(e=>({id:M("fx",e.id),kind:"fx-markup",amountPaise:e.amountPaise,at:e.at,title:`Foreign currency markup on ${e.merchant??"a charge"}`,detail:`${w(e.amountPaise,{round:!0})} on ${$(e.at)}. A zero-markup card would have avoided this.`,txnIds:[e.id]}))}function Pe(t,e,o,r=Date.now()){return[...gt(t),...ht(o,t,r),...yt(t),...xt(t),...kt(e,r)].sort((n,i)=>i.at-n.at)}function we(t){return t.filter(e=>e.kind!=="zombie").reduce((e,o)=>e+o.amountPaise,0)}function V(t){try{return F(t)}catch{return{}}}function $e(t,e={}){return J(t.map(V),e)}function J(t,e={}){let{overrides:o={},edits:r={},now:n=Date.now()}=e,i=t.flatMap(d=>d.record?[d.record]:[]),a=t.flatMap(d=>d.obligation?[d.obligation]:[]),s=t.flatMap(d=>d.promise?[d.promise]:[]),c=t.filter(d=>!d.record&&!d.obligation&&!d.promise).length,u=fe(i);u=u.map(d=>{let m=r[d.id];return m?{...d,...m,edited:m}:d}),u=ge(u,o).sort((d,m)=>m.at-d.at);let{obligations:l,clearedTxnIds:f}=ye(a,u,n),b=he(u,n),k=Pe(u,b,s,n);return{txns:u,obligations:l,recurring:b,leaks:k,skipped:xe(b,n),failedMandates:ke(l,n),recoverablePaise:we(k),clearedTxnIds:f,ignored:c}}function Me(t){let e=["debited","credited","debit","credit",'"transaction alert"','"txn alert"','"has been spent"','"you have spent"','"payment due"','"amount due"','"due date"','"e-mandate"','"auto debit"','"autopay"','"standing instruction"','"refund"','"reversed"','"reversal"','"payment failed"','"transaction declined"','"statement"','"UPI"'];return[`newer_than:${t}d`,`(${e.join(" OR ")})`,"-category:promotions","-category:social","-in:spam","-in:trash"].join(" ")}var R=.55;var Ae=t=>t.confidence>=.55;function U(t,e){let o=t.filter(c=>S(c.at)===e),r=o.filter(Ae),n=new Map,i=new Map,a=0,s=0;for(let c of r){if(c.direction==="credit"?a+=c.amountPaise:s+=c.amountPaise,c.direction==="debit"){let f=c.category||"Other",b=n.get(f)??{amountPaise:0,count:0};b.amountPaise+=c.amountPaise,b.count+=1,n.set(f,b)}let u=c.account?`${c.account.issuer}${c.account.tail?` \u2022\u2022${c.account.tail}`:""}`:"Unattributed",l=i.get(u)??{inPaise:0,outPaise:0};c.direction==="credit"?l.inPaise+=c.amountPaise:l.outPaise+=c.amountPaise,i.set(u,l)}return{month:e,inPaise:a,outPaise:s,netPaise:a-s,count:r.length,byCategory:[...n.entries()].map(([c,u])=>({category:c,...u})).sort((c,u)=>u.amountPaise-c.amountPaise),byAccount:[...i.entries()].map(([c,u])=>({account:c,...u})).sort((c,u)=>u.outPaise-c.outPaise),unsure:o.length-r.length}}function Se(t,e=Date.now()){let o=S(e),r=S(C(e)-P),n=U(t,o),i=U(t,r),a=D(o),s=Math.max(1,x(e).day),c=Math.round(n.outPaise/s);return{spentPaise:n.outPaise,perDayPaise:c,projectedPaise:c*a,lastMonthPaise:i.outPaise,daysElapsed:s,daysInMonth:a}}function Te(t){return[...new Set(t.map(e=>S(e.at)))].sort().reverse()}function ve(t,e){let o=t.filter(u=>S(u.at)===e&&Ae(u)),r=[...new Set(o.filter(u=>u.account).map(u=>`${u.account.issuer}${u.account.tail?` \u2022\u2022${u.account.tail}`:""}`))].sort(),n=D(e),i=new Set(o.map(u=>x(u.at).day)).size,a=n-i,s=Math.min(1,r.length/2),c=Math.min(1,i/(n*.4));return{month:e,accounts:r,txnCount:o.length,silentDays:a,score:Number((s*.66+c*.34).toFixed(2))}}var j=["january","february","march","april","may","june","july","august","september","october","november","december"];function Pt(t,e){let o=C(e);if(/\blast month\b|\bprevious month\b/.test(t)){let n=o-1;return{from:C(n),to:n,label:L(S(n))}}if(/\bthis month\b/.test(t))return{from:o,to:e,label:"this month"};if(/\btoday\b/.test(t))return{from:E(e),to:e,label:"today"};if(/\byesterday\b/.test(t)){let n=E(e)-P;return{from:n,to:n+P-1,label:"yesterday"}}if(/\bthis (?:year|yr)\b/.test(t)){let n=x(e).year;return{from:Date.UTC(n,0,1)-198e5,to:e,label:String(n)}}if(/\blast (?:year|yr)\b/.test(t)){let n=x(e).year-1;return{from:Date.UTC(n,0,1)-198e5,to:Date.UTC(n+1,0,1)-19800001,label:String(n)}}let r=/\blast (\d+)\s*(day|week|month)s?\b/.exec(t);if(r){let n=Number(r[1]),i=r[2],a=i==="day"?n:i==="week"?n*7:n*30;return{from:e-a*P,to:e,label:`the last ${n} ${i}${n>1?"s":""}`}}for(let n=0;n<j.length;n+=1)if(new RegExp(`\\b${j[n].slice(0,3)}[a-z]*\\b`).test(t)){let i=x(e),a=n+1>i.month?i.year-1:i.year,s=Date.UTC(a,n,1)-198e5,c=Date.UTC(a,n+1,1)-19800001;return{from:s,to:c,label:`${j[n][0].toUpperCase()}${j[n].slice(1)} ${a}`}}return{from:o,to:e,label:"this month"}}function Re(t,e,o=Date.now()){let r=t.toLowerCase().trim();if(!r)return{headline:"",txns:[],understood:!1};let n=Pt(r,o),i=e.filter(d=>d.confidence>=.55),a=i.filter(d=>d.at>=n.from&&d.at<=n.to),c=/\b(?:earn|income|receive|received|credit|credited|salary|refund)\b/.test(r)?"credit":"debit";a=a.filter(d=>d.direction===c);let u="",l=K.find(d=>r.includes(d.toLowerCase()));if(l&&(a=a.filter(d=>d.category===l),u=l.toLowerCase()),!l){let d=r.split(/[^a-z0-9]+/).filter(p=>p.length>=3),m=new Map;for(let p of i){let h=g(p.merchant);h&&p.merchant&&m.set(h,p.merchant)}for(let p of d){for(let[h,T]of m)if(h.includes(p)&&p.length>=4){a=a.filter(v=>g(v.merchant).includes(p)),u=T;break}if(u)break}}let f=a.reduce((d,m)=>d+m.amountPaise,0),b=c==="credit"?"came in":"went out";if(/\b(biggest|largest|highest|most expensive|top)\b/.test(r)){let d=[...a].sort((m,p)=>p.amountPaise-m.amountPaise).slice(0,5);return d.length===0?{headline:`Nothing ${b}${u?` on ${u}`:""} in ${n.label}.`,txns:[],understood:!0}:{headline:`${w(d[0].amountPaise,{round:!0})} \u2014 ${d[0].merchant??"unnamed"}`,detail:`The largest of ${a.length} ${u?`${u} `:""}payments in ${n.label}, on ${$(d[0].at)}.`,txns:d,understood:!0}}if(/\bhow many\b|\bcount\b|\btimes\b/.test(r))return{headline:`${a.length} ${a.length===1?"time":"times"}`,detail:`${u?`${u}, `:""}${n.label}, totalling ${w(f,{round:!0})}.`,txns:a.slice(0,50),understood:!0};if(/\bwhere\b|\bbreakdown\b|\bwhat (?:did i|have i) (?:spend|buy)\b|\bon what\b/.test(r)){let d=new Map;for(let p of a)d.set(p.category,(d.get(p.category)??0)+p.amountPaise);let m=[...d.entries()].sort((p,h)=>h[1]-p[1]).slice(0,5);return m.length===0?{headline:`Nothing ${b} in ${n.label}.`,txns:[],understood:!0}:{headline:w(f,{round:!0}),detail:`${n.label} \u2014 ${m.map(([p,h])=>`${p} ${w(h,{round:!0})}`).join(", ")}.`,txns:[...a].sort((p,h)=>h.amountPaise-p.amountPaise).slice(0,50),understood:!0}}return/\bhow much\b|\btotal\b|\bsum\b|\bspent?\b|\bspending\b|\bpaid\b|\bearn/.test(r)||!!u?a.length===0?{headline:`Nothing ${b}${u?` on ${u}`:""} in ${n.label}.`,detail:"Either there was none, or no email arrived about it.",txns:[],understood:!0}:{headline:w(f,{round:!0}),detail:`${u?`${u}, `:""}${n.label} \u2014 across ${a.length} ${a.length===1?"payment":"payments"}.`,txns:[...a].sort((d,m)=>m.amountPaise-d.amountPaise).slice(0,50),understood:!0}:{headline:"Not sure what you are asking.",detail:"Try \u201Chow much on food last month\u201D, \u201Cbiggest expense this year\u201D, \u201Chow many times swiggy\u201D, or \u201Cwhere did my money go in July\u201D.",txns:[],understood:!1}}var Ee=["how much on food last month","biggest expense this year","where did my money go in July","how many times swiggy","how much did I earn this month"];return Ne(wt);})();
+`).replace(/^\s+|\s+$/g,"")}var je=[{re:/\bdebited\b/gi,dir:"debit",weight:5},{re:/\bcredited\b/gi,dir:"credit",weight:5},{re:/\bwithdrawn\b|\bwithdrawal\b/gi,dir:"debit",weight:4.5},{re:/\bdeposited\b/gi,dir:"credit",weight:4.5},{re:/\bspent\b/gi,dir:"debit",weight:4},{re:/\brefunded\b|\brefund of\b/gi,dir:"credit",weight:4},{re:/\breversed\b|\breversal of\b/gi,dir:"credit",weight:4},{re:/\bcashback\b/gi,dir:"credit",weight:3.5},{re:/\bsalary\b/gi,dir:"credit",weight:3.5},{re:/\bpurchase of\b|\bhas been used for\b/gi,dir:"debit",weight:3.5},{re:/\bpaid to\b|\bsent to\b|\btransferred to\b/gi,dir:"debit",weight:3.5},{re:/\breceived from\b|\bcredit from\b/gi,dir:"credit",weight:3.5},{re:/\bdeducted\b|\bcharged\b/gi,dir:"debit",weight:3},{re:/\bpayment of\b|\bpayment made\b/gi,dir:"debit",weight:2},{re:/\breceived\b/gi,dir:"credit",weight:2},{re:/\bpaid\b/gi,dir:"debit",weight:1.5}],Ze=[/\bavailable balance\b|\bavl\.? ?bal\b|\ba\/c balance\b|\bclosing balance\b/gi,/\bcredit limit\b|\bavailable limit\b|\blimit of\b/gi,/\btotal outstanding\b|\boutstanding balance\b/gi,/\breward points?\b|\bpoints? worth\b/gi,/\bminimum amount due\b|\bmin\.? amt\.? due\b/gi];function ae(t,e){let a=[];for(let{re:r,dir:n,weight:i}of e){r.lastIndex=0;let o;for(;(o=r.exec(t))!==null;)a.push({index:o.index,dir:n,weight:i}),o.index===r.lastIndex&&(r.lastIndex+=1)}return a}function Ye(t){return t.replace(/\b(credit|debit) card\b/gi,e=>" ".repeat(e.length))}function H(t,e){let a=Ye(`${t}
+${e}`),r=z(a);if(r.length===0)return null;let n=ae(a,je),i=ae(a,Ze.map(c=>({re:c,weight:6}))),o=t.length,s=null;for(let c of r){let u=0,l=0,p="",b=0;for(let h of n){let T=Math.abs(h.index-c.index);if(T>160)continue;let I=h.weight/(1+T/40);h.dir==="debit"?u+=I:l+=I,I>b&&(b=I,p=a.slice(h.index,h.index+24).trim())}let k=0;for(let h of i){let T=Math.abs(h.index-c.index);T>90||(k+=h.weight/(1+T/25))}let d=Math.max(u,l),m=c.index<o?1.2:0,f=d-k+m;d!==0&&(!s||f>s.score)&&(s={amount:c,dir:u>=l?"debit":"credit",score:f,via:p})}return!s||s.score<=0?null:{amountPaise:s.amount.value,direction:s.dir,strength:s.score,notes:[`amount \u20B9${s.amount.raw} read as ${s.dir}${s.via?` from \u201C${s.via}\u201D`:""}`]}}var He=[/\b(?:a\/c|ac|acct|account|card)\s*(?:no\.?|number|num)?\s*(?:ending(?:\s+(?:in|with))?)?\s*[xX*•·]{2,}\s*(\d{4})\b/i,/\b(?:a\/c|ac|acct|account|card)\s*(?:no\.?|number|num)?\s*(?:ending(?:\s+(?:in|with))?)\s*(\d{4})\b/i,/\b[xX*]{4,}\s*(\d{4})\b/i,/\b(?:a\/c|ac|acct|account|card)\s*(?:no\.?|number|num)\s*[:.]?\s*(\d{4})\b(?!\d)/i];function W(t){for(let e of He){let a=e.exec(t);if(a)return a[1]}return null}var We=[/\b(?:rrn|utr)\s*(?:no\.?|number)?\s*[:#-]?\s*([A-Za-z0-9]{6,22})\b/i,/\b(?:upi)?\s*(?:txn|transaction)\s*(?:id|no\.?|number|ref(?:erence)?)\s*[:#-]?\s*([A-Za-z0-9]{6,22})\b/i,/\bref(?:erence)?\s*(?:no\.?|number|id)?\s*[:#-]\s*([A-Za-z0-9]{6,22})\b/i,/\bauth(?:orisation|orization)?\s*(?:code|no\.?)?\s*[:#-]?\s*([A-Za-z0-9]{6,22})\b/i];function se(t){for(let e of We){let a=e.exec(t);if(a&&/\d/.test(a[1]))return a[1].toUpperCase()}if(/\bUPI\b/i.test(t)){let e=/(?<!\d)(\d{12})(?!\d)/.exec(t);if(e)return e[1]}return null}function ce(t){return/\bATM\b|cash withdrawal|cash w\/?d\b/i.test(t)?"atm":/\bUPI\b|\bVPA\b|[a-z0-9._-]{3,}@(?:okhdfcbank|oksbi|okicici|okaxis|ybl|paytm|apl|ibl|axl)\b/i.test(t)?"upi":/\bNACH\b|\bACH\b|e-?mandate|auto ?debit|auto ?pay|standing instruction\b|\bSI\b/i.test(t)?"ach":/\bNEFT\b|\bIMPS\b|\bRTGS\b|net ?banking|fund transfer/i.test(t)?"netbanking":/\bcard\b|\bPOS\b|swipe|contactless|auth(?:orisation|orization)/i.test(t)?"card":"unknown"}var ue=/\b(pvt|private|ltd|limited|llp|inc|incorporated|india|technologies|solutions|enterprises)\b/gi,Ge=[/\bVPA\s+[A-Za-z0-9._-]+@[A-Za-z]{2,}\s*\(([^)\n]{2,40})\)/i,/\b(?:to|towards|from|by)\s+VPA\s+([A-Za-z0-9._-]+@[A-Za-z]{2,})/i,/\bInfo\s*[:-]\s*([^\n]{3,70})/i,/\btowards\s+([^\n.,]{3,45})/i,/\bat\s+([A-Za-z0-9][A-Za-z0-9 &.'@_*-]{2,45}?)\s+on\b/i,/\b(?:paid|sent|transferred)\s+to\s+([A-Za-z0-9][A-Za-z0-9 &.'@_-]{2,45}?)(?=\s+on\b|[.,\n]|$)/i,/\bfrom\s+([A-Za-z0-9][A-Za-z0-9 &.'@_-]{2,45}?)(?=\s+on\b|[.,\n]|$)/i,/\bmerchant\s*[:-]\s*([^\n.,]{3,45})/i];function Ve(t){let e=t.trim();/^UPI[/-]/i.test(e)&&(e=e.split(/[/-]/).filter(Boolean)[1]??e);let a=/^([A-Za-z0-9._-]+)@[A-Za-z]{2,}$/.exec(e);if(a&&(e=a[1].replace(/[._-]+/g," ")),e=e.replace(/\b(?:ref|rrn|utr|txn|id)\s*[:#-]?\s*[A-Za-z0-9]{6,}\b/gi," ").replace(/(?<![\d.])\d{6,}(?![\d.])/g," ").replace(/[*_]+/g," ").replace(/\s{2,}/g," ").replace(/^[\s.,:;-]+|[\s.,:;-]+$/g,""),e.length<2||/^\d+$/.test(e))return null;let r=e.replace(ue,"").replace(/\s{2,}/g," ").trim();return r.length>=3&&(e=r),(e===e.toUpperCase()||e===e.toLowerCase())&&(e=e.toLowerCase().replace(/\b[a-z]/g,n=>n.toUpperCase())),e.slice(0,40)}function L(t){for(let e of Ge){let a=e.exec(t);if(!a)continue;let r=Ve(a[1]);if(r)return r}return null}function g(t){return t?t.toLowerCase().replace(ue,"").replace(/[^a-z0-9]+/g,"").slice(0,24):""}var y=[[/statement|estmt|smartstatement|bill/i,"bill"],[/mandate|enach|autopay|si_|standinginstruction/i,"mandate"]],Je=[{domain:/(^|\.)hdfcbank\.(net|com)$/i,issuer:"HDFC",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)icicibank\.com$/i,issuer:"ICICI",type:"bank",kind:"bank-alert",local:[...y,[/credit_?cards?/i,"bill"]]},{domain:/(^|\.)sbi\.co\.in$|(^|\.)alerts\.sbi\.co\.in$/i,issuer:"SBI",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)sbicard\.com$/i,issuer:"SBI Card",type:"card",kind:"bank-alert",local:y},{domain:/(^|\.)axisbank\.com$/i,issuer:"Axis",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)kotak\.com$/i,issuer:"Kotak",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)indusind\.com$/i,issuer:"IndusInd",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)idfcfirstbank\.com$/i,issuer:"IDFC First",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)yesbank\.in$/i,issuer:"Yes Bank",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)rblbank\.com$/i,issuer:"RBL",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)federalbank\.co\.in$/i,issuer:"Federal",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)aubank\.in$/i,issuer:"AU",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)bankofbaroda\.(com|co\.in)$/i,issuer:"BoB",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)pnb\.co\.in$/i,issuer:"PNB",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)canarabank\.com$/i,issuer:"Canara",type:"bank",kind:"bank-alert",local:y},{domain:/americanexpress\.com$/i,issuer:"Amex",type:"card",kind:"bank-alert",local:y},{domain:/(^|\.)citi(corp|bank)?\.com$/i,issuer:"Citi",type:"card",kind:"bank-alert",local:y},{domain:/(^|\.)onecard\.app$/i,issuer:"OneCard",type:"card",kind:"bank-alert",local:y},{domain:/(^|\.)phonepe\.com$/i,issuer:"PhonePe",type:"wallet",kind:"upi-receipt"},{domain:/(^|\.)paytm\.(com|in)$/i,issuer:"Paytm",type:"wallet",kind:"upi-receipt"},{domain:/(^|\.)amazonpay\.in$/i,issuer:"Amazon Pay",type:"wallet",kind:"upi-receipt"},{domain:/(^|\.)cred\.club$/i,issuer:"CRED",type:"wallet",kind:"upi-receipt"},{domain:/(^|\.)navi\.com$/i,issuer:"Navi",type:"wallet",kind:"upi-receipt"},{domain:/(^|\.)amazon\.(in|com)$/i,issuer:"Amazon",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)flipkart\.com$/i,issuer:"Flipkart",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)swiggy\.(in|com)$/i,issuer:"Swiggy",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)zomato\.com$/i,issuer:"Zomato",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)uber\.com$/i,issuer:"Uber",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)olacabs\.com$/i,issuer:"Ola",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)bookmyshow\.com$/i,issuer:"BookMyShow",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)blinkit\.com$/i,issuer:"Blinkit",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)zeptonow\.com$/i,issuer:"Zepto",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)netflix\.com$/i,issuer:"Netflix",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)spotify\.com$/i,issuer:"Spotify",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)apple\.com$/i,issuer:"Apple",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)google\.com$/i,issuer:"Google",type:"wallet",kind:"merchant-receipt",local:[[/googlepay|gpay/i,"upi-receipt"]]}],de={hdfcbank:["HDFC","bank"],icicibank:["ICICI","bank"],sbi:["SBI","bank"],onlinesbi:["SBI","bank"],sbicard:["SBI Card","card"],axisbank:["Axis","bank"],axis:["Axis","bank"],kotak:["Kotak","bank"],kotakbank:["Kotak","bank"],indusind:["IndusInd","bank"],indusindbank:["IndusInd","bank"],idfcfirst:["IDFC First","bank"],idfcfirstbank:["IDFC First","bank"],yesbank:["Yes Bank","bank"],rblbank:["RBL","bank"],federalbank:["Federal","bank"],aubank:["AU","bank"],bankofbaroda:["BoB","bank"],pnb:["PNB","bank"],canarabank:["Canara","bank"],unionbank:["Union","bank"],indianbank:["Indian Bank","bank"],iob:["IOB","bank"],bandhanbank:["Bandhan","bank"]};function le(t){let e=/<([^>]+)>/.exec(t);return(e?e[1]:t).trim().toLowerCase()}function F(t){let e=le(t),a=e.lastIndexOf("@");if(a<0)return null;let r=e.slice(0,a),n=e.slice(a+1),i=/(?:^|\.)([a-z0-9-]+)\.bank\.in$/.exec(n);if(i&&de[i[1]]){let[o,s]=de[i[1]],c="bank-alert";for(let[u,l]of y)if(u.test(r)){c=l;break}return{issuer:o,type:s,kind:c}}for(let o of Je){if(!o.domain.test(n))continue;let s=o.kind;for(let[c,u]of o.local??[])if(c.test(r)){s=u;break}return{issuer:o.issuer,type:o.type,kind:s}}return null}var Xe=/^(offers?|promo(tions?)?|deals?|marketing|newsletter|news|updates?|info|hello|team|support|no-?reply-?marketing)$/i;function me(t,e,a){let r=le(t),n=r.slice(0,Math.max(0,r.lastIndexOf("@")));if(Xe.test(n))return!0;let i=`${e}
+${a}`;return[/\bcashback up to\b/i,/\bup to \d+% ?(off|cashback)/i,/\bflat \d+% ?off\b/i,/\blimited (time|period) offer\b/i,/\bhurry\b|\bdon'?t miss\b|\blast chance\b/i,/\bwin (up to|a|an)\b/i,/\bapply now\b|\bshop now\b|\bbook now\b|\border now\b/i,/\bT ?& ?C ?(apply|s apply)\b/i,/\bpre-?approved\b/i,/\byou (are|'re) eligible\b/i].filter(c=>c.test(i)).length>=2}var pe=2,qe=24*60*60*1e3,Qe=[[/\b(?:payment|transaction)\s+(?:has\s+)?(?:failed|declined|was unsuccessful)|could not be processed|\bdeclined\b/i,"failure"],[/e-?mandate|standing instruction|\bNACH\b|auto\s?pay (?:is |will )|will be (?:auto[- ]?)?debited on/i,"mandate"],[/total amount due|minimum amount due|payment due date|statement (?:is|has been) generated|your bill (?:is|for)/i,"bill"],[/\b(?:will|shall) be (?:reversed|credited back)\b|\breversal (?:will be|has been|is being) (?:initiated|processed)\b|\bcredited back within\b/i,"reversal-promise"],[/\b(?:will|shall) be (?:credited|refunded|returned)\b|\brefund (?:has been |is being |will be )?(?:initiated|processed|issued)\b/i,"refund-promise"]];function et(t,e){for(let[a,r]of Qe)if(a.test(t))return r;return e}function be(t,e,a=120){let r=e.exec(t);if(!r)return null;let n=r.index+r[0].length,i=null;for(let o of z(t)){let s=o.index>=n?o.index-n:n-o.index+40;s>a||(!i||s<i.distance)&&(i={value:o.value,distance:s})}return i?i.value:null}function fe(t,e,a,r=90){let n=e.exec(t);if(!n)return null;let i=n.index+n[0].length;return te(t.slice(i,i+r),a)}function K(t){let e=oe(t.body),a=nt(t.subject),r=`${a}
+${e}`,n=F(t.from),i=et(r,n?.kind??"unknown"),o={messageId:t.id,from:t.from,subject:a,date:t.date,kind:i},s={},c=me(t.from,a,e);if(i==="bill"||i==="mandate"){let l=tt(r,t,o,n,i);l&&(s.obligation=l)}if(i==="refund-promise"||i==="reversal-promise"){let l=H(a,e),p=/(\d{1,2})\s*[-–to]{1,3}\s*(\d{1,2})\s*(?:working|business)?\s*days/i.exec(r),b=p?Number(p[2]):10;s.promise={id:A("promise",t.id),kind:i==="refund-promise"?"refund":"reversal",amountPaise:l?.amountPaise??null,promisedAt:t.date,expectBy:t.date+Math.ceil(b*1.5)*qe,merchant:L(r)??n?.issuer??null,source:o}}if(!c&&i!=="bill"&&i!=="mandate"&&i!=="failure"&&i!=="refund-promise"&&i!=="reversal-promise"){let l=H(a,e);if(l){let p=W(r),b=se(r),k=L(r),d=[...l.notes],m=.25+Math.min(l.strength,8)*.05;n?(m+=n.type==="wallet"?.06:.14,d.push(`sender recognised as ${n.issuer}`)):d.push("sender not in the registry"),p&&(m+=.1,d.push(`account ending ${p}`)),b&&(m+=.1,d.push(`reference ${b}`)),k&&(m+=.05),!p&&!b&&(m-=.12);let f=n?{issuer:n.issuer,tail:p,type:n.type}:p?{issuer:"Unknown",tail:p,type:"bank"}:null;s.record={source:o,at:t.date,amountPaise:l.amountPaise,direction:l.direction,account:f,merchant:k??(n?.kind==="merchant-receipt"?n.issuer:null),method:ce(r),reference:b,confidence:Math.max(0,Math.min(1,m)),notes:d}}}return s}function tt(t,e,a,r,n){let i=be(t,/total amount due|total due|amount payable/i)??be(t,/will be (?:auto[- ]?)?debited|mandate (?:amount|for)|instruction (?:amount|of)/i)??null,o=fe(t,/payment due date|due date|due on|pay by/i,e.date)??fe(t,/will be (?:auto[- ]?)?debited on|debit date|on or (?:before|after)/i,e.date);if(o===null)return null;let s=W(t),c=L(t)??r?.issuer??(n==="bill"?"Bill":"Auto-debit");return{id:A("obligation",e.id),kind:/\bEMI\b|instal?ment/i.test(t)?"emi":n,label:c,amountPaise:i,dueAt:o,account:r?{issuer:r.issuer,tail:s,type:r.type}:null,source:a}}function nt(t){return t.replace(/=\?[^?]+\?([QqBb])\?([^?]*)\?=/g,(e,a,r)=>{try{if(a.toLowerCase()==="b"){let n=typeof atob=="function"?atob(r):Buffer.from(r,"base64").toString("binary");return decodeURIComponent(n.split("").map(i=>`%${i.charCodeAt(0).toString(16).padStart(2,"0")}`).join(""))}return decodeURIComponent(r.replace(/_/g," ").replace(/=([0-9A-Fa-f]{2})/g,"%$1"))}catch{return e}})}var rt=90*60*1e3,it=100;function at(t,e){return Math.abs(t-e)<=it}function ot(t,e){if(t.direction!==e.direction||!at(t.amountPaise,e.amountPaise))return!1;if(t.reference&&e.reference)return t.reference===e.reference;if(Math.abs(t.at-e.at)>rt||t.source.from===e.source.from)return!1;let r=t.account?.tail,n=e.account?.tail;if(r&&n&&r!==n)return!1;let i=g(t.merchant),o=g(e.merchant);return!(i&&o&&i!==o&&!i.includes(o)&&!o.includes(i))}function st(t,e){let a=i=>i.source.kind==="bank-alert"?3:i.source.kind==="upi-receipt"?2:1,r=a(t),n=a(e);return r!==n?r>n?t:e:t.confidence>=e.confidence?t:e}function ge(t){let e=[...t].sort((n,i)=>n.at-i.at),a=new Map,r=[];for(let n of e){let i=Math.round(n.amountPaise/100),o=!1;for(let s of[-1,0,1]){let c=a.get(i+s);if(c){for(let u of c)if(u.some(l=>ot(l,n))){u.push(n),o=!0;break}if(o)break}}if(!o){let s=[n];r.push(s);let c=a.get(i);c?c.push(s):a.set(i,[s])}}return r.map(ct)}function ct(t){let e=t.reduce(st),a=t.map(i=>i.source),r=Math.max(...t.map(i=>i.confidence)),n=t.length>1?Math.min(.98,r+.12*(t.length-1)):r;return{id:A("txn",a[0].messageId),at:Math.min(...t.map(i=>i.at)),amountPaise:e.amountPaise,direction:e.direction,account:e.account??t.find(i=>i.account)?.account??null,merchant:e.merchant??t.find(i=>i.merchant)?.merchant??null,method:e.method!=="unknown"?e.method:t.find(i=>i.method!=="unknown")?.method??"unknown",category:"",reference:e.reference??t.find(i=>i.reference)?.reference??null,confidence:n,sources:a}}var U=["Food","Groceries","Transport","Shopping","Bills","Rent","Health","Entertainment","Travel","Education","Investment","Transfer","Income","Fees","Cash","Other"],G=[[/swiggy|zomato|dominos|pizza|mcdonald|kfc|starbucks|cafe|coffee|restaurant|eatery|biryani|biriyani|briyani|barbeque|chaayos|dunkin|subway|burger|baskin|ice ?cream|bakery|bakes|juice|tea stall|\bchai\b|dosa|tiffin|canteen|sweets/i,"Food"],[/bigbasket|blinkit|zepto|instamart|dmart|grofers|jiomart|reliance ?fresh|more ?retail|spencer|nature.?s basket|licious|country ?delight/i,"Groceries"],[/uber|ola|rapido|namma ?yatri|metro|irctc|redbus|petrol|fuel|indian ?oil|bharat ?petro|hp ?petro|shell|fastag|parking|blusmart/i,"Transport"],[/amazon|flipkart|myntra|ajio|nykaa|meesho|tatacliq|croma|decathlon|ikea|lifestyle|shoppers ?stop|westside|zara|uniqlo|hm\b/i,"Shopping"],[/airtel|jio|vodafone|\bvi\b|bsnl|electricity|\bbescom\b|\bmseb\b|\btneb\b|gas|water|broadband|act ?fibernet|hathway|tata ?play|dish ?tv|municipal|property ?tax/i,"Bills"],[/\brent\b|nobroker|nestaway|housing|landlord|society ?maintenance|maintenance ?charge/i,"Rent"],[/apollo|pharm|medplus|1mg|pharmeasy|netmeds|hospital|clinic|diagnostic|lab|doctor|practo|cult\.?fit|gym|fitness/i,"Health"],[/netflix|spotify|prime ?video|hotstar|jiocinema|sonyliv|zee5|youtube ?premium|bookmyshow|pvr|inox|cinepolis|steam|playstation|xbox|nintendo/i,"Entertainment"],[/makemytrip|goibibo|cleartrip|yatra|ixigo|airbnb|oyo|booking\.?com|indigo|vistara|air ?india|spicejet|akasa|hotel|resort/i,"Travel"],[/udemy|coursera|unacademy|byju|vedantu|upgrad|school|college|university|tuition|course|scaler|masterclass/i,"Education"],[/zerodha|groww|upstox|angel ?one|kuvera|coin|smallcase|mutual ?fund|\bsip\b|\bnps\b|\bppf\b|\belss\b|stock|nse|bse|policybazaar|\blic\b|insurance|premium/i,"Investment"],[/salary|payroll|stipend|reimbursement|interest ?credit|dividend|refund/i,"Income"],[/\bfee\b|\bcharges?\b|\bgst\b|penalty|late ?payment|interest ?charged|annual ?fee|renewal ?fee|convenience ?fee|surcharge|markup/i,"Fees"]],ut=G[G.length-1][0];function dt(t,e={}){let a=g(t.merchant);if(a&&e[a])return e[a];let r=[t.merchant??"",t.sources.map(n=>n.subject).join(" ")].join(" ");if(ut.test(r))return"Fees";if(t.method==="atm")return"Cash";for(let[n,i]of G)if(n.test(r)){if(i==="Income"&&t.direction==="debit")continue;return i}return t.direction==="credit"?/\bself\b|own account|transfer/i.test(r)?"Transfer":"Income":t.method==="netbanking"||/\bself\b|own account/i.test(r)?"Transfer":"Other"}function he(t,e={}){return t.map(a=>({...a,category:a.edited?.category??dt(a,e)}))}var lt=[{cadence:"weekly",days:7,slack:2},{cadence:"monthly",days:30,slack:6},{cadence:"quarterly",days:91,slack:10},{cadence:"yearly",days:365,slack:20}],V=t=>{let e=[...t].sort((r,n)=>r-n),a=Math.floor(e.length/2);return e.length%2?e[a]:Math.round((e[a-1]+e[a])/2)};function mt(t){let e=[...t].sort((r,n)=>r.amountPaise-n.amountPaise),a=[];for(let r of e){let n=a[a.length-1];if(n){let i=V(n.map(s=>s.amountPaise)),o=Math.max(5e3,i*.08);if(Math.abs(r.amountPaise-i)<=o){n.push(r);continue}}a.push([r])}return a}function ye(t,e=Date.now()){let a=new Map;for(let n of t){if(n.direction!=="debit")continue;let i=g(n.merchant);if(!i)continue;let o=a.get(i);o?o.push(n):a.set(i,[n])}let r=[];for(let[n,i]of a)for(let o of mt(i)){if(o.length<3)continue;let s=[...o].sort((m,f)=>m.at-f.at),c=[];for(let m=1;m<s.length;m+=1)c.push(M(s[m-1].at,s[m].at));let u=V(c),l=lt.find(m=>Math.abs(u-m.days)<=m.slack);if(!l||c.filter(m=>Math.abs(m-l.days)<=l.slack).length/c.length<.6)continue;let b=V(s.map(m=>m.amountPaise)),k=s.map(m=>m.at),d=k[k.length-1];r.push({key:`${n}:${Math.round(b/100)}`,merchant:s[s.length-1].merchant??n,amountPaise:b,cadence:l.cadence,occurrences:k,txnIds:s.map(m=>m.id),nextExpectedAt:d+l.days*P,missing:bt(k,l,e),active:M(d,e)<=l.days*2+l.slack})}return r.sort((n,i)=>i.amountPaise-n.amountPaise)}function bt(t,e,a){let r=[],n=t[0],i=t[t.length-1],o=Math.min(a,i+e.days*P);for(let s=1;;s+=1){let c=n+s*e.days*P;if(c>o)break;t.some(l=>Math.abs(M(c,l))<=e.slack)||r.push(c)}return r}var ft=25,pt=12,gt=200;function ke(t,e,a=Date.now()){let r=e.filter(s=>s.direction==="debit").sort((s,c)=>s.at-c.at),n=new Set,i=[...t].sort((s,c)=>c.dueAt-s.dueAt),o=[];for(let s of i){let c=s.dueAt-ft*P,u=s.dueAt+pt*P,l=g(s.label),p=r.find(b=>{if(n.has(b.id)||b.at<c||b.at>u||s.amountPaise!==null&&Math.abs(b.amountPaise-s.amountPaise)>gt)return!1;let k=s.account?.tail&&b.account?.tail?s.account.tail===b.account.tail:null;if(s.kind!=="bill"&&k===!1)return!1;let d=g(b.merchant),m=l&&d?d.includes(l)||l.includes(d):null;return!(s.amountPaise===null&&!m&&!k)});p?(n.add(p.id),o.push({...s,status:"cleared",clearedByTxnId:p.id})):o.push({...s,status:s.dueAt>a?"pending":"missed"})}return{obligations:o.sort((s,c)=>s.dueAt-c.dueAt),clearedTxnIds:n}}function xe(t,e=Date.now()){return t.filter(a=>a.kind!=="bill"&&a.status==="missed"&&M(a.dueAt,e)>=2)}function Pe(t,e=Date.now()){let a=[];for(let r of t){if(!r.active)continue;let n=r.missing[r.missing.length-1];n!==void 0&&(M(n,e)<1||a.push({merchant:r.merchant,amountPaise:r.amountPaise,expectedAt:n,cadence:r.cadence}))}return a.sort((r,n)=>n.expectedAt-r.expectedAt)}function ht(t){let e=t.filter(r=>r.direction==="debit").sort((r,n)=>r.at-n.at),a=[];for(let r=0;r<e.length;r+=1)for(let n=r+1;n<e.length;n+=1){let i=e[r],o=e[n];if(o.at-i.at>2*P)break;if(i.amountPaise!==o.amountPaise)continue;let s=g(i.merchant),c=g(o.merchant);if(!s||s!==c||i.amountPaise<2e4)continue;let l=E(i.at)===E(o.at)?`${$(i.at)} at ${_(i.at)} and again at ${_(o.at)}`:`${$(i.at)} and again on ${$(o.at)}`;a.push({id:A("dup",i.id,o.id),kind:"duplicate",amountPaise:o.amountPaise,at:o.at,title:`${i.merchant} charged twice`,detail:`${w(i.amountPaise,{round:!0})} on ${l}. If you only meant to pay once, this is refundable.`,txnIds:[i.id,o.id]})}return a}function yt(t,e,a){let r=e.filter(i=>i.direction==="credit"),n=[];for(let i of t){if(a<i.expectBy)continue;let o=g(i.merchant);r.some(c=>{if(c.at<i.promisedAt||c.at>i.expectBy+30*P)return!1;if(i.amountPaise!==null)return Math.abs(c.amountPaise-i.amountPaise)<=200;let u=g(c.merchant);return!!(o&&u&&(u.includes(o)||o.includes(u)))})||n.push({id:A("promise",i.id),kind:i.kind==="refund"?"unrefunded":"unreversed",amountPaise:i.amountPaise??0,at:i.promisedAt,title:i.kind==="refund"?`Refund from ${i.merchant??"a merchant"} never arrived`:`Reversal from ${i.merchant??"your bank"} never arrived`,detail:`Promised on ${$(i.promisedAt)}, expected by ${$(i.expectBy)}. Nothing matching has been credited since. Worth chasing \u2014 quote the original mail.`,txnIds:[]})}return n}function kt(t){return t.filter(e=>e.direction==="debit"&&e.category==="Fees").map(e=>({id:A("fee",e.id),kind:"fee",amountPaise:e.amountPaise,at:e.at,title:`${e.merchant??e.account?.issuer??"Bank"} charged a fee`,detail:`${w(e.amountPaise,{round:!0})} on ${$(e.at)}. Most of these are waivable if you ask once.`,txnIds:[e.id]}))}function xt(t,e){let a={weekly:52,monthly:12,quarterly:4,yearly:1};return t.filter(r=>r.active&&r.occurrences.length>=6).map(r=>{let n=r.amountPaise*a[r.cadence],i=Math.max(1,Math.round(M(r.occurrences[0],e)/30));return{id:A("zombie",r.key),kind:"zombie",amountPaise:n,at:r.occurrences[r.occurrences.length-1],title:`${r.merchant} \u2014 ${w(n,{round:!0})} a year`,detail:`${w(r.amountPaise,{round:!0})} ${r.cadence}, ${r.occurrences.length} times over ${i} months. Still using it?`,txnIds:r.txnIds}}).sort((r,n)=>n.amountPaise-r.amountPaise)}function Pt(t){return t.filter(e=>e.direction==="debit"&&e.sources.some(a=>/markup|foreign (?:currency|transaction)|cross ?currency|\bFX\b/i.test(a.subject))).map(e=>({id:A("fx",e.id),kind:"fx-markup",amountPaise:e.amountPaise,at:e.at,title:`Foreign currency markup on ${e.merchant??"a charge"}`,detail:`${w(e.amountPaise,{round:!0})} on ${$(e.at)}. A zero-markup card would have avoided this.`,txnIds:[e.id]}))}function we(t,e,a,r=Date.now()){return[...ht(t),...yt(a,t,r),...kt(t),...Pt(t),...xt(e,r)].sort((n,i)=>i.at-n.at)}function $e(t){return t.filter(e=>e.kind!=="zombie").reduce((e,a)=>e+a.amountPaise,0)}function J(t){try{return K(t)}catch{return{}}}function Ae(t,e={}){return X(t.map(J),e)}function X(t,e={}){let{overrides:a={},edits:r={},now:n=Date.now()}=e,i=t.flatMap(d=>d.record?[d.record]:[]),o=t.flatMap(d=>d.obligation?[d.obligation]:[]),s=t.flatMap(d=>d.promise?[d.promise]:[]),c=t.filter(d=>!d.record&&!d.obligation&&!d.promise).length,u=ge(i);u=u.map(d=>{let m=r[d.id];return m?{...d,...m,edited:m}:d}),u=he(u,a).sort((d,m)=>m.at-d.at);let{obligations:l,clearedTxnIds:p}=ke(o,u,n),b=ye(u,n),k=we(u,b,s,n);return{txns:u,obligations:l,recurring:b,leaks:k,skipped:Pe(b,n),failedMandates:xe(l,n),recoverablePaise:$e(k),clearedTxnIds:p,ignored:c}}function Me(t){let e=["debited","credited","debit","credit",'"transaction alert"','"txn alert"','"has been spent"','"you have spent"','"payment due"','"amount due"','"due date"','"e-mandate"','"auto debit"','"autopay"','"standing instruction"','"refund"','"reversed"','"reversal"','"payment failed"','"transaction declined"','"statement"','"UPI"'];return[`newer_than:${t}d`,`(${e.join(" OR ")})`,"-category:promotions","-category:social","-in:spam","-in:trash"].join(" ")}var v=.55;var Se=t=>t.confidence>=.55;function j(t,e){let a=t.filter(c=>S(c.at)===e),r=a.filter(Se),n=new Map,i=new Map,o=0,s=0;for(let c of r){if(c.direction==="credit"?o+=c.amountPaise:s+=c.amountPaise,c.direction==="debit"){let p=c.category||"Other",b=n.get(p)??{amountPaise:0,count:0};b.amountPaise+=c.amountPaise,b.count+=1,n.set(p,b)}let u=c.account?`${c.account.issuer}${c.account.tail?` \u2022\u2022${c.account.tail}`:""}`:"Unattributed",l=i.get(u)??{inPaise:0,outPaise:0};c.direction==="credit"?l.inPaise+=c.amountPaise:l.outPaise+=c.amountPaise,i.set(u,l)}return{month:e,inPaise:o,outPaise:s,netPaise:o-s,count:r.length,byCategory:[...n.entries()].map(([c,u])=>({category:c,...u})).sort((c,u)=>u.amountPaise-c.amountPaise),byAccount:[...i.entries()].map(([c,u])=>({account:c,...u})).sort((c,u)=>u.outPaise-c.outPaise),unsure:a.length-r.length}}function Te(t,e=Date.now()){let a=S(e),r=S(C(e)-P),n=j(t,a),i=j(t,r),o=D(a),s=Math.max(1,x(e).day),c=Math.round(n.outPaise/s);return{spentPaise:n.outPaise,perDayPaise:c,projectedPaise:c*o,lastMonthPaise:i.outPaise,daysElapsed:s,daysInMonth:o}}function Ie(t){return[...new Set(t.map(e=>S(e.at)))].sort().reverse()}function ve(t,e){let a=t.filter(u=>S(u.at)===e&&Se(u)),r=[...new Set(a.filter(u=>u.account).map(u=>`${u.account.issuer}${u.account.tail?` \u2022\u2022${u.account.tail}`:""}`))].sort(),n=D(e),i=new Set(a.map(u=>x(u.at).day)).size,o=n-i,s=Math.min(1,r.length/2),c=Math.min(1,i/(n*.4));return{month:e,accounts:r,txnCount:a.length,silentDays:o,score:Number((s*.66+c*.34).toFixed(2))}}var Z=["january","february","march","april","may","june","july","august","september","october","november","december"];function wt(t,e){let a=C(e);if(/\blast month\b|\bprevious month\b/.test(t)){let n=a-1;return{from:C(n),to:n,label:B(S(n))}}if(/\bthis month\b/.test(t))return{from:a,to:e,label:"this month"};if(/\btoday\b/.test(t))return{from:R(e),to:e,label:"today"};if(/\byesterday\b/.test(t)){let n=R(e)-P;return{from:n,to:n+P-1,label:"yesterday"}}if(/\bthis (?:year|yr)\b/.test(t)){let n=x(e).year;return{from:Date.UTC(n,0,1)-198e5,to:e,label:String(n)}}if(/\blast (?:year|yr)\b/.test(t)){let n=x(e).year-1;return{from:Date.UTC(n,0,1)-198e5,to:Date.UTC(n+1,0,1)-19800001,label:String(n)}}let r=/\blast (\d+)\s*(day|week|month)s?\b/.exec(t);if(r){let n=Number(r[1]),i=r[2],o=i==="day"?n:i==="week"?n*7:n*30;return{from:e-o*P,to:e,label:`the last ${n} ${i}${n>1?"s":""}`}}for(let n=0;n<Z.length;n+=1)if(new RegExp(`\\b${Z[n].slice(0,3)}[a-z]*\\b`).test(t)){let i=x(e),o=n+1>i.month?i.year-1:i.year,s=Date.UTC(o,n,1)-198e5,c=Date.UTC(o,n+1,1)-19800001;return{from:s,to:c,label:`${Z[n][0].toUpperCase()}${Z[n].slice(1)} ${o}`}}return{from:a,to:e,label:"this month"}}function Re(t,e,a=Date.now()){let r=t.toLowerCase().trim();if(!r)return{headline:"",txns:[],understood:!1};let n=wt(r,a),i=e.filter(d=>d.confidence>=.55),o=i.filter(d=>d.at>=n.from&&d.at<=n.to),c=/\b(?:earn|income|receive|received|credit|credited|salary|refund)\b/.test(r)?"credit":"debit";o=o.filter(d=>d.direction===c);let u="",l=U.find(d=>r.includes(d.toLowerCase()));if(l&&(o=o.filter(d=>d.category===l),u=l.toLowerCase()),!l){let d=r.split(/[^a-z0-9]+/).filter(f=>f.length>=3),m=new Map;for(let f of i){let h=g(f.merchant);h&&f.merchant&&m.set(h,f.merchant)}for(let f of d){for(let[h,T]of m)if(h.includes(f)&&f.length>=4){o=o.filter(I=>g(I.merchant).includes(f)),u=T;break}if(u)break}}let p=o.reduce((d,m)=>d+m.amountPaise,0),b=c==="credit"?"came in":"went out";if(/\b(biggest|largest|highest|most expensive|top)\b/.test(r)){let d=[...o].sort((m,f)=>f.amountPaise-m.amountPaise).slice(0,5);return d.length===0?{headline:`Nothing ${b}${u?` on ${u}`:""} in ${n.label}.`,txns:[],understood:!0}:{headline:`${w(d[0].amountPaise,{round:!0})} \u2014 ${d[0].merchant??"unnamed"}`,detail:`The largest of ${o.length} ${u?`${u} `:""}payments in ${n.label}, on ${$(d[0].at)}.`,txns:d,understood:!0}}if(/\bhow many\b|\bcount\b|\btimes\b/.test(r))return{headline:`${o.length} ${o.length===1?"time":"times"}`,detail:`${u?`${u}, `:""}${n.label}, totalling ${w(p,{round:!0})}.`,txns:o.slice(0,50),understood:!0};if(/\bwhere\b|\bbreakdown\b|\bwhat (?:did i|have i) (?:spend|buy)\b|\bon what\b/.test(r)){let d=new Map;for(let f of o)d.set(f.category,(d.get(f.category)??0)+f.amountPaise);let m=[...d.entries()].sort((f,h)=>h[1]-f[1]).slice(0,5);return m.length===0?{headline:`Nothing ${b} in ${n.label}.`,txns:[],understood:!0}:{headline:w(p,{round:!0}),detail:`${n.label} \u2014 ${m.map(([f,h])=>`${f} ${w(h,{round:!0})}`).join(", ")}.`,txns:[...o].sort((f,h)=>h.amountPaise-f.amountPaise).slice(0,50),understood:!0}}return/\bhow much\b|\btotal\b|\bsum\b|\bspent?\b|\bspending\b|\bpaid\b|\bearn/.test(r)||!!u?o.length===0?{headline:`Nothing ${b}${u?` on ${u}`:""} in ${n.label}.`,detail:"Either there was none, or no email arrived about it.",txns:[],understood:!0}:{headline:w(p,{round:!0}),detail:`${u?`${u}, `:""}${n.label} \u2014 across ${o.length} ${o.length===1?"payment":"payments"}.`,txns:[...o].sort((d,m)=>m.amountPaise-d.amountPaise).slice(0,50),understood:!0}:{headline:"Not sure what you are asking.",detail:"Try \u201Chow much on food last month\u201D, \u201Cbiggest expense this year\u201D, \u201Chow many times swiggy\u201D, or \u201Cwhere did my money go in July\u201D.",txns:[],understood:!1}}var Ee=["how much on food last month","biggest expense this year","where did my money go in July","how many times swiggy","how much did I earn this month"];return Be($t);})();
 </script>
 <script>
 (function () {
@@ -614,7 +642,11 @@ ${e}`,n=de(t.from),i=Qe(r,n?.kind??"unknown"),a={messageId:t.id,from:t.from,subj
 
   function viewNow() {
     var b = state.books;
-    if (!b.txns.length) return blank('Nothing read yet', 'No bank alerts were found in the period read.');
+    if (!b.txns.length) {
+      return state.phase === 'searching' || state.phase === 'reading'
+        ? blank('Reading your mail', 'Entries appear here as each conversation is read.')
+        : blank('Nothing read yet', 'No bank alerts were found in the period read.');
+    }
 
     // This month, unless it is empty — then the latest month that is not, labelled as such.
     var current = K.istMonthKey(state.now);
@@ -681,7 +713,10 @@ ${e}`,n=de(t.from),i=Qe(r,n?.kind??"unknown"),a={messageId:t.id,from:t.from,subj
         '<p class="cov">' + (cov.accounts.length
           ? 'In ' + esc(K.formatMonth(month)) + ', heard from <b>' + cov.accounts.map(esc).join(', ') + '</b> — ' + cov.txnCount + ' entries.'
           : 'No account could be identified this month.') +
-        ' Khata only sees accounts that email you; a card whose alerts go to SMS won’t appear here.</p>');
+        ' Khata only sees accounts that email you; a card whose alerts go to SMS won’t appear here.</p>' +
+        (state.mode === 'live'
+          ? '<button class="again" data-act="erase">Erase what this page has stored</button>'
+          : ''));
   }
 
   /* ------------------------------- ledger -------------------------------- */
@@ -858,6 +893,8 @@ ${e}`,n=de(t.from),i=Qe(r,n?.kind??"unknown"),a={messageId:t.id,from:t.from,subj
     else if (act === 'open') openSheet(el.dataset.id);
     else if (act === 'close') closeSheet();
     else if (act === 'unfilter') { state.filter = null; render(); }
+    else if (act === 'connect' || act === 'sync' || act === 'retry') sync();
+    else if (act === 'erase') erase();
     else if (act === 'try') runAsk(el.dataset.q);
     else if (act === 'reset') { state.answer = null; state.question = ''; render(); document.getElementById('aq').focus(); }
     else if (act === 'leak') {
@@ -885,15 +922,362 @@ ${e}`,n=de(t.from),i=Qe(r,n?.kind??"unknown"),a={messageId:t.id,from:t.from,subj
 
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSheet(); });
 
+  /* ------------------------------ the cache ------------------------------ */
+
+  /*
+   * What each email meant, keyed by Gmail message id — never what it said.
+   * Bodies are parsed the moment they arrive and dropped; this store holds
+   * amounts, dates, senders and subject lines, in this browser only.
+   */
+  var vault = (function () {
+    function open() {
+      return new Promise(function (resolve, reject) {
+        var req = indexedDB.open('khata', 1);
+        req.onupgradeneeded = function () { req.result.createObjectStore('kv'); };
+        req.onsuccess = function () { resolve(req.result); };
+        req.onerror = function () { reject(req.error); };
+      });
+    }
+    function run(mode, work) {
+      try {
+        return open().then(function (db) {
+          return new Promise(function (resolve, reject) {
+            var tx = db.transaction('kv', mode);
+            var req = work(tx.objectStore('kv'));
+            tx.oncomplete = function () { db.close(); resolve(req.result); };
+            tx.onerror = tx.onabort = function () { db.close(); reject(tx.error); };
+          });
+        });
+      } catch (e) {
+        return Promise.reject(e);
+      }
+    }
+    // Storage can be refused outright (private windows, blocked site data);
+    // the page then works for the session and simply forgets on close.
+    return {
+      load: function () { return run('readonly', function (s) { return s.get('ledger'); }).catch(function () { return null; }); },
+      save: function (v) { return run('readwrite', function (s) { return s.put(v, 'ledger'); }).catch(function () {}); },
+      erase: function () { return run('readwrite', function (s) { return s.delete('ledger'); }).catch(function () {}); },
+    };
+  })();
+
+  /* ------------------------------ Gmail ------------------------------ */
+
+  /*
+   * Two tools, both read-only, and nothing else is in this page's manifest —
+   * it cannot send, forward, label, trash or delete anything, because it was
+   * never granted the tools that do.
+   */
+  var SERVER = 'Gmail';
+  var mcp = null;
+  var ledger = { parsed: {}, lastSyncAt: 0 };
+  var running = false;
+
+  var DENIALS = ['needs_reauth', 'server_not_connected', 'selection_required', 'not_in_manifest',
+    'blocked_by_policy', 'approval_required', 'not_granted', 'capability_disabled', 'capability_removed'];
+
+  function payloadOf(result) {
+    var p = result && result.payload;
+    if (typeof p === 'string') { try { p = JSON.parse(p); } catch (e) { p = null; } }
+    return p && typeof p === 'object' ? p : {};
+  }
+
+  // One retry, only for failures the runtime stamps retryable, after a jittered wait.
+  function read(tool, input) {
+    var once = function () { return mcp.callTool(SERVER, tool, input).then(payloadOf); };
+    return once().catch(function (err) {
+      if (!err || !err.retryable) throw err;
+      var wait = Math.min(err.retryAfterMs || 1500, 60000) + Math.random() * 900;
+      return new Promise(function (r) { setTimeout(r, wait); }).then(once);
+    });
+  }
+
+  function toMessage(m) {
+    return {
+      id: String(m.id),
+      threadId: String(m.threadId || ''),
+      from: m.sender || '',
+      subject: m.subject || '',
+      date: Number(m.internalDate) || Date.parse(m.date) || 0,
+      body: m.plaintextBody || m.snippet || '',
+    };
+  }
+
+  /*
+   * Worth fetching in full: a conversation with an unread-by-Khata message
+   * from a known bank or payment app, or with a rupee amount in its snippet.
+   * The search is broad on purpose; this is where newsletters get left behind
+   * without costing a request each.
+   */
+  var MONEYISH = /(?:₹|\bRs\.?|\bINR)\s?\d/i;
+  function worthReading(thread) {
+    return (thread.messages || []).some(function (m) {
+      return !ledger.parsed[m.id] && (K.identifySender(m.sender || '') || MONEYISH.test(m.snippet || ''));
+    });
+  }
+
+  function rebuild() {
+    if (state.mode !== 'live') return;
+    state.now = Date.now();
+    state.books = K.buildFromParsed(Object.keys(ledger.parsed).map(function (k) { return ledger.parsed[k]; }), { now: state.now });
+    // Never pull a field out from under someone typing in it.
+    var active = document.activeElement;
+    if (!(active && active.tagName === 'INPUT' && document.getElementById('view').contains(active))) render();
+    paint();
+  }
+
+  function save(complete) {
+    if (complete) ledger.lastSyncAt = Date.now();
+    return vault.save({ v: K.PARSER_VERSION, parsed: ledger.parsed, lastSyncAt: ledger.lastSyncAt });
+  }
+
+  function sync() {
+    if (!mcp || running) return;
+    running = true;
+    state.problem = null;
+    if (state.mode !== 'live') {
+      // Sample entries leave before a single real one arrives; the two never share a page.
+      state.mode = 'live';
+      rebuild();
+    }
+    state.phase = 'searching';
+    state.progress = { found: 0, estimate: 0, read: 0, toRead: 0, skipped: 0 };
+    paint();
+
+    // A full year the first time; afterwards only the days since the last complete read.
+    var days = ledger.lastSyncAt ? Math.max(3, Math.ceil((Date.now() - ledger.lastSyncAt) / 864e5) + 2) : 365;
+    var query = K.gmailQuery(days);
+    var threads = [];
+
+    function page(token) {
+      return read('search_threads', token ? { query: query, pageSize: 50, pageToken: token } : { query: query, pageSize: 50 })
+        .then(function (res) {
+          threads = threads.concat(res.threads || []);
+          if (!state.progress.estimate && res.resultCountEstimate) state.progress.estimate = Number(res.resultCountEstimate) || 0;
+          state.progress.found = threads.length;
+          paint();
+          if (res.nextPageToken && threads.length < 4000) return page(res.nextPageToken);
+        });
+    }
+
+    page(null).then(function () {
+      var queue = threads.filter(worthReading);
+      state.phase = 'reading';
+      state.progress.toRead = queue.length;
+      paint();
+      var next = 0;
+      var sinceRender = 0;
+      function worker() {
+        if (next >= queue.length) return Promise.resolve();
+        var thread = queue[next++];
+        return read('get_thread', { threadId: thread.id, messageFormat: 'PLAIN_TEXT' })
+          .then(function (res) {
+            (res.messages || []).forEach(function (m) {
+              var message = toMessage(m);
+              // Parsed here, and the text goes no further than this line.
+              ledger.parsed[message.id] = K.safeParse(message);
+            });
+          })
+          .catch(function (err) {
+            // A denial will fail every call, so it ends the read; anything else
+            // costs one conversation, counted and reported.
+            if (err && DENIALS.indexOf(err.code) >= 0) throw err;
+            state.progress.skipped += 1;
+          })
+          .then(function () {
+            state.progress.read += 1;
+            sinceRender += 1;
+            if (sinceRender >= 8) {
+              sinceRender = 0;
+              rebuild();
+              if (state.progress.read % 40 === 0) save(false);
+            } else {
+              paint();
+            }
+            return worker();
+          });
+      }
+      return Promise.all([worker(), worker(), worker(), worker()]);
+    })
+      .then(function () { return save(true); })
+      .then(function () { state.phase = 'idle'; })
+      .catch(function (err) {
+        state.phase = 'error';
+        state.problem = explain(err);
+        var code = err && err.code;
+        if (code === 'not_in_manifest' || code === 'server_not_connected' || code === 'blocked_by_policy') {
+          // Access withdrawn: what was read under it goes too.
+          ledger = { parsed: {}, lastSyncAt: 0 };
+          vault.erase();
+        } else if (DENIALS.indexOf(code) < 0) {
+          save(false);
+        }
+      })
+      .then(function () {
+        running = false;
+        rebuild();
+        paint();
+      });
+  }
+
+  function explain(err) {
+    var code = err && err.code;
+    var said = err && err.message ? ' (' + err.message + ')' : '';
+    switch (code) {
+      case 'needs_reauth':
+        return { title: 'Gmail needs reconnecting', detail: 'Its sign-in has lapsed. Reconnect Gmail in claude.ai → Settings → Connectors, then sync again.', again: false, hide: true };
+      case 'server_not_connected':
+        return { title: 'Gmail isn’t connected', detail: 'Add Gmail in claude.ai → Settings → Connectors, then open this page again.', again: false, hide: true };
+      case 'selection_required':
+        return { title: 'Choose a Gmail account', detail: 'More than one Gmail is connected. Pick the one Khata should read when claude.ai asks, then sync again.', again: true, hide: true };
+      case 'not_in_manifest':
+        return { title: 'Gmail is off for this page', detail: 'Access was declined or switched off, so what was read has been cleared. Reload the page to be asked again.', again: false, hide: true };
+      case 'blocked_by_policy':
+      case 'approval_required':
+        return { title: 'Blocked by your organisation', detail: 'A policy on your account stops this page reading Gmail.', again: false, hide: true };
+      case 'not_granted':
+      case 'capability_disabled':
+      case 'capability_removed':
+        return { title: 'This view can’t reach Gmail', detail: 'Open Khata inside claude.ai, where your connectors are available.', again: false, hide: true };
+      case 'server_unavailable':
+      case 'rate_limited':
+        return { title: 'Gmail didn’t answer', detail: 'That is usually brief. Everything read so far is kept — try again in a minute.', again: true };
+      case 'tool_error':
+        return { title: 'Gmail turned a request down', detail: 'Everything read so far is kept.' + said, again: true };
+      default:
+        return { title: 'Reading stopped partway', detail: 'Everything read so far is kept.' + said, again: true };
+    }
+  }
+
+  function erase() {
+    vault.erase();
+    ledger = { parsed: {}, lastSyncAt: 0 };
+    state.mode = 'sample';
+    state.phase = 'idle';
+    state.problem = null;
+    state.now = SAMPLE_NOW;
+    state.books = K.build(SAMPLE, { now: SAMPLE_NOW });
+    state.filter = null;
+    go('now');
+    paint();
+  }
+
+  /* ------------------------------ status ------------------------------ */
+
+  function ago(ms) {
+    var s = Math.max(0, Math.round((Date.now() - ms) / 1000));
+    if (s < 90) return 'just now';
+    var m = Math.round(s / 60);
+    if (m < 60) return m + 'm ago';
+    var h = Math.round(m / 60);
+    return h < 24 ? h + 'h ago' : Math.round(h / 24) + 'd ago';
+  }
+
+  function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
+
+  function accountCount() {
+    var seen = new Set();
+    state.books.txns.forEach(function (t) { if (t.account) seen.add(acct(t.account)); });
+    return seen.size;
+  }
+
+  var PRIVACY = 'Read-only: Khata can search and read your mail, never send, change or delete it. ' +
+    'Mail reaches this page through Anthropic’s Gmail connector; the ledger is built and kept in this browser, and no email text is stored.';
+
+  function paint() {
+    var status = document.getElementById('status');
+    var slip = document.getElementById('slip');
+    var p = state.progress || {};
+    var problem = state.problem;
+
+    if (state.mode === 'sample') {
+      status.textContent = 'Sample ledger · ' + plural(SAMPLE.length, 'bank email') + ' · ' + plural(accountCount(), 'account');
+      var intro = '<b>These are made-up entries</b>, dated as if today were ' + esc(K.formatDayLong(SAMPLE_NOW)) +
+        ', so you can see what Khata does. None of it is your money.';
+      if (problem && problem.hide) {
+        slip.innerHTML = '<b>' + esc(problem.title) + '.</b> ' + esc(problem.detail) +
+          (problem.again ? '<br><button class="act" data-act="retry">Try again</button>' : '');
+      } else if (mcp) {
+        slip.innerHTML = intro + '<br><button class="act" data-act="connect">Read my Gmail</button>' +
+          '<span class="fine">' + esc(PRIVACY) + '</span>';
+      } else {
+        slip.innerHTML = intro + ' Open this page in claude.ai with Gmail connected to read your own.';
+      }
+      slip.hidden = false;
+      return;
+    }
+
+    // Live.
+    var read = Object.keys(ledger.parsed).length;
+    if (state.phase === 'searching') {
+      status.textContent = 'Searching your mail…';
+      slip.innerHTML = 'Found <b>' + p.found + '</b> conversations' +
+        (p.estimate > p.found ? ' of about ' + p.estimate : '') + ' that might mention money.' +
+        '<span class="bar"><span style="width:6%"></span></span>';
+      slip.hidden = false;
+    } else if (state.phase === 'reading') {
+      var pct = p.toRead ? Math.round((p.read / p.toRead) * 100) : 100;
+      status.textContent = 'Reading your mail…';
+      slip.innerHTML = 'Read <b>' + p.read + '</b> of ' + p.toRead + ' conversations. Entries appear as they’re read.' +
+        '<span class="bar"><span style="width:' + pct + '%"></span></span>';
+      slip.hidden = false;
+    } else if (problem) {
+      status.innerHTML = esc(plural(read, 'email') + ' read') + ' · <button class="sync" data-act="sync">Sync</button>';
+      slip.innerHTML = '<b>' + esc(problem.title) + '.</b> ' + esc(problem.detail) +
+        (problem.again ? '<br><button class="act" data-act="retry">Try again</button>' : '');
+      slip.hidden = false;
+    } else {
+      status.innerHTML = esc(plural(read, 'email') + ' read · ' + plural(accountCount(), 'account') + ' · updated ' +
+        (ledger.lastSyncAt ? ago(ledger.lastSyncAt) : 'partly')) +
+        ' · <button class="sync" data-act="sync"' + (running ? ' disabled' : '') + '>Sync</button>';
+      slip.hidden = !(p.skipped > 0);
+      if (p.skipped > 0) {
+        slip.innerHTML = esc(p.skipped + (p.skipped === 1 ? ' conversation' : ' conversations') +
+          ' could not be read this time and will be tried again on the next sync.');
+      }
+    }
+  }
+
   /* --------------------------------- boot -------------------------------- */
 
+  // First paint is the sample, always — nothing below is allowed to hold it up.
+  state.mode = 'sample';
+  state.phase = 'idle';
   state.books = K.build(SAMPLE, { now: state.now });
-  var accounts = new Set(state.books.txns.filter(function (t) { return t.account; }).map(function (t) { return acct(t.account); }));
-  document.getElementById('status').textContent =
-    'Sample ledger · ' + SAMPLE.length + ' bank emails read · ' + accounts.size + ' accounts';
-  document.getElementById('slip').innerHTML =
-    '<b>These are made-up entries</b>, dated as if today were ' + esc(K.formatDayLong(state.now)) +
-    ', so you can see what Khata does. None of it is your money. Once Gmail is connected, this page reads your own bank alerts instead.';
   render();
+  paint();
+
+  // Refresh "updated 3m ago" without re-rendering anything else.
+  setInterval(function () { if (state.mode === 'live' && state.phase === 'idle') paint(); }, 60000);
+
+  var api = window.claude;
+  if (!api || typeof api.use !== 'function') return;
+
+  api.use('mcp').then(function (namespace) {
+    if (!namespace) return;
+    mcp = namespace;
+    paint();
+
+    return vault.load().then(function (stored) {
+      // Readings from an older parser are thrown away; the mail is read again.
+      if (stored && stored.v === K.PARSER_VERSION && stored.parsed && Object.keys(stored.parsed).length) {
+        ledger = { parsed: stored.parsed, lastSyncAt: stored.lastSyncAt || 0 };
+        state.mode = 'live';
+        rebuild();
+      }
+      return api.use('permissions');
+    }).then(function (permissions) {
+      var ask = permissions
+        ? permissions.state('mcp:' + SERVER).catch(function () { return 'unavailable'; })
+        : Promise.resolve('unavailable');
+      return ask.then(function (answer) {
+        // Already allowed: refresh quietly. Otherwise wait for the button, so
+        // the consent dialog follows a tap rather than ambushing the page load.
+        if (answer === 'granted' && (state.mode === 'live' || ledger.lastSyncAt === 0)) {
+          if (state.mode === 'live') sync();
+        }
+      });
+    });
+  }).catch(function () { /* the sample stays; nothing to report */ });
 })();
 </script>

@@ -32,7 +32,8 @@ export const CATEGORIES = [
 export type Category = (typeof CATEGORIES)[number];
 
 const RULES: Array<[RegExp, Category]> = [
-  [/swiggy|zomato|dominos|pizza|mcdonald|kfc|starbucks|cafe|coffee|restaurant|eatery|biryani|barbeque|chaayos|dunkin|subway|burger/i, 'Food'],
+  // Spelled the way shop signs spell them, which is several ways: biryani, biriyani, briyani.
+  [/swiggy|zomato|dominos|pizza|mcdonald|kfc|starbucks|cafe|coffee|restaurant|eatery|biryani|biriyani|briyani|barbeque|chaayos|dunkin|subway|burger|baskin|ice ?cream|bakery|bakes|juice|tea stall|\bchai\b|dosa|tiffin|canteen|sweets/i, 'Food'],
   [/bigbasket|blinkit|zepto|instamart|dmart|grofers|jiomart|reliance ?fresh|more ?retail|spencer|nature.?s basket|licious|country ?delight/i, 'Groceries'],
   [/uber|ola|rapido|namma ?yatri|metro|irctc|redbus|petrol|fuel|indian ?oil|bharat ?petro|hp ?petro|shell|fastag|parking|blusmart/i, 'Transport'],
   [/amazon|flipkart|myntra|ajio|nykaa|meesho|tatacliq|croma|decathlon|ikea|lifestyle|shoppers ?stop|westside|zara|uniqlo|hm\b/i, 'Shopping'],

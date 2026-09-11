@@ -78,6 +78,41 @@ const RULES: Rule[] = [
   { domain: /(^|\.)google\.com$/i, issuer: 'Google', type: 'wallet', kind: 'merchant-receipt', local: [[/googlepay|gpay/i, 'upi-receipt']] },
 ];
 
+/**
+ * Banks on `.bank.in`.
+ *
+ * The RBI moved Indian banks onto the verified `.bank.in` namespace, and alerts
+ * now arrive from addresses like `alerts@hdfcbank.bank.in`. The older domains
+ * above stay, because a year of history was sent from them. Keyed by the label
+ * just left of `.bank.in`, which is the bank's own chosen name.
+ */
+const BANK_IN: Record<string, [issuer: string, type: Account['type']]> = {
+  hdfcbank: ['HDFC', 'bank'],
+  icicibank: ['ICICI', 'bank'],
+  sbi: ['SBI', 'bank'],
+  onlinesbi: ['SBI', 'bank'],
+  sbicard: ['SBI Card', 'card'],
+  axisbank: ['Axis', 'bank'],
+  axis: ['Axis', 'bank'],
+  kotak: ['Kotak', 'bank'],
+  kotakbank: ['Kotak', 'bank'],
+  indusind: ['IndusInd', 'bank'],
+  indusindbank: ['IndusInd', 'bank'],
+  idfcfirst: ['IDFC First', 'bank'],
+  idfcfirstbank: ['IDFC First', 'bank'],
+  yesbank: ['Yes Bank', 'bank'],
+  rblbank: ['RBL', 'bank'],
+  federalbank: ['Federal', 'bank'],
+  aubank: ['AU', 'bank'],
+  bankofbaroda: ['BoB', 'bank'],
+  pnb: ['PNB', 'bank'],
+  canarabank: ['Canara', 'bank'],
+  unionbank: ['Union', 'bank'],
+  indianbank: ['Indian Bank', 'bank'],
+  iob: ['IOB', 'bank'],
+  bandhanbank: ['Bandhan', 'bank'],
+};
+
 /** The address between the angle brackets, lowercased. */
 export function addressOf(from: string): string {
   const angled = /<([^>]+)>/.exec(from);
@@ -90,6 +125,19 @@ export function identifySender(from: string): Sender | null {
   if (at < 0) return null;
   const local = address.slice(0, at);
   const domain = address.slice(at + 1);
+
+  const bankIn = /(?:^|\.)([a-z0-9-]+)\.bank\.in$/.exec(domain);
+  if (bankIn && BANK_IN[bankIn[1]]) {
+    const [issuer, type] = BANK_IN[bankIn[1]];
+    let kind: MessageKind = 'bank-alert';
+    for (const [pattern, refined] of STATEMENTY) {
+      if (pattern.test(local)) {
+        kind = refined;
+        break;
+      }
+    }
+    return { issuer, type, kind };
+  }
 
   for (const rule of RULES) {
     if (!rule.domain.test(domain)) continue;
