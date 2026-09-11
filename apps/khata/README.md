@@ -16,6 +16,22 @@ npm install && npm run dev    # localhost:3000
 npm test                      # 115 checks: parsing, reconciliation, insight
 ```
 
+## Two ways to run it
+
+**Inside claude.ai — no setup.** `npm run artifact` builds `artifact/khata.html`: one
+self-contained page with the engine bundled in, no framework and no dependencies at
+runtime. It is published as a claude.ai Artifact and reads Gmail through the claude.ai
+Gmail connector, so the only thing a user ever does is connect Gmail once in claude.ai
+settings. The trade is that mail passes through Anthropic's connector on its way to
+the page, where the version below involves only Google. Until the connector is wired
+in, the page runs on clearly labelled sample entries (`scripts/fixtures/sample.ts`).
+
+**On its own, with nothing in between.** The Next.js app below, with the Apps Script
+bridge. More setup, but your mail never touches anyone's server but Google's.
+
+Both are built from the same `lib/` the test suite checks — the page bundles it rather
+than reimplementing it, so they cannot drift apart.
+
 ## Setup
 
 Four minutes, once, and no Google Cloud console — Apps Script creates its own

@@ -37,18 +37,28 @@ export interface BuildOptions {
   now?: number;
 }
 
-export function build(messages: Message[], options: BuildOptions = {}): Books {
-  const { overrides = {}, edits = {}, now = Date.now() } = options;
-
-  const parsed: Parsed[] = [];
-  for (const message of messages) {
-    try {
-      parsed.push(parseMessage(message));
-    } catch {
-      // One malformed email must never cost the other nine hundred.
-      parsed.push({});
-    }
+/** Parses one message, and never throws: one malformed email must never cost the other nine hundred. */
+export function safeParse(message: Message): Parsed {
+  try {
+    return parseMessage(message);
+  } catch {
+    return {};
   }
+}
+
+export function build(messages: Message[], options: BuildOptions = {}): Books {
+  return buildFromParsed(messages.map(safeParse), options);
+}
+
+/**
+ * The same pipeline, starting from readings rather than raw mail.
+ *
+ * This is what lets the cache hold what each email *meant* instead of what it
+ * *said*: bodies are parsed once on arrival and dropped, and every later open
+ * rebuilds the books from the stored readings alone.
+ */
+export function buildFromParsed(parsed: Parsed[], options: BuildOptions = {}): Books {
+  const { overrides = {}, edits = {}, now = Date.now() } = options;
 
   const records = parsed.flatMap((p) => (p.record ? [p.record] : []));
   const drafts = parsed.flatMap((p) => (p.obligation ? [p.obligation] : []));

@@ -30,6 +30,14 @@ import {
 } from './extract';
 import { identifySender, looksPromotional } from './senders';
 
+/**
+ * Bumped whenever a change to the parser would read the same email differently.
+ *
+ * Caches store readings rather than bodies, so they cannot be re-parsed in
+ * place; a reading from an older parser is thrown away and the mail read again.
+ */
+export const PARSER_VERSION = 1;
+
 export interface Parsed {
   /** A movement of money that has already happened. */
   record?: Record_;

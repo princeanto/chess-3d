@@ -12,7 +12,7 @@
  * is in `settings`.
  */
 
-import type { Message } from '../ledger/types';
+import type { Parsed } from '../parse/parse';
 import type { Overrides } from '../insight/categories';
 import { seal, unseal, type Sealed } from './crypto';
 
@@ -20,8 +20,15 @@ const DB_NAME = 'khata';
 const DB_VERSION = 1;
 
 export interface Vault {
-  /** Raw messages, so the parser can be improved without re-fetching a year. */
-  messages: Message[];
+  /**
+   * What each message meant, keyed by Gmail id — never what it said. Bodies
+   * are parsed on arrival and dropped, so the cache holds amounts, dates,
+   * senders and subject lines, and a copied browser profile does not carry a
+   * year of bank mail.
+   */
+  parsed: Record<string, Parsed>;
+  /** Readings from an older parser are discarded and the mail read again. */
+  parserVersion: number;
   /** The newest message date seen, so the next scan only asks for what is new. */
   latestAt: number;
   overrides: Overrides;

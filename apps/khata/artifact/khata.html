@@ -1,0 +1,899 @@
+<title>Khata</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Mukta:wght@400;500;600&family=Rozha+One&display=swap">
+<style>
+/*
+ * A bahi-khata: the red cloth-bound account book, tied with yellow thread.
+ * Pale ledger paper with blue feint ruling and a red double margin; amounts
+ * written rupees | paise with the red rule between; Dr and Cr, a T-account for
+ * the month and the accountant's double rule under the balance.
+ */
+:root {
+  --ground: #e9ede4;
+  --leaf: #f7f9f3;
+  --feint: #d2dde6;
+  --margin: #d8938d;
+  --ink: #1b2230;
+  --ink-2: #485263;
+  --ink-3: #6b7585;
+  --lal: #a3191c;
+  --on-lal: #f8eadf;
+  --thread: #e0b64e;
+  --slip: #fbf1d3;
+  --slip-edge: #ecd9a0;
+  --cr: #1b7a49;
+  --warn: #9a5f06;
+  --stamp: #b3261e;
+  --link: #a3191c;
+  --lift: 0 1px 0 rgba(27, 34, 48, 0.05), 0 18px 40px -24px rgba(27, 34, 48, 0.35);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0b0e13;
+    --leaf: #141920;
+    --feint: #242d3a;
+    --margin: #7a3a36;
+    --ink: #e6eae1;
+    --ink-2: #b0b8c3;
+    --ink-3: #8a93a1;
+    --lal: #8f1619;
+    --thread: #b8923e;
+    --slip: #2a2517;
+    --slip-edge: #463c20;
+    --cr: #55c28c;
+    --warn: #e0a54c;
+    --stamp: #f26d61;
+    --link: #f08a7f;
+    --lift: 0 0 0 1px #1c232d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0b0e13;
+  --leaf: #141920;
+  --feint: #242d3a;
+  --margin: #7a3a36;
+  --ink: #e6eae1;
+  --ink-2: #b0b8c3;
+  --ink-3: #8a93a1;
+  --lal: #8f1619;
+  --thread: #b8923e;
+  --slip: #2a2517;
+  --slip-edge: #463c20;
+  --cr: #55c28c;
+  --warn: #e0a54c;
+  --stamp: #f26d61;
+  --link: #f08a7f;
+  --lift: 0 0 0 1px #1c232d;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font: 400 15px/1.5 Mukta, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+
+.book {
+  max-width: 520px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  background: var(--leaf);
+  box-shadow: var(--lift);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------------- the cover ---------------- */
+.cover {
+  position: relative;
+  padding: calc(18px + env(safe-area-inset-top)) 20px 16px;
+  background-color: var(--lal);
+  /* A cloth weave, faint enough to read as texture rather than pattern. */
+  background-image:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.07) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 4px);
+  color: var(--on-lal);
+}
+.cover::after {
+  /* The yellow thread a bahi-khata is tied with. */
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 2px;
+  background: var(--thread);
+}
+.mark {
+  font-family: "Rozha One", Georgia, "Times New Roman", serif;
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: 0.005em;
+  margin: 0;
+  font-weight: 400;
+}
+.mark .dev { font-size: 21px; opacity: 0.72; margin-left: 10px; }
+.status { margin-top: 8px; font-size: 13px; opacity: 0.86; }
+
+.slip {
+  margin: 0;
+  padding: 10px 16px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  background: var(--slip);
+  border-bottom: 1px solid var(--slip-edge);
+}
+.slip b { color: var(--ink); font-weight: 600; }
+
+main { flex: 1; padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+main > * { animation: fade 0.16s ease both; }
+
+/* ---------------- shared type ---------------- */
+.eyebrow, .sec-h, .folio, .facts dt {
+  font: 600 11.5px/1.2 Mukta, system-ui, sans-serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.sec { padding: 22px 16px 4px; }
+.sec-h {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1.5px solid var(--ink);
+}
+.sec-h .amt { font-size: 14px; letter-spacing: 0; text-transform: none; }
+.small { font-size: 12.5px; color: var(--ink-3); margin: 10px 0 0; }
+
+/* ---------------- money ---------------- */
+.amt {
+  display: inline-flex;
+  align-items: baseline;
+  white-space: nowrap;
+  font-family: "Courier Prime", "Courier New", ui-monospace, monospace;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.amt.cr { color: var(--cr); }
+/* Rupees and paise in their own columns, the red rule between them. */
+.amt .p {
+  font-size: 0.72em;
+  margin-left: 3px;
+  padding-left: 3px;
+  border-left: 1px solid var(--margin);
+  opacity: 0.78;
+}
+.amt.big { font-size: 30px; font-weight: 700; letter-spacing: -0.01em; }
+.drcr {
+  font: 700 10px/1 "Courier Prime", "Courier New", monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.drcr.cr { color: var(--cr); }
+
+/* ---------------- the month, as a T-account ---------------- */
+.month {
+  font-family: "Rozha One", Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  font-size: 34px;
+  line-height: 1.05;
+  margin: 4px 0 0;
+  text-wrap: balance;
+}
+.t { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); margin-top: 16px; }
+.col { min-width: 0; }
+.col.dr { padding-right: 12px; }
+.col.cr { padding-left: 12px; border-left: 1.5px solid var(--ink); }
+.hd {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 4px;
+  border-bottom: 1.5px solid var(--ink);
+  font: 700 15px/1.2 "Courier Prime", "Courier New", monospace;
+}
+.col.dr .hd { margin-right: -12px; padding-right: 12px; }
+.col.cr .hd { margin-left: -12px; padding-left: 12px; }
+.hint { font: 500 12px Mukta, system-ui, sans-serif; color: var(--ink-3); }
+.tot { padding: 10px 0 6px; }
+.t .amt.big { font-size: 22px; }
+.line {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 13px;
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--feint);
+}
+.line span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.line .n { font-family: "Courier Prime", "Courier New", monospace; color: var(--ink); }
+.line.none { color: var(--ink-3); font-style: italic; border: 0; }
+.bal {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 8px 0 6px;
+  border-top: 1.5px solid var(--ink);
+  /* The accountant's double rule under a closing figure. */
+  border-bottom: 3px double var(--ink);
+  font-weight: 600;
+}
+.bal small { font-weight: 400; font-size: 12px; color: var(--ink-3); margin-left: 6px; }
+.pace { margin: 12px 0 0; font-size: 14px; color: var(--ink-2); max-width: 62ch; text-wrap: pretty; }
+.pace b { font-family: "Courier Prime", "Courier New", monospace; font-weight: 700; color: var(--ink); }
+.up { color: var(--stamp); }
+.down { color: var(--cr); }
+.unsure { color: var(--warn); }
+.figure { margin-top: 6px; }
+
+/* ---------------- items: things that need a decision ---------------- */
+.item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  width: 100%;
+  padding: 12px 0;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--feint);
+  text-align: left;
+}
+button.item { cursor: pointer; }
+button.item:hover .nm { text-decoration: underline; text-decoration-color: var(--margin); text-underline-offset: 3px; }
+.nm { font-weight: 500; font-size: 15px; line-height: 1.3; }
+.sub { display: block; margin-top: 2px; font-size: 13px; line-height: 1.4; color: var(--ink-3); }
+.val { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; padding-top: 1px; text-align: right; }
+.per { font-size: 11.5px; color: var(--ink-3); }
+.tbc { font-size: 12px; color: var(--ink-3); }
+.stamp {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 1px 5px 0;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  font: 700 10.5px/1.35 "Courier Prime", "Courier New", monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--stamp);
+  vertical-align: 2px;
+  transform: rotate(-3deg);
+  animation: thunk 0.34s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
+}
+.stamp.warn { color: var(--warn); }
+.stamp.quiet { color: var(--ink-3); }
+.cov { margin: 10px 0 0; font-size: 13.5px; color: var(--ink-2); max-width: 62ch; }
+.cov b { font-weight: 600; color: var(--ink); }
+
+/* ---------------- the day book ---------------- */
+.find {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  align-items: center;
+  padding: 12px 16px 10px;
+  background: var(--leaf);
+  border-bottom: 1px solid var(--feint);
+}
+.find input {
+  flex: 1 1 220px;
+  min-width: 0;
+  padding: 8px 0;
+  font: 400 16px Mukta, system-ui, sans-serif;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 1.5px solid var(--ink);
+  border-radius: 0;
+  outline: none;
+}
+.find input::placeholder, .ask input::placeholder { color: var(--ink-3); }
+.pill {
+  padding: 4px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--ground);
+  border: 1px solid var(--feint);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.ruled { position: relative; }
+.ruled::before {
+  /* The red double margin down the whole page, not row by row. */
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0; left: 55px;
+  border-left: 3px double var(--margin);
+  pointer-events: none;
+}
+.folio {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 16px 6px 68px;
+  border-bottom: 1.5px solid var(--ink);
+}
+.folio span:last-child { font-family: "Courier Prime", "Courier New", monospace; letter-spacing: 0; text-transform: none; }
+.entry {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  column-gap: 20px;
+  align-items: start;
+  width: 100%;
+  padding: 11px 16px 11px 4px;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--feint);
+  text-align: left;
+  cursor: pointer;
+}
+.entry:hover { background: color-mix(in srgb, var(--feint) 28%, transparent); }
+.entry .d {
+  text-align: right;
+  font: 400 11.5px/1.15 "Courier Prime", "Courier New", monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding-top: 2px;
+}
+.entry .d b { display: block; font-size: 18px; letter-spacing: 0; color: var(--ink); }
+.entry .nm, .entry .sub { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entry.unsure .nm::after { content: " · unclear"; font-weight: 400; font-size: 12px; color: var(--warn); }
+.empty { padding: 28px 16px 28px 68px; color: var(--ink-3); margin: 0; }
+.blank { padding: 48px 24px; text-align: center; }
+.blank .sub { max-width: 34ch; margin: 4px auto 0; }
+
+/* ---------------- ask ---------------- */
+.ask input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 0;
+  font: 500 20px/1.3 Mukta, system-ui, sans-serif;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 1.5px solid var(--ink);
+  border-radius: 0;
+  outline: none;
+}
+.tries { margin-top: 12px; }
+.try {
+  display: block;
+  width: 100%;
+  padding: 12px 0;
+  font-size: 15px;
+  color: var(--ink-2);
+  text-align: left;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--feint);
+  cursor: pointer;
+}
+.try:hover { color: var(--ink); }
+.reply { padding: 16px 0 12px; }
+.reply .figure { font: 700 34px/1.1 "Courier Prime", "Courier New", monospace; letter-spacing: -0.01em; }
+.reply.lost .figure { font: 600 18px/1.35 Mukta, system-ui, sans-serif; letter-spacing: 0; }
+.again { margin: 14px 0 0; padding: 8px 0; font-weight: 600; font-size: 14px; color: var(--link); background: none; border: 0; cursor: pointer; }
+
+/* ---------------- tabs: ribbon markers on the book's edge ---------------- */
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: flex; justify-content: center; pointer-events: none; }
+.tabs .in {
+  width: 100%;
+  max-width: 520px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--leaf);
+  border-top: 1px solid var(--feint);
+  pointer-events: auto;
+}
+.tabs button {
+  position: relative;
+  padding: 13px 0 15px;
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--ink-3);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.tabs button[aria-current="page"] { color: var(--ink); }
+.tabs button[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  top: -1px; left: 30%; right: 30%;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: var(--lal);
+}
+
+/* ---------------- the detail sheet ---------------- */
+.scrim { position: fixed; inset: 0; z-index: 20; background: rgba(12, 15, 20, 0.46); animation: fade 0.18s ease both; }
+.sheet {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 21;
+  max-width: 520px;
+  max-height: 86vh;
+  margin: 0 auto;
+  overflow: auto;
+  padding: 8px 20px calc(22px + env(safe-area-inset-bottom));
+  background: var(--leaf);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.18);
+  animation: rise 0.24s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+.grip { width: 40px; height: 4px; margin: 4px auto 14px; border-radius: 4px; background: var(--feint); }
+.sh-amt { display: flex; align-items: baseline; gap: 10px; }
+.sh-amt .amt.big { font-size: 34px; }
+.sh-nm { margin: 6px 0 2px; font-family: "Rozha One", Georgia, serif; font-weight: 400; font-size: 24px; line-height: 1.15; }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 16px 0 18px; padding: 12px 0; border-top: 1px solid var(--feint); border-bottom: 1px solid var(--feint); }
+.facts div { min-width: 0; }
+.facts dd { margin: 3px 0 0; font-size: 14px; overflow-wrap: anywhere; }
+.mono { font-family: "Courier Prime", "Courier New", ui-monospace, monospace; }
+.src { padding: 10px 0; border-bottom: 1px solid var(--feint); }
+.src .nm { display: block; }
+.src .sub { overflow-wrap: anywhere; }
+.done { width: 100%; margin-top: 18px; padding: 13px; font-weight: 600; color: var(--leaf); background: var(--ink); border: 0; border-radius: 10px; cursor: pointer; }
+
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rise { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes thunk {
+  from { transform: rotate(-3deg) scale(1.6); opacity: 0; }
+  60% { opacity: 1; }
+  to { transform: rotate(-3deg) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; }
+}
+</style>
+
+<div class="book">
+  <header class="cover">
+    <h1 class="mark">Khata<span class="dev" lang="hi">खाता</span></h1>
+    <div class="status" id="status"></div>
+  </header>
+  <p class="slip" id="slip"></p>
+  <main id="view"></main>
+</div>
+
+<nav class="tabs" aria-label="Sections">
+  <div class="in">
+    <button data-act="tab" data-tab="now">Now</button>
+    <button data-act="tab" data-tab="ledger">Ledger</button>
+    <button data-act="tab" data-tab="watch">Watch</button>
+    <button data-act="tab" data-tab="ask">Ask</button>
+  </div>
+</nav>
+<div id="sheet-root"></div>
+
+<script>"use strict";var Khata=(()=>{var Z=Object.defineProperty;var Ie=Object.getOwnPropertyDescriptor;var Ce=Object.getOwnPropertyNames;var De=Object.prototype.hasOwnProperty;var _e=(t,e)=>{for(var o in e)Z(t,o,{get:e[o],enumerable:!0})},Oe=(t,e,o,r)=>{if(e&&typeof e=="object"||typeof e=="function")for(let n of Ce(e))!De.call(t,n)&&n!==o&&Z(t,n,{get:()=>e[n],enumerable:!(r=Ie(e,n))||r.enumerable});return t};var Ne=t=>Oe(Z({},"__esModule",{value:!0}),t);var wt={};_e(wt,{CATEGORIES:()=>K,EXAMPLES:()=>Ee,PARSER_VERSION:()=>pe,REVIEW_BELOW:()=>R,ask:()=>Re,build:()=>$e,buildFromParsed:()=>J,coverage:()=>ve,dayGap:()=>A,daysInMonth:()=>D,formatDay:()=>$,formatDayLong:()=>Q,formatMonth:()=>L,formatPaise:()=>w,formatTime:()=>_,gmailQuery:()=>Me,istDayKey:()=>I,istMonthKey:()=>S,istParts:()=>x,merchantKey:()=>g,months:()=>Te,pace:()=>Se,parseMessage:()=>F,safeParse:()=>V,summariseMonth:()=>U});function M(...t){let e=t.join("\0"),o=2166136261,r=16777619;for(let a=0;a<e.length;a+=1){let s=e.charCodeAt(a);o^=s,o=Math.imul(o,16777619),r^=s+a,r=Math.imul(r,2246822507)}let n=(o>>>0).toString(36),i=(r>>>0).toString(36);return`${n}${i}`.slice(0,12)}var O=(t,e=2)=>String(t).padStart(e,"0");function x(t){let e=new Date(t+198e5);return{year:e.getUTCFullYear(),month:e.getUTCMonth()+1,day:e.getUTCDate(),hour:e.getUTCHours(),minute:e.getUTCMinutes()}}function I(t){let e=x(t);return`${e.year}-${O(e.month)}-${O(e.day)}`}function S(t){let e=x(t);return`${e.year}-${O(e.month)}`}function E(t){let e=x(t);return Date.UTC(e.year,e.month-1,e.day)-198e5}function C(t){let e=x(t);return Date.UTC(e.year,e.month-1,1)-198e5}function X(t,e,o,r=0,n=0){return Date.UTC(t,e-1,o,r,n)-198e5}function D(t){let[e,o]=t.split("-").map(Number);return new Date(Date.UTC(e,o,0)).getUTCDate()}var P=24*60*60*1e3;function A(t,e){return Math.round((E(e)-E(t))/P)}var N=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];function $(t){let e=x(t);return`${e.day} ${N[e.month-1]}`}function Q(t){let e=x(t);return`${e.day} ${N[e.month-1]} ${e.year}`}function _(t){let e=x(t);return`${e.hour%12===0?12:e.hour%12}:${O(e.minute)} ${e.hour<12?"am":"pm"}`}function L(t){let[e,o]=t.split("-").map(Number);return`${N[o-1]} ${e}`}function ee(t,e){let o=/\b(\d{1,2})[\s-]*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s,-]*(\d{2,4})?/i.exec(t);if(o){let n=Number(o[1]),i=N.findIndex(s=>s.toLowerCase()===o[2].toLowerCase())+1,a=o[3]?q(Number(o[3])):x(e).year;if(n>=1&&n<=31)return X(a,i,n)}let r=/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})\b/.exec(t);if(r){let n=Number(r[1]),i=Number(r[2]);if(n>12&&i>12)return null;if(n<=12&&i>12){let s=n;n=i,i=s}let a=q(Number(r[3]));if(n>=1&&n<=31&&i>=1&&i<=12)return X(a,i,n)}return null}function q(t){return t>=1e3?t:t<70?2e3+t:1900+t}var Le=t=>Math.round(t*100);function w(t,e={}){let o=t<0,r=Math.abs(t),n=Math.floor(r/100),i=r%100,a=String(n),s;if(a.length<=3)s=a;else{let l=a.slice(-3);s=a.slice(0,-3).replace(/\B(?=(\d{2})+(?!\d))/g,",")+","+l}let c=e.round&&i===0?s:`${s}.${String(i).padStart(2,"0")}`;return`${e.sign?o?"\u2212":"+":o?"\u2212":""}\u20B9${c}`}function ze(t){let[e,...o]=t.split(".");if(o.length>1||o.length===1&&!/^\d{1,2}$/.test(o[0]))return!1;if(!e.includes(","))return/^\d+$/.test(e);let r=e.split(",");if(r.some(i=>!/^\d+$/.test(i))||r[0].length<1||r[0].length>3||r[r.length-1].length!==3)return!1;let n=r.slice(1,-1);return n.length===0?!0:n.every(i=>i.length===2)||n.every(i=>i.length===3)}var te=String.raw`\d[\d,]*(?:\.\d{1,2})?`,Be=String.raw`(?:₹|\bINR\b|\bRs\.?|\bRUPEES\b)\s*`,Fe=String.raw`\s*(?:₹|\bINR\b|\bRs\b|/-)`,ne=new RegExp(`(?<!\\d)(?:${Be}(${te})|(${te})${Fe})(?!\\d)`,"gi");function z(t){let e=[];ne.lastIndex=0;let o;for(;(o=ne.exec(t))!==null;){let r=o[1]??o[2];if(!r||!ze(r))continue;let n=Number(r.replace(/,/g,""));Number.isFinite(n)&&(n<=0||n>1e9||e.push({value:Le(n),index:o.index,length:o[0].length,raw:r}))}return e}var re={amp:"&",lt:"<",gt:">",quot:'"',apos:"'",nbsp:" ",rupee:"\u20B9","#8377":"\u20B9","#x20b9":"\u20B9","#39":"'","#160":" "};function Ke(t){return t.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi,(e,o)=>{let r=o.toLowerCase();return r in re?re[r]:r.startsWith("#x")?String.fromCodePoint(parseInt(r.slice(2),16)):r.startsWith("#")?String.fromCodePoint(Number(r.slice(1))):e})}function oe(t){return Ke(t.replace(/<(script|style)[\s\S]*?<\/\1>/gi," ").replace(/<\/?(br|p|div|tr|td|th|li|h[1-6]|table)[^>]*>/gi,`
+`).replace(/<[^>]+>/g," ")).replace(/[ \t ]+/g," ").replace(/\n\s*\n\s*\n+/g,`
+
+`).replace(/^\s+|\s+$/g,"")}var Ue=[{re:/\bdebited\b/gi,dir:"debit",weight:5},{re:/\bcredited\b/gi,dir:"credit",weight:5},{re:/\bwithdrawn\b|\bwithdrawal\b/gi,dir:"debit",weight:4.5},{re:/\bdeposited\b/gi,dir:"credit",weight:4.5},{re:/\bspent\b/gi,dir:"debit",weight:4},{re:/\brefunded\b|\brefund of\b/gi,dir:"credit",weight:4},{re:/\breversed\b|\breversal of\b/gi,dir:"credit",weight:4},{re:/\bcashback\b/gi,dir:"credit",weight:3.5},{re:/\bsalary\b/gi,dir:"credit",weight:3.5},{re:/\bpurchase of\b|\bhas been used for\b/gi,dir:"debit",weight:3.5},{re:/\bpaid to\b|\bsent to\b|\btransferred to\b/gi,dir:"debit",weight:3.5},{re:/\breceived from\b|\bcredit from\b/gi,dir:"credit",weight:3.5},{re:/\bdeducted\b|\bcharged\b/gi,dir:"debit",weight:3},{re:/\bpayment of\b|\bpayment made\b/gi,dir:"debit",weight:2},{re:/\breceived\b/gi,dir:"credit",weight:2},{re:/\bpaid\b/gi,dir:"debit",weight:1.5}],je=[/\bavailable balance\b|\bavl\.? ?bal\b|\ba\/c balance\b|\bclosing balance\b/gi,/\bcredit limit\b|\bavailable limit\b|\blimit of\b/gi,/\btotal outstanding\b|\boutstanding balance\b/gi,/\breward points?\b|\bpoints? worth\b/gi,/\bminimum amount due\b|\bmin\.? amt\.? due\b/gi];function ie(t,e){let o=[];for(let{re:r,dir:n,weight:i}of e){r.lastIndex=0;let a;for(;(a=r.exec(t))!==null;)o.push({index:a.index,dir:n,weight:i}),a.index===r.lastIndex&&(r.lastIndex+=1)}return o}function Ze(t){return t.replace(/\b(credit|debit) card\b/gi,e=>" ".repeat(e.length))}function W(t,e){let o=Ze(`${t}
+${e}`),r=z(o);if(r.length===0)return null;let n=ie(o,Ue),i=ie(o,je.map(c=>({re:c,weight:6}))),a=t.length,s=null;for(let c of r){let u=0,l=0,f="",b=0;for(let h of n){let T=Math.abs(h.index-c.index);if(T>160)continue;let v=h.weight/(1+T/40);h.dir==="debit"?u+=v:l+=v,v>b&&(b=v,f=o.slice(h.index,h.index+24).trim())}let k=0;for(let h of i){let T=Math.abs(h.index-c.index);T>90||(k+=h.weight/(1+T/25))}let d=Math.max(u,l),m=c.index<a?1.2:0,p=d-k+m;d!==0&&(!s||p>s.score)&&(s={amount:c,dir:u>=l?"debit":"credit",score:p,via:f})}return!s||s.score<=0?null:{amountPaise:s.amount.value,direction:s.dir,strength:s.score,notes:[`amount \u20B9${s.amount.raw} read as ${s.dir}${s.via?` from \u201C${s.via}\u201D`:""}`]}}var We=[/\b(?:a\/c|ac|acct|account|card)\s*(?:no\.?|number|num)?\s*(?:ending(?:\s+(?:in|with))?)?\s*[xX*•·]{2,}\s*(\d{4})\b/i,/\b(?:a\/c|ac|acct|account|card)\s*(?:no\.?|number|num)?\s*(?:ending(?:\s+(?:in|with))?)\s*(\d{4})\b/i,/\b[xX*]{4,}\s*(\d{4})\b/i,/\b(?:a\/c|ac|acct|account|card)\s*(?:no\.?|number|num)\s*[:.]?\s*(\d{4})\b(?!\d)/i];function Y(t){for(let e of We){let o=e.exec(t);if(o)return o[1]}return null}var Ye=[/\b(?:rrn|utr)\s*(?:no\.?|number)?\s*[:#-]?\s*([A-Za-z0-9]{6,22})\b/i,/\b(?:upi)?\s*(?:txn|transaction)\s*(?:id|no\.?|number|ref(?:erence)?)\s*[:#-]?\s*([A-Za-z0-9]{6,22})\b/i,/\bref(?:erence)?\s*(?:no\.?|number|id)?\s*[:#-]\s*([A-Za-z0-9]{6,22})\b/i,/\bauth(?:orisation|orization)?\s*(?:code|no\.?)?\s*[:#-]?\s*([A-Za-z0-9]{6,22})\b/i];function ae(t){for(let e of Ye){let o=e.exec(t);if(o&&/\d/.test(o[1]))return o[1].toUpperCase()}if(/\bUPI\b/i.test(t)){let e=/(?<!\d)(\d{12})(?!\d)/.exec(t);if(e)return e[1]}return null}function se(t){return/\bATM\b|cash withdrawal|cash w\/?d\b/i.test(t)?"atm":/\bUPI\b|\bVPA\b|[a-z0-9._-]{3,}@(?:okhdfcbank|oksbi|okicici|okaxis|ybl|paytm|apl|ibl|axl)\b/i.test(t)?"upi":/\bNACH\b|\bACH\b|e-?mandate|auto ?debit|auto ?pay|standing instruction\b|\bSI\b/i.test(t)?"ach":/\bNEFT\b|\bIMPS\b|\bRTGS\b|net ?banking|fund transfer/i.test(t)?"netbanking":/\bcard\b|\bPOS\b|swipe|contactless|auth(?:orisation|orization)/i.test(t)?"card":"unknown"}var ce=/\b(pvt|private|ltd|limited|llp|inc|incorporated|india|technologies|solutions|enterprises)\b/gi,Ge=[/\bInfo\s*[:-]\s*([^\n]{3,70})/i,/\btowards\s+([^\n.,]{3,45})/i,/\bat\s+([A-Za-z0-9][A-Za-z0-9 &.'@_*-]{2,45}?)\s+on\b/i,/\b(?:paid|sent|transferred)\s+to\s+([A-Za-z0-9][A-Za-z0-9 &.'@_-]{2,45}?)(?=\s+on\b|[.,\n]|$)/i,/\bto\s+VPA\s+([A-Za-z0-9._-]+@[A-Za-z]{2,})/i,/\bfrom\s+([A-Za-z0-9][A-Za-z0-9 &.'@_-]{2,45}?)(?=\s+on\b|[.,\n]|$)/i,/\bmerchant\s*[:-]\s*([^\n.,]{3,45})/i];function He(t){let e=t.trim();/^UPI[/-]/i.test(e)&&(e=e.split(/[/-]/).filter(Boolean)[1]??e);let o=/^([A-Za-z0-9._-]+)@[A-Za-z]{2,}$/.exec(e);if(o&&(e=o[1].replace(/[._-]+/g," ")),e=e.replace(/\b(?:ref|rrn|utr|txn|id)\s*[:#-]?\s*[A-Za-z0-9]{6,}\b/gi," ").replace(/(?<![\d.])\d{6,}(?![\d.])/g," ").replace(/[*_]+/g," ").replace(/\s{2,}/g," ").replace(/^[\s.,:;-]+|[\s.,:;-]+$/g,""),e.length<2||/^\d+$/.test(e))return null;let r=e.replace(ce,"").replace(/\s{2,}/g," ").trim();return r.length>=3&&(e=r),(e===e.toUpperCase()||e===e.toLowerCase())&&(e=e.toLowerCase().replace(/\b[a-z]/g,n=>n.toUpperCase())),e.slice(0,40)}function B(t){for(let e of Ge){let o=e.exec(t);if(!o)continue;let r=He(o[1]);if(r)return r}return null}function g(t){return t?t.toLowerCase().replace(ce,"").replace(/[^a-z0-9]+/g,"").slice(0,24):""}var y=[[/statement|estmt|smartstatement|bill/i,"bill"],[/mandate|enach|autopay|si_|standinginstruction/i,"mandate"]],Ve=[{domain:/(^|\.)hdfcbank\.(net|com)$/i,issuer:"HDFC",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)icicibank\.com$/i,issuer:"ICICI",type:"bank",kind:"bank-alert",local:[...y,[/credit_?cards?/i,"bill"]]},{domain:/(^|\.)sbi\.co\.in$|(^|\.)alerts\.sbi\.co\.in$/i,issuer:"SBI",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)sbicard\.com$/i,issuer:"SBI Card",type:"card",kind:"bank-alert",local:y},{domain:/(^|\.)axisbank\.com$/i,issuer:"Axis",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)kotak\.com$/i,issuer:"Kotak",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)indusind\.com$/i,issuer:"IndusInd",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)idfcfirstbank\.com$/i,issuer:"IDFC First",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)yesbank\.in$/i,issuer:"Yes Bank",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)rblbank\.com$/i,issuer:"RBL",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)federalbank\.co\.in$/i,issuer:"Federal",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)aubank\.in$/i,issuer:"AU",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)bankofbaroda\.(com|co\.in)$/i,issuer:"BoB",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)pnb\.co\.in$/i,issuer:"PNB",type:"bank",kind:"bank-alert",local:y},{domain:/(^|\.)canarabank\.com$/i,issuer:"Canara",type:"bank",kind:"bank-alert",local:y},{domain:/americanexpress\.com$/i,issuer:"Amex",type:"card",kind:"bank-alert",local:y},{domain:/(^|\.)citi(corp|bank)?\.com$/i,issuer:"Citi",type:"card",kind:"bank-alert",local:y},{domain:/(^|\.)onecard\.app$/i,issuer:"OneCard",type:"card",kind:"bank-alert",local:y},{domain:/(^|\.)phonepe\.com$/i,issuer:"PhonePe",type:"wallet",kind:"upi-receipt"},{domain:/(^|\.)paytm\.(com|in)$/i,issuer:"Paytm",type:"wallet",kind:"upi-receipt"},{domain:/(^|\.)amazonpay\.in$/i,issuer:"Amazon Pay",type:"wallet",kind:"upi-receipt"},{domain:/(^|\.)cred\.club$/i,issuer:"CRED",type:"wallet",kind:"upi-receipt"},{domain:/(^|\.)navi\.com$/i,issuer:"Navi",type:"wallet",kind:"upi-receipt"},{domain:/(^|\.)amazon\.(in|com)$/i,issuer:"Amazon",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)flipkart\.com$/i,issuer:"Flipkart",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)swiggy\.(in|com)$/i,issuer:"Swiggy",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)zomato\.com$/i,issuer:"Zomato",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)uber\.com$/i,issuer:"Uber",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)olacabs\.com$/i,issuer:"Ola",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)bookmyshow\.com$/i,issuer:"BookMyShow",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)blinkit\.com$/i,issuer:"Blinkit",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)zeptonow\.com$/i,issuer:"Zepto",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)netflix\.com$/i,issuer:"Netflix",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)spotify\.com$/i,issuer:"Spotify",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)apple\.com$/i,issuer:"Apple",type:"wallet",kind:"merchant-receipt"},{domain:/(^|\.)google\.com$/i,issuer:"Google",type:"wallet",kind:"merchant-receipt",local:[[/googlepay|gpay/i,"upi-receipt"]]}];function ue(t){let e=/<([^>]+)>/.exec(t);return(e?e[1]:t).trim().toLowerCase()}function de(t){let e=ue(t),o=e.lastIndexOf("@");if(o<0)return null;let r=e.slice(0,o),n=e.slice(o+1);for(let i of Ve){if(!i.domain.test(n))continue;let a=i.kind;for(let[s,c]of i.local??[])if(s.test(r)){a=c;break}return{issuer:i.issuer,type:i.type,kind:a}}return null}var Je=/^(offers?|promo(tions?)?|deals?|marketing|newsletter|news|updates?|info|hello|team|support|no-?reply-?marketing)$/i;function le(t,e,o){let r=ue(t),n=r.slice(0,Math.max(0,r.lastIndexOf("@")));if(Je.test(n))return!0;let i=`${e}
+${o}`;return[/\bcashback up to\b/i,/\bup to \d+% ?(off|cashback)/i,/\bflat \d+% ?off\b/i,/\blimited (time|period) offer\b/i,/\bhurry\b|\bdon'?t miss\b|\blast chance\b/i,/\bwin (up to|a|an)\b/i,/\bapply now\b|\bshop now\b|\bbook now\b|\border now\b/i,/\bT ?& ?C ?(apply|s apply)\b/i,/\bpre-?approved\b/i,/\byou (are|'re) eligible\b/i].filter(c=>c.test(i)).length>=2}var pe=1,Xe=24*60*60*1e3,qe=[[/\b(?:payment|transaction)\s+(?:has\s+)?(?:failed|declined|was unsuccessful)|could not be processed|\bdeclined\b/i,"failure"],[/e-?mandate|standing instruction|\bNACH\b|auto\s?pay (?:is |will )|will be (?:auto[- ]?)?debited on/i,"mandate"],[/total amount due|minimum amount due|payment due date|statement (?:is|has been) generated|your bill (?:is|for)/i,"bill"],[/\b(?:will|shall) be (?:reversed|credited back)\b|\breversal (?:will be|has been|is being) (?:initiated|processed)\b|\bcredited back within\b/i,"reversal-promise"],[/\b(?:will|shall) be (?:credited|refunded|returned)\b|\brefund (?:has been |is being |will be )?(?:initiated|processed|issued)\b/i,"refund-promise"]];function Qe(t,e){for(let[o,r]of qe)if(o.test(t))return r;return e}function me(t,e,o=120){let r=e.exec(t);if(!r)return null;let n=r.index+r[0].length,i=null;for(let a of z(t)){let s=a.index>=n?a.index-n:n-a.index+40;s>o||(!i||s<i.distance)&&(i={value:a.value,distance:s})}return i?i.value:null}function be(t,e,o,r=90){let n=e.exec(t);if(!n)return null;let i=n.index+n[0].length;return ee(t.slice(i,i+r),o)}function F(t){let e=oe(t.body),o=tt(t.subject),r=`${o}
+${e}`,n=de(t.from),i=Qe(r,n?.kind??"unknown"),a={messageId:t.id,from:t.from,subject:o,date:t.date,kind:i},s={},c=le(t.from,o,e);if(i==="bill"||i==="mandate"){let l=et(r,t,a,n,i);l&&(s.obligation=l)}if(i==="refund-promise"||i==="reversal-promise"){let l=W(o,e),f=/(\d{1,2})\s*[-–to]{1,3}\s*(\d{1,2})\s*(?:working|business)?\s*days/i.exec(r),b=f?Number(f[2]):10;s.promise={id:M("promise",t.id),kind:i==="refund-promise"?"refund":"reversal",amountPaise:l?.amountPaise??null,promisedAt:t.date,expectBy:t.date+Math.ceil(b*1.5)*Xe,merchant:B(r)??n?.issuer??null,source:a}}if(!c&&i!=="bill"&&i!=="mandate"&&i!=="failure"&&i!=="refund-promise"&&i!=="reversal-promise"){let l=W(o,e);if(l){let f=Y(r),b=ae(r),k=B(r),d=[...l.notes],m=.25+Math.min(l.strength,8)*.05;n?(m+=n.type==="wallet"?.06:.14,d.push(`sender recognised as ${n.issuer}`)):d.push("sender not in the registry"),f&&(m+=.1,d.push(`account ending ${f}`)),b&&(m+=.1,d.push(`reference ${b}`)),k&&(m+=.05),!f&&!b&&(m-=.12);let p=n?{issuer:n.issuer,tail:f,type:n.type}:f?{issuer:"Unknown",tail:f,type:"bank"}:null;s.record={source:a,at:t.date,amountPaise:l.amountPaise,direction:l.direction,account:p,merchant:k??(n?.kind==="merchant-receipt"?n.issuer:null),method:se(r),reference:b,confidence:Math.max(0,Math.min(1,m)),notes:d}}}return s}function et(t,e,o,r,n){let i=me(t,/total amount due|total due|amount payable/i)??me(t,/will be (?:auto[- ]?)?debited|mandate (?:amount|for)|instruction (?:amount|of)/i)??null,a=be(t,/payment due date|due date|due on|pay by/i,e.date)??be(t,/will be (?:auto[- ]?)?debited on|debit date|on or (?:before|after)/i,e.date);if(a===null)return null;let s=Y(t),c=B(t)??r?.issuer??(n==="bill"?"Bill":"Auto-debit");return{id:M("obligation",e.id),kind:/\bEMI\b|instal?ment/i.test(t)?"emi":n,label:c,amountPaise:i,dueAt:a,account:r?{issuer:r.issuer,tail:s,type:r.type}:null,source:o}}function tt(t){return t.replace(/=\?[^?]+\?([QqBb])\?([^?]*)\?=/g,(e,o,r)=>{try{if(o.toLowerCase()==="b"){let n=typeof atob=="function"?atob(r):Buffer.from(r,"base64").toString("binary");return decodeURIComponent(n.split("").map(i=>`%${i.charCodeAt(0).toString(16).padStart(2,"0")}`).join(""))}return decodeURIComponent(r.replace(/_/g," ").replace(/=([0-9A-Fa-f]{2})/g,"%$1"))}catch{return e}})}var nt=90*60*1e3,rt=100;function it(t,e){return Math.abs(t-e)<=rt}function ot(t,e){if(t.direction!==e.direction||!it(t.amountPaise,e.amountPaise))return!1;if(t.reference&&e.reference)return t.reference===e.reference;if(Math.abs(t.at-e.at)>nt||t.source.from===e.source.from)return!1;let r=t.account?.tail,n=e.account?.tail;if(r&&n&&r!==n)return!1;let i=g(t.merchant),a=g(e.merchant);return!(i&&a&&i!==a&&!i.includes(a)&&!a.includes(i))}function at(t,e){let o=i=>i.source.kind==="bank-alert"?3:i.source.kind==="upi-receipt"?2:1,r=o(t),n=o(e);return r!==n?r>n?t:e:t.confidence>=e.confidence?t:e}function fe(t){let e=[...t].sort((n,i)=>n.at-i.at),o=new Map,r=[];for(let n of e){let i=Math.round(n.amountPaise/100),a=!1;for(let s of[-1,0,1]){let c=o.get(i+s);if(c){for(let u of c)if(u.some(l=>ot(l,n))){u.push(n),a=!0;break}if(a)break}}if(!a){let s=[n];r.push(s);let c=o.get(i);c?c.push(s):o.set(i,[s])}}return r.map(st)}function st(t){let e=t.reduce(at),o=t.map(i=>i.source),r=Math.max(...t.map(i=>i.confidence)),n=t.length>1?Math.min(.98,r+.12*(t.length-1)):r;return{id:M("txn",o[0].messageId),at:Math.min(...t.map(i=>i.at)),amountPaise:e.amountPaise,direction:e.direction,account:e.account??t.find(i=>i.account)?.account??null,merchant:e.merchant??t.find(i=>i.merchant)?.merchant??null,method:e.method!=="unknown"?e.method:t.find(i=>i.method!=="unknown")?.method??"unknown",category:"",reference:e.reference??t.find(i=>i.reference)?.reference??null,confidence:n,sources:o}}var K=["Food","Groceries","Transport","Shopping","Bills","Rent","Health","Entertainment","Travel","Education","Investment","Transfer","Income","Fees","Cash","Other"],G=[[/swiggy|zomato|dominos|pizza|mcdonald|kfc|starbucks|cafe|coffee|restaurant|eatery|biryani|barbeque|chaayos|dunkin|subway|burger/i,"Food"],[/bigbasket|blinkit|zepto|instamart|dmart|grofers|jiomart|reliance ?fresh|more ?retail|spencer|nature.?s basket|licious|country ?delight/i,"Groceries"],[/uber|ola|rapido|namma ?yatri|metro|irctc|redbus|petrol|fuel|indian ?oil|bharat ?petro|hp ?petro|shell|fastag|parking|blusmart/i,"Transport"],[/amazon|flipkart|myntra|ajio|nykaa|meesho|tatacliq|croma|decathlon|ikea|lifestyle|shoppers ?stop|westside|zara|uniqlo|hm\b/i,"Shopping"],[/airtel|jio|vodafone|\bvi\b|bsnl|electricity|\bbescom\b|\bmseb\b|\btneb\b|gas|water|broadband|act ?fibernet|hathway|tata ?play|dish ?tv|municipal|property ?tax/i,"Bills"],[/\brent\b|nobroker|nestaway|housing|landlord|society ?maintenance|maintenance ?charge/i,"Rent"],[/apollo|pharm|medplus|1mg|pharmeasy|netmeds|hospital|clinic|diagnostic|lab|doctor|practo|cult\.?fit|gym|fitness/i,"Health"],[/netflix|spotify|prime ?video|hotstar|jiocinema|sonyliv|zee5|youtube ?premium|bookmyshow|pvr|inox|cinepolis|steam|playstation|xbox|nintendo/i,"Entertainment"],[/makemytrip|goibibo|cleartrip|yatra|ixigo|airbnb|oyo|booking\.?com|indigo|vistara|air ?india|spicejet|akasa|hotel|resort/i,"Travel"],[/udemy|coursera|unacademy|byju|vedantu|upgrad|school|college|university|tuition|course|scaler|masterclass/i,"Education"],[/zerodha|groww|upstox|angel ?one|kuvera|coin|smallcase|mutual ?fund|\bsip\b|\bnps\b|\bppf\b|\belss\b|stock|nse|bse|policybazaar|\blic\b|insurance|premium/i,"Investment"],[/salary|payroll|stipend|reimbursement|interest ?credit|dividend|refund/i,"Income"],[/\bfee\b|\bcharges?\b|\bgst\b|penalty|late ?payment|interest ?charged|annual ?fee|renewal ?fee|convenience ?fee|surcharge|markup/i,"Fees"]],ct=G[G.length-1][0];function ut(t,e={}){let o=g(t.merchant);if(o&&e[o])return e[o];let r=[t.merchant??"",t.sources.map(n=>n.subject).join(" ")].join(" ");if(ct.test(r))return"Fees";if(t.method==="atm")return"Cash";for(let[n,i]of G)if(n.test(r)){if(i==="Income"&&t.direction==="debit")continue;return i}return t.direction==="credit"?/\bself\b|own account|transfer/i.test(r)?"Transfer":"Income":t.method==="netbanking"||/\bself\b|own account/i.test(r)?"Transfer":"Other"}function ge(t,e={}){return t.map(o=>({...o,category:o.edited?.category??ut(o,e)}))}var dt=[{cadence:"weekly",days:7,slack:2},{cadence:"monthly",days:30,slack:6},{cadence:"quarterly",days:91,slack:10},{cadence:"yearly",days:365,slack:20}],H=t=>{let e=[...t].sort((r,n)=>r-n),o=Math.floor(e.length/2);return e.length%2?e[o]:Math.round((e[o-1]+e[o])/2)};function lt(t){let e=[...t].sort((r,n)=>r.amountPaise-n.amountPaise),o=[];for(let r of e){let n=o[o.length-1];if(n){let i=H(n.map(s=>s.amountPaise)),a=Math.max(5e3,i*.08);if(Math.abs(r.amountPaise-i)<=a){n.push(r);continue}}o.push([r])}return o}function he(t,e=Date.now()){let o=new Map;for(let n of t){if(n.direction!=="debit")continue;let i=g(n.merchant);if(!i)continue;let a=o.get(i);a?a.push(n):o.set(i,[n])}let r=[];for(let[n,i]of o)for(let a of lt(i)){if(a.length<3)continue;let s=[...a].sort((m,p)=>m.at-p.at),c=[];for(let m=1;m<s.length;m+=1)c.push(A(s[m-1].at,s[m].at));let u=H(c),l=dt.find(m=>Math.abs(u-m.days)<=m.slack);if(!l||c.filter(m=>Math.abs(m-l.days)<=l.slack).length/c.length<.6)continue;let b=H(s.map(m=>m.amountPaise)),k=s.map(m=>m.at),d=k[k.length-1];r.push({key:`${n}:${Math.round(b/100)}`,merchant:s[s.length-1].merchant??n,amountPaise:b,cadence:l.cadence,occurrences:k,txnIds:s.map(m=>m.id),nextExpectedAt:d+l.days*P,missing:mt(k,l,e),active:A(d,e)<=l.days*2+l.slack})}return r.sort((n,i)=>i.amountPaise-n.amountPaise)}function mt(t,e,o){let r=[],n=t[0],i=t[t.length-1],a=Math.min(o,i+e.days*P);for(let s=1;;s+=1){let c=n+s*e.days*P;if(c>a)break;t.some(l=>Math.abs(A(c,l))<=e.slack)||r.push(c)}return r}var bt=25,pt=12,ft=200;function ye(t,e,o=Date.now()){let r=e.filter(s=>s.direction==="debit").sort((s,c)=>s.at-c.at),n=new Set,i=[...t].sort((s,c)=>c.dueAt-s.dueAt),a=[];for(let s of i){let c=s.dueAt-bt*P,u=s.dueAt+pt*P,l=g(s.label),f=r.find(b=>{if(n.has(b.id)||b.at<c||b.at>u||s.amountPaise!==null&&Math.abs(b.amountPaise-s.amountPaise)>ft)return!1;let k=s.account?.tail&&b.account?.tail?s.account.tail===b.account.tail:null;if(s.kind!=="bill"&&k===!1)return!1;let d=g(b.merchant),m=l&&d?d.includes(l)||l.includes(d):null;return!(s.amountPaise===null&&!m&&!k)});f?(n.add(f.id),a.push({...s,status:"cleared",clearedByTxnId:f.id})):a.push({...s,status:s.dueAt>o?"pending":"missed"})}return{obligations:a.sort((s,c)=>s.dueAt-c.dueAt),clearedTxnIds:n}}function ke(t,e=Date.now()){return t.filter(o=>o.kind!=="bill"&&o.status==="missed"&&A(o.dueAt,e)>=2)}function xe(t,e=Date.now()){let o=[];for(let r of t){if(!r.active)continue;let n=r.missing[r.missing.length-1];n!==void 0&&(A(n,e)<1||o.push({merchant:r.merchant,amountPaise:r.amountPaise,expectedAt:n,cadence:r.cadence}))}return o.sort((r,n)=>n.expectedAt-r.expectedAt)}function gt(t){let e=t.filter(r=>r.direction==="debit").sort((r,n)=>r.at-n.at),o=[];for(let r=0;r<e.length;r+=1)for(let n=r+1;n<e.length;n+=1){let i=e[r],a=e[n];if(a.at-i.at>2*P)break;if(i.amountPaise!==a.amountPaise)continue;let s=g(i.merchant),c=g(a.merchant);if(!s||s!==c||i.amountPaise<2e4)continue;let l=I(i.at)===I(a.at)?`${$(i.at)} at ${_(i.at)} and again at ${_(a.at)}`:`${$(i.at)} and again on ${$(a.at)}`;o.push({id:M("dup",i.id,a.id),kind:"duplicate",amountPaise:a.amountPaise,at:a.at,title:`${i.merchant} charged twice`,detail:`${w(i.amountPaise,{round:!0})} on ${l}. If you only meant to pay once, this is refundable.`,txnIds:[i.id,a.id]})}return o}function ht(t,e,o){let r=e.filter(i=>i.direction==="credit"),n=[];for(let i of t){if(o<i.expectBy)continue;let a=g(i.merchant);r.some(c=>{if(c.at<i.promisedAt||c.at>i.expectBy+30*P)return!1;if(i.amountPaise!==null)return Math.abs(c.amountPaise-i.amountPaise)<=200;let u=g(c.merchant);return!!(a&&u&&(u.includes(a)||a.includes(u)))})||n.push({id:M("promise",i.id),kind:i.kind==="refund"?"unrefunded":"unreversed",amountPaise:i.amountPaise??0,at:i.promisedAt,title:i.kind==="refund"?`Refund from ${i.merchant??"a merchant"} never arrived`:`Reversal from ${i.merchant??"your bank"} never arrived`,detail:`Promised on ${$(i.promisedAt)}, expected by ${$(i.expectBy)}. Nothing matching has been credited since. Worth chasing \u2014 quote the original mail.`,txnIds:[]})}return n}function yt(t){return t.filter(e=>e.direction==="debit"&&e.category==="Fees").map(e=>({id:M("fee",e.id),kind:"fee",amountPaise:e.amountPaise,at:e.at,title:`${e.merchant??e.account?.issuer??"Bank"} charged a fee`,detail:`${w(e.amountPaise,{round:!0})} on ${$(e.at)}. Most of these are waivable if you ask once.`,txnIds:[e.id]}))}function kt(t,e){let o={weekly:52,monthly:12,quarterly:4,yearly:1};return t.filter(r=>r.active&&r.occurrences.length>=6).map(r=>{let n=r.amountPaise*o[r.cadence],i=Math.max(1,Math.round(A(r.occurrences[0],e)/30));return{id:M("zombie",r.key),kind:"zombie",amountPaise:n,at:r.occurrences[r.occurrences.length-1],title:`${r.merchant} \u2014 ${w(n,{round:!0})} a year`,detail:`${w(r.amountPaise,{round:!0})} ${r.cadence}, ${r.occurrences.length} times over ${i} months. Still using it?`,txnIds:r.txnIds}}).sort((r,n)=>n.amountPaise-r.amountPaise)}function xt(t){return t.filter(e=>e.direction==="debit"&&e.sources.some(o=>/markup|foreign (?:currency|transaction)|cross ?currency|\bFX\b/i.test(o.subject))).map(e=>({id:M("fx",e.id),kind:"fx-markup",amountPaise:e.amountPaise,at:e.at,title:`Foreign currency markup on ${e.merchant??"a charge"}`,detail:`${w(e.amountPaise,{round:!0})} on ${$(e.at)}. A zero-markup card would have avoided this.`,txnIds:[e.id]}))}function Pe(t,e,o,r=Date.now()){return[...gt(t),...ht(o,t,r),...yt(t),...xt(t),...kt(e,r)].sort((n,i)=>i.at-n.at)}function we(t){return t.filter(e=>e.kind!=="zombie").reduce((e,o)=>e+o.amountPaise,0)}function V(t){try{return F(t)}catch{return{}}}function $e(t,e={}){return J(t.map(V),e)}function J(t,e={}){let{overrides:o={},edits:r={},now:n=Date.now()}=e,i=t.flatMap(d=>d.record?[d.record]:[]),a=t.flatMap(d=>d.obligation?[d.obligation]:[]),s=t.flatMap(d=>d.promise?[d.promise]:[]),c=t.filter(d=>!d.record&&!d.obligation&&!d.promise).length,u=fe(i);u=u.map(d=>{let m=r[d.id];return m?{...d,...m,edited:m}:d}),u=ge(u,o).sort((d,m)=>m.at-d.at);let{obligations:l,clearedTxnIds:f}=ye(a,u,n),b=he(u,n),k=Pe(u,b,s,n);return{txns:u,obligations:l,recurring:b,leaks:k,skipped:xe(b,n),failedMandates:ke(l,n),recoverablePaise:we(k),clearedTxnIds:f,ignored:c}}function Me(t){let e=["debited","credited","debit","credit",'"transaction alert"','"txn alert"','"has been spent"','"you have spent"','"payment due"','"amount due"','"due date"','"e-mandate"','"auto debit"','"autopay"','"standing instruction"','"refund"','"reversed"','"reversal"','"payment failed"','"transaction declined"','"statement"','"UPI"'];return[`newer_than:${t}d`,`(${e.join(" OR ")})`,"-category:promotions","-category:social","-in:spam","-in:trash"].join(" ")}var R=.55;var Ae=t=>t.confidence>=.55;function U(t,e){let o=t.filter(c=>S(c.at)===e),r=o.filter(Ae),n=new Map,i=new Map,a=0,s=0;for(let c of r){if(c.direction==="credit"?a+=c.amountPaise:s+=c.amountPaise,c.direction==="debit"){let f=c.category||"Other",b=n.get(f)??{amountPaise:0,count:0};b.amountPaise+=c.amountPaise,b.count+=1,n.set(f,b)}let u=c.account?`${c.account.issuer}${c.account.tail?` \u2022\u2022${c.account.tail}`:""}`:"Unattributed",l=i.get(u)??{inPaise:0,outPaise:0};c.direction==="credit"?l.inPaise+=c.amountPaise:l.outPaise+=c.amountPaise,i.set(u,l)}return{month:e,inPaise:a,outPaise:s,netPaise:a-s,count:r.length,byCategory:[...n.entries()].map(([c,u])=>({category:c,...u})).sort((c,u)=>u.amountPaise-c.amountPaise),byAccount:[...i.entries()].map(([c,u])=>({account:c,...u})).sort((c,u)=>u.outPaise-c.outPaise),unsure:o.length-r.length}}function Se(t,e=Date.now()){let o=S(e),r=S(C(e)-P),n=U(t,o),i=U(t,r),a=D(o),s=Math.max(1,x(e).day),c=Math.round(n.outPaise/s);return{spentPaise:n.outPaise,perDayPaise:c,projectedPaise:c*a,lastMonthPaise:i.outPaise,daysElapsed:s,daysInMonth:a}}function Te(t){return[...new Set(t.map(e=>S(e.at)))].sort().reverse()}function ve(t,e){let o=t.filter(u=>S(u.at)===e&&Ae(u)),r=[...new Set(o.filter(u=>u.account).map(u=>`${u.account.issuer}${u.account.tail?` \u2022\u2022${u.account.tail}`:""}`))].sort(),n=D(e),i=new Set(o.map(u=>x(u.at).day)).size,a=n-i,s=Math.min(1,r.length/2),c=Math.min(1,i/(n*.4));return{month:e,accounts:r,txnCount:o.length,silentDays:a,score:Number((s*.66+c*.34).toFixed(2))}}var j=["january","february","march","april","may","june","july","august","september","october","november","december"];function Pt(t,e){let o=C(e);if(/\blast month\b|\bprevious month\b/.test(t)){let n=o-1;return{from:C(n),to:n,label:L(S(n))}}if(/\bthis month\b/.test(t))return{from:o,to:e,label:"this month"};if(/\btoday\b/.test(t))return{from:E(e),to:e,label:"today"};if(/\byesterday\b/.test(t)){let n=E(e)-P;return{from:n,to:n+P-1,label:"yesterday"}}if(/\bthis (?:year|yr)\b/.test(t)){let n=x(e).year;return{from:Date.UTC(n,0,1)-198e5,to:e,label:String(n)}}if(/\blast (?:year|yr)\b/.test(t)){let n=x(e).year-1;return{from:Date.UTC(n,0,1)-198e5,to:Date.UTC(n+1,0,1)-19800001,label:String(n)}}let r=/\blast (\d+)\s*(day|week|month)s?\b/.exec(t);if(r){let n=Number(r[1]),i=r[2],a=i==="day"?n:i==="week"?n*7:n*30;return{from:e-a*P,to:e,label:`the last ${n} ${i}${n>1?"s":""}`}}for(let n=0;n<j.length;n+=1)if(new RegExp(`\\b${j[n].slice(0,3)}[a-z]*\\b`).test(t)){let i=x(e),a=n+1>i.month?i.year-1:i.year,s=Date.UTC(a,n,1)-198e5,c=Date.UTC(a,n+1,1)-19800001;return{from:s,to:c,label:`${j[n][0].toUpperCase()}${j[n].slice(1)} ${a}`}}return{from:o,to:e,label:"this month"}}function Re(t,e,o=Date.now()){let r=t.toLowerCase().trim();if(!r)return{headline:"",txns:[],understood:!1};let n=Pt(r,o),i=e.filter(d=>d.confidence>=.55),a=i.filter(d=>d.at>=n.from&&d.at<=n.to),c=/\b(?:earn|income|receive|received|credit|credited|salary|refund)\b/.test(r)?"credit":"debit";a=a.filter(d=>d.direction===c);let u="",l=K.find(d=>r.includes(d.toLowerCase()));if(l&&(a=a.filter(d=>d.category===l),u=l.toLowerCase()),!l){let d=r.split(/[^a-z0-9]+/).filter(p=>p.length>=3),m=new Map;for(let p of i){let h=g(p.merchant);h&&p.merchant&&m.set(h,p.merchant)}for(let p of d){for(let[h,T]of m)if(h.includes(p)&&p.length>=4){a=a.filter(v=>g(v.merchant).includes(p)),u=T;break}if(u)break}}let f=a.reduce((d,m)=>d+m.amountPaise,0),b=c==="credit"?"came in":"went out";if(/\b(biggest|largest|highest|most expensive|top)\b/.test(r)){let d=[...a].sort((m,p)=>p.amountPaise-m.amountPaise).slice(0,5);return d.length===0?{headline:`Nothing ${b}${u?` on ${u}`:""} in ${n.label}.`,txns:[],understood:!0}:{headline:`${w(d[0].amountPaise,{round:!0})} \u2014 ${d[0].merchant??"unnamed"}`,detail:`The largest of ${a.length} ${u?`${u} `:""}payments in ${n.label}, on ${$(d[0].at)}.`,txns:d,understood:!0}}if(/\bhow many\b|\bcount\b|\btimes\b/.test(r))return{headline:`${a.length} ${a.length===1?"time":"times"}`,detail:`${u?`${u}, `:""}${n.label}, totalling ${w(f,{round:!0})}.`,txns:a.slice(0,50),understood:!0};if(/\bwhere\b|\bbreakdown\b|\bwhat (?:did i|have i) (?:spend|buy)\b|\bon what\b/.test(r)){let d=new Map;for(let p of a)d.set(p.category,(d.get(p.category)??0)+p.amountPaise);let m=[...d.entries()].sort((p,h)=>h[1]-p[1]).slice(0,5);return m.length===0?{headline:`Nothing ${b} in ${n.label}.`,txns:[],understood:!0}:{headline:w(f,{round:!0}),detail:`${n.label} \u2014 ${m.map(([p,h])=>`${p} ${w(h,{round:!0})}`).join(", ")}.`,txns:[...a].sort((p,h)=>h.amountPaise-p.amountPaise).slice(0,50),understood:!0}}return/\bhow much\b|\btotal\b|\bsum\b|\bspent?\b|\bspending\b|\bpaid\b|\bearn/.test(r)||!!u?a.length===0?{headline:`Nothing ${b}${u?` on ${u}`:""} in ${n.label}.`,detail:"Either there was none, or no email arrived about it.",txns:[],understood:!0}:{headline:w(f,{round:!0}),detail:`${u?`${u}, `:""}${n.label} \u2014 across ${a.length} ${a.length===1?"payment":"payments"}.`,txns:[...a].sort((d,m)=>m.amountPaise-d.amountPaise).slice(0,50),understood:!0}:{headline:"Not sure what you are asking.",detail:"Try \u201Chow much on food last month\u201D, \u201Cbiggest expense this year\u201D, \u201Chow many times swiggy\u201D, or \u201Cwhere did my money go in July\u201D.",txns:[],understood:!1}}var Ee=["how much on food last month","biggest expense this year","where did my money go in July","how many times swiggy","how much did I earn this month"];return Ne(wt);})();
+</script>
+<script>
+(function () {
+  'use strict';
+
+  /*
+   * The engine is the same code `npm test` checks, bundled as `Khata`.
+   * Everything below is presentation.
+   */
+  var K = window.Khata;
+  var SAMPLE = [{"id":"m1","threadId":"t1","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"You have done a UPI txn. Check details!","date":1773300840000,"body":"Dear Customer,\nRs.450.00 has been debited from account **1234 to VPA swiggy@ybl on 12-03-2026.\nYour UPI transaction reference number is 405312345678.\nAvailable balance: Rs.45,678.90\nNot you? Call 18002026161 immediately."},{"id":"m2","threadId":"t2","from":"Google Pay <googlepay-noreply@google.com>","subject":"You paid ₹450.00 to Swiggy","date":1773300900000,"body":"You paid ₹450.00 to Swiggy on 12 March 2026.\nUPI transaction ID: 405312345678\nPaid using HDFC Bank ****1234"},{"id":"m3","threadId":"t3","from":"Swiggy <noreply@swiggy.in>","subject":"Order delivered — your bill","date":1773302880000,"body":"Thanks for ordering. Order total Rs.450.00 paid via UPI on 12 March 2026."},{"id":"m4","threadId":"t4","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"Alert: Update on your HDFC Bank Credit Card","date":1770208920000,"body":"Rs.2499.00 has been spent on your HDFC Bank Credit Card ending 8891 at CROMA STORE on 04-02-2026.\nAuthorisation code: 553120\nAvailable limit: Rs.1,10,000.00"},{"id":"m5","threadId":"t5","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"Alert: Update on your HDFC Bank Credit Card","date":1770209340000,"body":"Rs.2499.00 has been spent on your HDFC Bank Credit Card ending 8891 at CROMA STORE on 04-02-2026.\nAuthorisation code: 553187\nAvailable limit: Rs.1,07,501.00"},{"id":"m6","threadId":"t6","from":"ICICI Bank <alert@icicibank.com>","subject":"Transaction alert on your ICICI Bank Account","date":1767931200000,"body":"Dear Customer, your account XX4455 has been debited with Rs.1,200.00 on 09-01-2026 towards BESCOM ELECTRICITY.\nAvailable balance in your account is Rs.2,45,678.90.\nReference no: ICI9930112"},{"id":"m7","threadId":"t7","from":"Axis Bank <alerts@axisbank.com>","subject":"Your Axis Bank Credit Card has been used","date":1768959900000,"body":"Your Axis Bank Credit Card ending 3321 has been used for Rs.7,850.00 at INDIGO AIRLINES on 21-01-2026.\nTxn id: AX771203"},{"id":"m8","threadId":"t8","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"Salary credited to your account","date":1772325120000,"body":"Rs.1,23,456.78 credited to A/c XX1234 on 01-03-2026 by NEFT.\nInfo: SALARY MAR 2026\nFor queries call 18002026161."},{"id":"m9","threadId":"t9","from":"HDFC Offers <offers@hdfcbank.net>","subject":"Get up to 10% cashback this festive season!","date":1772515800000,"body":"Flat 10% off on all spends above Rs.5,000. Shop now and win up to Rs.2,000 cashback.\nLimited time offer. T&C apply."},{"id":"m10","threadId":"t10","from":"ICICI Bank <alert@icicibank.com>","subject":"Transaction declined","date":1771081860000,"body":"Your transaction of Rs.5,000.00 at AMAZON was declined due to insufficient balance on 14-02-2026."},{"id":"m11","threadId":"t11","from":"SBI <donotreply.sbiatm@alerts.sbi.co.in>","subject":"ATM withdrawal alert","date":1771421700000,"body":"Rs.10,000.00 withdrawn from A/c XX7788 at ATM SBI KORAMANGALA on 18-02-2026.\nTxn no: S91002271"},{"id":"m12","threadId":"t12","from":"American Express <DoNotReply@americanexpress.com>","subject":"Your American Express Card statement is ready","date":1773801000000,"body":"Statement generated for card ending 2007.\nTotal Amount Due: Rs.34,567.00\nMinimum Amount Due: Rs.1,730.00\nPayment Due Date: 05/04/2026"},{"id":"m13","threadId":"t13","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"You have done a UPI txn. Check details!","date":1775104920000,"body":"Rs.34,567.00 has been debited from account **1234 to VPA amex.billdesk@hdfcbank on 02-04-2026.\nYour UPI transaction reference number is 409922114455."},{"id":"m14","threadId":"t14","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"E-mandate registered on your account","date":1775014200000,"body":"An amount of Rs.1,499.00 will be debited on 15/04/2026 towards NETFLIX SUBSCRIPTION.\nA/c XX1234. This is a standing instruction."},{"id":"m15","threadId":"t15","from":"Swiggy <noreply@swiggy.in>","subject":"Refund initiated for your order","date":1771579800000,"body":"A refund of Rs.320.00 has been initiated for your cancelled order and will be credited to your account in 5-7 working days."},{"id":"m16","threadId":"t16","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"Alert: Update on your HDFC Bank Credit Card","date":1736631000000,"body":"Rs.649.00 has been spent on your HDFC Bank Credit Card ending 8891 at NETFLIX COM on 01-01-2025.\nAuthorisation code: NF202501"},{"id":"m17","threadId":"t17","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"Alert: Update on your HDFC Bank Credit Card","date":1739309400000,"body":"Rs.649.00 has been spent on your HDFC Bank Credit Card ending 8891 at NETFLIX COM on 02-02-2025.\nAuthorisation code: NF202502"},{"id":"m18","threadId":"t18","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"Alert: Update on your HDFC Bank Credit Card","date":1741728600000,"body":"Rs.649.00 has been spent on your HDFC Bank Credit Card ending 8891 at NETFLIX COM on 03-03-2025.\nAuthorisation code: NF202503"},{"id":"m19","threadId":"t19","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"Alert: Update on your HDFC Bank Credit Card","date":1744407000000,"body":"Rs.649.00 has been spent on your HDFC Bank Credit Card ending 8891 at NETFLIX COM on 04-04-2025.\nAuthorisation code: NF202504"},{"id":"m20","threadId":"t20","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"Alert: Update on your HDFC Bank Credit Card","date":1746999000000,"body":"Rs.649.00 has been spent on your HDFC Bank Credit Card ending 8891 at NETFLIX COM on 05-05-2025.\nAuthorisation code: NF202505"},{"id":"m21","threadId":"t21","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"Alert: Update on your HDFC Bank Credit Card","date":1749677400000,"body":"Rs.649.00 has been spent on your HDFC Bank Credit Card ending 8891 at NETFLIX COM on 06-06-2025.\nAuthorisation code: NF202506"},{"id":"m22","threadId":"t22","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"Alert: Update on your HDFC Bank Credit Card","date":1752269400000,"body":"Rs.649.00 has been spent on your HDFC Bank Credit Card ending 8891 at NETFLIX COM on 07-07-2025.\nAuthorisation code: NF202507"},{"id":"m23","threadId":"t23","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"Alert: Update on your HDFC Bank Credit Card","date":1754947800000,"body":"Rs.649.00 has been spent on your HDFC Bank Credit Card ending 8891 at NETFLIX COM on 08-08-2025.\nAuthorisation code: NF202508"},{"id":"m24","threadId":"t24","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"Alert: Update on your HDFC Bank Credit Card","date":1757626200000,"body":"Rs.649.00 has been spent on your HDFC Bank Credit Card ending 8891 at NETFLIX COM on 09-09-2025.\nAuthorisation code: NF202509"},{"id":"m25","threadId":"t25","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"Alert: Update on your HDFC Bank Credit Card","date":1762896600000,"body":"Rs.649.00 has been spent on your HDFC Bank Credit Card ending 8891 at NETFLIX COM on 11-11-2025.\nAuthorisation code: NF202511"},{"id":"m26","threadId":"t26","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"Alert: Update on your HDFC Bank Credit Card","date":1765488600000,"body":"Rs.649.00 has been spent on your HDFC Bank Credit Card ending 8891 at NETFLIX COM on 12-12-2025.\nAuthorisation code: NF202512"},{"id":"m27","threadId":"t27","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"Alert: Update on your HDFC Bank Credit Card","date":1768167000000,"body":"Rs.649.00 has been spent on your HDFC Bank Credit Card ending 8891 at NETFLIX COM on 01-01-2026.\nAuthorisation code: NF202601"},{"id":"m28","threadId":"t28","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"Alert: Update on your HDFC Bank Credit Card","date":1770845400000,"body":"Rs.649.00 has been spent on your HDFC Bank Credit Card ending 8891 at NETFLIX COM on 02-02-2026.\nAuthorisation code: NF202602"},{"id":"m29","threadId":"t29","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"Alert: Update on your HDFC Bank Credit Card","date":1773264600000,"body":"Rs.649.00 has been spent on your HDFC Bank Credit Card ending 8891 at NETFLIX COM on 03-03-2026.\nAuthorisation code: NF202603"},{"id":"m30","threadId":"t30","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"Alert: Update on your HDFC Bank Credit Card","date":1775943000000,"body":"Rs.649.00 has been spent on your HDFC Bank Credit Card ending 8891 at NETFLIX COM on 04-04-2026.\nAuthorisation code: NF202604"},{"id":"s1001","threadId":"st1001","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"Salary credited to your account","date":1775003520000,"body":"Rs.1,23,456.78 credited to A/c XX1234 on 01-04-2026 by NEFT.\nInfo: SALARY APR 2026"},{"id":"s1002","threadId":"st1002","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"Transaction alert","date":1775019600000,"body":"Rs.28,000.00 debited from A/c XX1234 on 01-04-2026 by NEFT towards RENT R SHARMA.\nReference no: HDFCN00000107"},{"id":"s1003","threadId":"st1003","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"You have done a UPI txn. Check details!","date":1775230920000,"body":"Dear Customer,\nRs.612.00 has been debited from account **1234 to VPA zomato@hdfcbank on 03-04-2026.\nYour UPI transaction reference number is 410400000114."},{"id":"s1004","threadId":"st1004","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"You have done a UPI txn. Check details!","date":1775274120000,"body":"Dear Customer,\nRs.287.00 has been debited from account **1234 to VPA uber.india@axisbank on 04-04-2026.\nYour UPI transaction reference number is 410400000121."},{"id":"s1005","threadId":"st1005","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"You have done a UPI txn. Check details!","date":1775479320000,"body":"Dear Customer,\nRs.1,146.00 has been debited from account **1234 to VPA blinkit.grofers@hdfcbank on 06-04-2026.\nYour UPI transaction reference number is 410400000128."},{"id":"s1006","threadId":"st1006","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"You have done a UPI txn. Check details!","date":1775659320000,"body":"Dear Customer,\nRs.389.00 has been debited from account **1234 to VPA swiggy@ybl on 08-04-2026.\nYour UPI transaction reference number is 410400000135."},{"id":"s1007","threadId":"st1007","from":"ICICI Bank <alert@icicibank.com>","subject":"Transaction alert on your ICICI Bank Account","date":1775705700000,"body":"Dear Customer, your account XX4455 has been debited with Rs.1,380.00 on 09-04-2026 towards BESCOM ELECTRICITY.\nReference no: ICI0000142"},{"id":"s1008","threadId":"st1008","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"You have done a UPI txn. Check details!","date":1775839320000,"body":"Dear Customer,\nRs.342.00 has been debited from account **1234 to VPA uber.india@axisbank on 10-04-2026.\nYour UPI transaction reference number is 410400000149."},{"id":"s1009","threadId":"st1009","from":"ICICI Bank <alert@icicibank.com>","subject":"Transaction alert on your ICICI Bank Account","date":1775878500000,"body":"Dear Customer, your account XX4455 has been debited with Rs.599.00 on 11-04-2026 towards AIRTEL PREPAID.\nReference no: ICI0000156"},{"id":"s1010","threadId":"st1010","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"Money credited to your account","date":1775991000000,"body":"Rs.1,299.00 credited to A/c XX1234 on 12-04-2026.\nInfo: REFUND FROM AMAZON"},{"id":"s1011","threadId":"st1011","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"You have done a UPI txn. Check details!","date":1776058920000,"body":"Dear Customer,\nRs.2,340.00 has been debited from account **1234 to VPA bigbasket@icici on 13-04-2026.\nYour UPI transaction reference number is 410400000163."},{"id":"s1012","threadId":"st1012","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"Alert: Update on your HDFC Bank Credit Card","date":1776190200000,"body":"Rs.3,499.00 has been spent on your HDFC Bank Credit Card ending 8891 at AMAZON PAY INDIA on 14-04-2026.\nAuthorisation code: 000170"},{"id":"s1013","threadId":"st1013","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"You have done a UPI txn. Check details!","date":1776220920000,"body":"Dear Customer,\nRs.96.00 has been debited from account **1234 to VPA rapido@ybl on 15-04-2026.\nYour UPI transaction reference number is 410400000177."},{"id":"s1014","threadId":"st1014","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"Alert: Update on your HDFC Bank Credit Card","date":1776348600000,"body":"Rs.842.00 has been spent on your HDFC Bank Credit Card ending 8891 at APOLLO PHARMACY on 16-04-2026.\nAuthorisation code: 000184"},{"id":"s1015","threadId":"st1015","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"Alert: Update on your HDFC Bank Credit Card","date":1776402600000,"body":"Rs.465.00 has been spent on your HDFC Bank Credit Card ending 8891 at STARBUCKS COFFEE on 17-04-2026.\nAuthorisation code: 000191"},{"id":"s1016","threadId":"st1016","from":"ICICI Bank <alert@icicibank.com>","subject":"Late payment charges on your Credit Card","date":1776475800000,"body":"Late payment charges of Rs.750.00 have been debited to your ICICI Bank Credit Card XX4455 on 18-04-2026."},{"id":"s1017","threadId":"st1017","from":"HDFC Bank InstaAlerts <alerts@hdfcbank.net>","subject":"You have done a UPI txn. Check details!","date":1776598920000,"body":"Dear Customer,\nRs.523.00 has been debited from account **1234 to VPA zeptonow@ybl on 19-04-2026.\nYour UPI transaction reference number is 410400000198."},{"id":"s1018","threadId":"st1018","from":"ICICI Bank <alert@icicibank.com>","subject":"Transaction alert for your ICICI Bank Credit Card","date":1762304400000,"body":"Your ICICI Bank Credit Card XX4455 has been used for a transaction of INR 119.00 at SPOTIFY on 05-11-2025."},{"id":"s1019","threadId":"st1019","from":"ICICI Bank <alert@icicibank.com>","subject":"Transaction alert for your ICICI Bank Credit Card","date":1764896400000,"body":"Your ICICI Bank Credit Card XX4455 has been used for a transaction of INR 119.00 at SPOTIFY on 05-12-2025."},{"id":"s1020","threadId":"st1020","from":"ICICI Bank <alert@icicibank.com>","subject":"Transaction alert for your ICICI Bank Credit Card","date":1767574800000,"body":"Your ICICI Bank Credit Card XX4455 has been used for a transaction of INR 119.00 at SPOTIFY on 05-01-2026."},{"id":"s1021","threadId":"st1021","from":"ICICI Bank <alert@icicibank.com>","subject":"Transaction alert for your ICICI Bank Credit Card","date":1770253200000,"body":"Your ICICI Bank Credit Card XX4455 has been used for a transaction of INR 119.00 at SPOTIFY on 05-02-2026."},{"id":"s1022","threadId":"st1022","from":"ICICI Bank <alert@icicibank.com>","subject":"Transaction alert for your ICICI Bank Credit Card","date":1772672400000,"body":"Your ICICI Bank Credit Card XX4455 has been used for a transaction of INR 119.00 at SPOTIFY on 05-03-2026."},{"id":"s1023","threadId":"st1023","from":"ICICI Bank <alert@icicibank.com>","subject":"Transaction alert for your ICICI Bank Credit Card","date":1775350800000,"body":"Your ICICI Bank Credit Card XX4455 has been used for a transaction of INR 119.00 at SPOTIFY on 05-04-2026."}];
+  var SAMPLE_NOW = 1776666600000;
+
+  // Email-derived text is untrusted: every string that came out of a mail goes
+  // through this before it touches innerHTML.
+  function esc(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) { /* not remembered; fine */ } },
+  };
+
+  var TABS = ['now', 'ledger', 'watch', 'ask'];
+  var saved = store.get('khata.tab');
+  var state = {
+    tab: TABS.indexOf(saved) >= 0 ? saved : 'now',
+    now: SAMPLE_NOW,
+    books: null,
+    filter: null,
+    query: '',
+    question: '',
+    answer: null,
+  };
+
+  /* ------------------------------ money ------------------------------ */
+
+  function amount(paise, dir, big) {
+    var text = K.formatPaise(Math.abs(paise));
+    var dot = text.lastIndexOf('.');
+    var sign = paise < 0 ? '−' : '';
+    return '<span class="amt' + (dir === 'credit' ? ' cr' : '') + (big ? ' big' : '') + '">' +
+      '<span class="r">' + sign + esc(text.slice(0, dot)) + '</span>' +
+      '<span class="p">' + esc(text.slice(dot + 1)) + '</span></span>';
+  }
+  // Whole rupees for prose, where paise are noise.
+  function inr(paise) { return esc(K.formatPaise(Math.round(paise / 100) * 100, { round: true })); }
+  // Ledger lines drop the symbol; the column head already says what they are.
+  function bare(paise) { return inr(paise).replace('₹', ''); }
+  function tag(dir) { return '<span class="drcr' + (dir === 'credit' ? ' cr' : '') + '">' + (dir === 'credit' ? 'Cr' : 'Dr') + '</span>'; }
+  function acct(a) { return a ? a.issuer + (a.tail ? ' ••' + a.tail : '') : 'Account unknown'; }
+  /*
+   * What to call a transaction when the mail named no counterparty. A bank
+   * charge has no merchant by nature, and "Unnamed" reads like a parse that
+   * failed rather than a fee the bank took.
+   */
+  function name(t) {
+    if (t.merchant) return t.merchant;
+    var bank = t.account ? t.account.issuer : 'Bank';
+    if (t.category === 'Fees') return 'Charge by ' + bank;
+    return bank + (t.direction === 'credit' ? ' credit' : ' debit');
+  }
+  function stamp(text, tone) { return '<span class="stamp' + (tone ? ' ' + tone : '') + '">' + esc(text) + '</span>'; }
+  function daysTo(at) {
+    var d = K.dayGap(state.now, at);
+    return d <= 0 ? 'today' : d === 1 ? 'tomorrow' : 'in ' + d + 'd';
+  }
+
+  var METHOD = { upi: 'UPI', card: 'Card', netbanking: 'Net banking', ach: 'Auto-debit', atm: 'ATM', cash: 'Cash', unknown: 'Method unknown' };
+  var KIND = {
+    'bank-alert': 'bank alert', 'upi-receipt': 'UPI receipt', 'merchant-receipt': 'shop receipt',
+    statement: 'statement', mandate: 'auto-debit notice', bill: 'bill', 'refund-promise': 'refund notice',
+    'reversal-promise': 'reversal notice', failure: 'failure notice', unknown: 'email',
+  };
+
+  /* ---------------------------- building blocks ---------------------------- */
+
+  function section(title, right, body) {
+    return '<section class="sec"><div class="sec-h"><span>' + esc(title) + '</span>' +
+      (right ? '<span>' + right + '</span>' : '') + '</div>' + body + '</section>';
+  }
+
+  function item(stampHtml, title, sub, right, attrs) {
+    var tagName = attrs ? 'button' : 'div';
+    return '<' + tagName + ' class="item"' + (attrs ? ' ' + attrs : '') + '>' +
+      '<div>' + stampHtml + '<span class="nm">' + esc(title) + '</span><span class="sub">' + esc(sub) + '</span></div>' +
+      '<div class="val">' + (right || '') + '</div></' + tagName + '>';
+  }
+
+  function line(label, paise) {
+    return '<div class="line"><span>' + esc(label) + '</span><span class="n">' + bare(paise) + '</span></div>';
+  }
+
+  function entry(t, showDate) {
+    var parts = K.formatDay(t.at).split(' ');
+    var unsure = t.confidence < K.REVIEW_BELOW;
+    var extra = t.sources.length > 1 ? ' · ' + t.sources.length + ' alerts, counted once' : '';
+    return '<button class="entry' + (unsure ? ' unsure' : '') + '" data-act="open" data-id="' + esc(t.id) + '">' +
+      '<span class="d">' + (showDate ? '<b>' + esc(parts[0]) + '</b>' + esc(parts[1]) : '') + '</span>' +
+      '<span><span class="nm">' + esc(name(t)) + '</span>' +
+      '<span class="sub">' + esc(t.category + ' · ' + acct(t.account) + ' · ' + K.formatTime(t.at) + extra) + '</span></span>' +
+      '<span class="val">' + amount(t.amountPaise, t.direction) + tag(t.direction) + '</span></button>';
+  }
+
+  function blank(title, detail) {
+    return '<div class="blank"><div class="nm">' + esc(title) + '</div><span class="sub">' + esc(detail) + '</span></div>';
+  }
+
+  function groupSum(list, key) {
+    var sums = new Map();
+    list.forEach(function (t) { var k = key(t) || 'Other'; sums.set(k, (sums.get(k) || 0) + t.amountPaise); });
+    return Array.from(sums, function (e) { return { key: e[0], sum: e[1] }; }).sort(function (a, b) { return b.sum - a.sum; });
+  }
+
+  /* --------------------------------- now --------------------------------- */
+
+  function viewNow() {
+    var b = state.books;
+    if (!b.txns.length) return blank('Nothing read yet', 'No bank alerts were found in the period read.');
+
+    // This month, unless it is empty — then the latest month that is not, labelled as such.
+    var current = K.istMonthKey(state.now);
+    var all = K.months(b.txns);
+    var isCurrent = K.summariseMonth(b.txns, current).count > 0 || all.length === 0;
+    var month = isCurrent ? current : all[0];
+    var s = K.summariseMonth(b.txns, month);
+    var pace = K.pace(b.txns, state.now);
+    var cov = K.coverage(b.txns, month);
+    var credits = groupSum(b.txns.filter(function (t) {
+      return K.istMonthKey(t.at) === month && t.direction === 'credit' && t.confidence >= K.REVIEW_BELOW;
+    }), function (t) { return t.category; });
+
+    var change = pace.lastMonthPaise > 0
+      ? Math.round(((pace.projectedPaise - pace.lastMonthPaise) / pace.lastMonthPaise) * 100)
+      : null;
+
+    var paceText = isCurrent
+      ? inr(pace.perDayPaise) + ' a day for ' + pace.daysElapsed + ' days — on course for <b>' + inr(pace.projectedPaise) + '</b>' +
+        (change !== null ? ', <span class="' + (change > 0 ? 'up' : 'down') + '">' + (change > 0 ? '+' : '') + change + '% on last month</span>' : '') + '.'
+      : 'Nothing has come in for ' + esc(K.formatMonth(current)) + ' yet.';
+    if (s.unsure) {
+      paceText += ' <span class="unsure">' + s.unsure + ' unclear ' + (s.unsure === 1 ? 'alert is' : 'alerts are') + ' left out of these figures.</span>';
+    }
+
+    var missed = b.obligations.filter(function (o) { return o.status === 'missed'; });
+    var pending = b.obligations.filter(function (o) { return o.status === 'pending'; });
+    var lost = b.leaks.filter(function (l) { return l.kind !== 'zombie'; }).slice(0, 4);
+
+    var attention = missed.map(function (o) {
+      return item(stamp('Overdue'), o.label,
+        o.kind === 'mandate' ? 'Auto-debit due ' + K.formatDay(o.dueAt) + ' never went through' : 'Due ' + K.formatDay(o.dueAt) + ' — no payment found',
+        o.amountPaise ? amount(o.amountPaise) : '');
+    }).concat(b.skipped.map(function (x) {
+      return item(stamp('Skipped', 'warn'), x.merchant,
+        'Usually charges ' + x.cadence + '; nothing around ' + K.formatDay(x.expectedAt), amount(x.amountPaise));
+    })).join('');
+
+    return '' +
+      '<section class="sec">' +
+        '<div class="eyebrow">' + (isCurrent ? 'The month so far' : 'Latest month with entries') + '</div>' +
+        '<h2 class="month">' + esc(K.formatMonth(month)) + '</h2>' +
+        '<div class="t">' +
+          '<div class="col dr"><div class="hd"><span>Dr</span><span class="hint">went out</span></div>' +
+            '<div class="tot">' + amount(s.outPaise, 'debit', true) + '</div>' +
+            '<div>' + (s.byCategory.slice(0, 6).map(function (c) { return line(c.category, c.amountPaise); }).join('') || '<div class="line none">Nothing out yet</div>') + '</div></div>' +
+          '<div class="col cr"><div class="hd"><span>Cr</span><span class="hint">came in</span></div>' +
+            '<div class="tot">' + amount(s.inPaise, 'credit', true) + '</div>' +
+            '<div>' + (credits.slice(0, 6).map(function (c) { return line(c.key, c.sum); }).join('') || '<div class="line none">Nothing in yet</div>') + '</div></div>' +
+          '<div class="bal"><span>Balance c/d<small>what’s left over</small></span>' + amount(s.netPaise, s.netPaise >= 0 ? 'credit' : 'debit') + '</div>' +
+        '</div>' +
+        '<p class="pace">' + paceText + '</p>' +
+      '</section>' +
+      (attention ? section('Needs attention', '', attention) : '') +
+      (pending.length ? section('Coming up', '', pending.slice(0, 4).map(function (o) {
+        return item(stamp('Due ' + daysTo(o.dueAt), 'quiet'), o.label, K.formatDay(o.dueAt),
+          o.amountPaise ? amount(o.amountPaise) : '<span class="tbc">amount to follow</span>');
+      }).join('')) : '') +
+      (lost.length ? section('Money you may have lost', amount(b.recoverablePaise), lost.map(function (l) {
+        return item('', l.title, l.detail, l.amountPaise ? amount(l.amountPaise) : '',
+          l.txnIds.length ? 'data-act="leak" data-id="' + esc(l.id) + '"' : '');
+      }).join('')) : '') +
+      section('How complete this is', '',
+        '<p class="cov">' + (cov.accounts.length
+          ? 'In ' + esc(K.formatMonth(month)) + ', heard from <b>' + cov.accounts.map(esc).join(', ') + '</b> — ' + cov.txnCount + ' entries.'
+          : 'No account could be identified this month.') +
+        ' Khata only sees accounts that email you; a card whose alerts go to SMS won’t appear here.</p>');
+  }
+
+  /* ------------------------------- ledger -------------------------------- */
+
+  function viewLedger() {
+    return '' +
+      '<div class="find">' +
+        '<input id="q" type="search" value="' + esc(state.query) + '" placeholder="Find a shop, category or account" autocomplete="off" enterkeyhint="search" aria-label="Find in the ledger">' +
+        (state.filter ? '<button class="pill" data-act="unfilter">' + esc(state.filter.title) + ' <span aria-hidden="true">×</span><span class="sr"> — show everything</span></button>' : '') +
+      '</div>' +
+      '<div id="rows" class="ruled">' + ledgerRows() + '</div>';
+  }
+
+  function ledgerRows() {
+    var list = state.books.txns;
+    var narrowed = Boolean(state.filter || state.query.trim());
+    if (state.filter) {
+      var ids = new Set(state.filter.ids);
+      list = list.filter(function (t) { return ids.has(t.id); });
+    }
+    var q = state.query.trim().toLowerCase();
+    if (q) {
+      list = list.filter(function (t) {
+        return [t.merchant, t.category, acct(t.account)].some(function (v) { return (v || '').toLowerCase().indexOf(q) >= 0; });
+      });
+    }
+    if (!list.length) return '<p class="empty">Nothing matches “' + esc(state.query) + '”.</p>';
+
+    var out = '', lastDay = '', lastMonth = '';
+    list.forEach(function (t) {
+      var month = K.istMonthKey(t.at);
+      if (month !== lastMonth) {
+        lastMonth = month;
+        lastDay = '';
+        // Month totals only when the list is whole; on a filtered page they would describe rows you cannot see.
+        var totals = '';
+        if (!narrowed) {
+          var ms = K.summariseMonth(state.books.txns, month);
+          totals = 'Dr ' + inr(ms.outPaise) + ' · Cr ' + inr(ms.inPaise);
+        }
+        out += '<div class="folio"><span>' + esc(K.formatMonth(month)) + '</span><span>' + totals + '</span></div>';
+      }
+      var day = K.istDayKey(t.at);
+      out += entry(t, day !== lastDay);
+      lastDay = day;
+    });
+    return out;
+  }
+
+  /* -------------------------------- watch -------------------------------- */
+
+  var PER_YEAR = { weekly: 52, monthly: 12, quarterly: 4, yearly: 1 };
+
+  function viewWatch() {
+    var b = state.books;
+    var live = b.recurring.filter(function (r) { return r.active; });
+    var gone = b.recurring.filter(function (r) { return !r.active; });
+    var due = b.obligations.filter(function (o) { return o.status === 'pending'; }).sort(function (a, z) { return a.dueAt - z.dueAt; });
+    if (!b.recurring.length && !due.length) {
+      return blank('Nothing repeating yet', 'A charge has to turn up three times before Khata calls it a pattern.');
+    }
+    var annual = live.reduce(function (sum, r) { return sum + r.amountPaise * PER_YEAR[r.cadence]; }, 0);
+
+    return '' +
+      (live.length ? '<section class="sec"><div class="eyebrow">Spoken for every year</div>' +
+        '<div class="figure">' + amount(annual, 'debit', true) + '</div>' +
+        '<p class="pace">' + live.length + ' repeating ' + (live.length === 1 ? 'charge' : 'charges') + ' — about <b>' + inr(annual / 12) + '</b> a month before you have bought anything.</p></section>' : '') +
+      (due.length ? section('Due soon', '', due.map(function (o) {
+        var soon = K.dayGap(state.now, o.dueAt) <= 3;
+        return item(stamp('Due ' + daysTo(o.dueAt), soon ? 'warn' : 'quiet'), o.label,
+          (o.kind === 'bill' ? 'Bill' : o.kind === 'emi' ? 'EMI' : 'Auto-debit') + ' · ' + K.formatDay(o.dueAt),
+          o.amountPaise ? amount(o.amountPaise) : '');
+      }).join('')) : '') +
+      (live.length ? section('Repeating', '', live.map(function (r) {
+        return item(r.missing.length ? stamp('Skipped ' + r.missing.length, 'warn') : '', r.merchant,
+          r.cadence + ' · ' + r.occurrences.length + ' times · next about ' + K.formatDay(r.nextExpectedAt),
+          amount(r.amountPaise) + '<span class="per">' + inr(r.amountPaise * PER_YEAR[r.cadence]) + ' a year</span>');
+      }).join('')) : '') +
+      (gone.length ? section('Stopped', '', gone.map(function (r) {
+        return item('', r.merchant, 'Last charged ' + K.formatDay(r.occurrences[r.occurrences.length - 1]) + ' · was ' + r.cadence, amount(r.amountPaise));
+      }).join('')) : '');
+  }
+
+  /* --------------------------------- ask --------------------------------- */
+
+  function viewAsk() {
+    return '<section class="sec ask">' +
+      '<form id="askf"><label class="eyebrow" for="aq">Ask your ledger</label>' +
+      '<input id="aq" value="' + esc(state.question) + '" placeholder="How much on food last month?" autocomplete="off" enterkeyhint="go"></form>' +
+      '<div id="answer">' + answerHtml() + '</div></section>';
+  }
+
+  function answerHtml() {
+    var a = state.answer;
+    if (!a) {
+      return '<div class="tries">' + K.EXAMPLES.map(function (e) {
+        return '<button class="try" data-act="try" data-q="' + esc(e) + '">' + esc(e) + '</button>';
+      }).join('') + '</div><p class="small">Worked out on this device from the ledger. Nothing is sent anywhere.</p>';
+    }
+    var rows = a.txns.slice(0, 20).map(function (t) { return entry(t, true); }).join('');
+    return '<div class="reply' + (a.understood ? '' : ' lost') + '"><div class="figure">' + esc(a.headline) + '</div>' +
+      (a.detail ? '<p class="pace">' + esc(a.detail) + '</p>' : '') + '</div>' +
+      (rows ? '<div class="ruled">' + rows + '</div>' : '') +
+      '<button class="again" data-act="reset">Ask something else</button>';
+  }
+
+  function runAsk(question) {
+    state.question = question;
+    state.answer = question.trim() ? K.ask(question, state.books.txns, state.now) : null;
+    render();
+  }
+
+  /* -------------------------------- sheet -------------------------------- */
+
+  var opener = null;
+
+  function openSheet(id) {
+    var t = state.books.txns.find(function (x) { return x.id === id; });
+    if (!t) return;
+    opener = document.activeElement;
+    var root = document.getElementById('sheet-root');
+    root.innerHTML = '<div class="scrim" data-act="close"></div>' +
+      '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sh-t">' +
+        '<div class="grip"></div>' +
+        '<div class="sh-amt">' + amount(t.amountPaise, t.direction, true) + tag(t.direction) + '</div>' +
+        '<h2 class="sh-nm" id="sh-t">' + esc(name(t)) + '</h2>' +
+        '<span class="sub">' + esc(K.formatDayLong(t.at) + ', ' + K.formatTime(t.at) + ' · ' + acct(t.account) + ' · ' + METHOD[t.method]) + '</span>' +
+        '<dl class="facts">' +
+          '<div><dt>Category</dt><dd>' + esc(t.category) + '</dd></div>' +
+          '<div><dt>Reference</dt><dd class="mono">' + esc(t.reference || '—') + '</dd></div>' +
+          '<div><dt>Confidence</dt><dd>' + Math.round(t.confidence * 100) + '%' + (t.confidence < K.REVIEW_BELOW ? ', left out of totals' : '') + '</dd></div>' +
+        '</dl>' +
+        '<div class="sec-h"><span>Where this came from</span></div>' +
+        t.sources.map(function (s) {
+          return '<div class="src"><span class="nm">' + esc(s.subject || '(no subject)') + '</span><span class="sub">' + esc(s.from + ' · ' + (KIND[s.kind] || 'email')) + '</span></div>';
+        }).join('') +
+        '<p class="small">' + (t.sources.length > 1 ? t.sources.length + ' emails described this one payment, so it is counted once.' : 'One email reported this payment.') + '</p>' +
+        '<button class="done" data-act="close">Done</button>' +
+      '</div>';
+    root.querySelector('.done').focus();
+  }
+
+  function closeSheet() {
+    var root = document.getElementById('sheet-root');
+    if (!root.innerHTML) return;
+    root.innerHTML = '';
+    if (opener && document.contains(opener)) opener.focus();
+  }
+
+  /* -------------------------------- render ------------------------------- */
+
+  var VIEWS = { now: viewNow, ledger: viewLedger, watch: viewWatch, ask: viewAsk };
+
+  function render() {
+    document.getElementById('view').innerHTML = VIEWS[state.tab]();
+    document.querySelectorAll('.tabs [data-tab]').forEach(function (b) {
+      b.setAttribute('aria-current', b.dataset.tab === state.tab ? 'page' : 'false');
+    });
+  }
+
+  function go(tab) {
+    state.tab = tab;
+    store.set('khata.tab', tab);
+    if (tab !== 'ledger') state.filter = null;
+    render();
+    window.scrollTo(0, 0);
+  }
+
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-act]');
+    if (!el) return;
+    var act = el.dataset.act;
+    if (act === 'tab') go(el.dataset.tab);
+    else if (act === 'open') openSheet(el.dataset.id);
+    else if (act === 'close') closeSheet();
+    else if (act === 'unfilter') { state.filter = null; render(); }
+    else if (act === 'try') runAsk(el.dataset.q);
+    else if (act === 'reset') { state.answer = null; state.question = ''; render(); document.getElementById('aq').focus(); }
+    else if (act === 'leak') {
+      var leak = state.books.leaks.find(function (l) { return l.id === el.dataset.id; });
+      if (!leak) return;
+      state.filter = { ids: leak.txnIds, title: leak.title };
+      state.query = '';
+      go('ledger');
+      state.filter = { ids: leak.txnIds, title: leak.title };
+      render();
+    }
+  });
+
+  document.addEventListener('input', function (e) {
+    if (e.target.id !== 'q') return;
+    state.query = e.target.value;
+    document.getElementById('rows').innerHTML = ledgerRows();
+  });
+
+  document.addEventListener('submit', function (e) {
+    if (e.target.id !== 'askf') return;
+    e.preventDefault();
+    runAsk(document.getElementById('aq').value);
+  });
+
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSheet(); });
+
+  /* --------------------------------- boot -------------------------------- */
+
+  state.books = K.build(SAMPLE, { now: state.now });
+  var accounts = new Set(state.books.txns.filter(function (t) { return t.account; }).map(function (t) { return acct(t.account); }));
+  document.getElementById('status').textContent =
+    'Sample ledger · ' + SAMPLE.length + ' bank emails read · ' + accounts.size + ' accounts';
+  document.getElementById('slip').innerHTML =
+    '<b>These are made-up entries</b>, dated as if today were ' + esc(K.formatDayLong(state.now)) +
+    ', so you can see what Khata does. None of it is your money. Once Gmail is connected, this page reads your own bank alerts instead.';
+  render();
+})();
+</script>

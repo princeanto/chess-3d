@@ -2,7 +2,7 @@
   "name": "khata",
   "version": "1.0.0",
   "private": true,
-  "description": "Khata — a personal accountant that reads your bank mail and reconciles it into a ledger.",
+  "description": "Khata \u2014 a personal accountant that reads your bank mail and reconciles it into a ledger.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "npm run typecheck && npm run test:parse && npm run test:ledger",
     "test:parse": "tsx scripts/parse-test.ts",
-    "test:ledger": "tsx scripts/ledger-test.ts"
+    "test:ledger": "tsx scripts/ledger-test.ts",
+    "artifact": "tsx scripts/build-artifact.ts"
   },
   "dependencies": {
     "next": "14.2.35",

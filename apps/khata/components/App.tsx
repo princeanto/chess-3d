@@ -13,8 +13,9 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { build, gmailQuery, type Books } from '@/lib/ledger/build';
-import type { Message, Txn } from '@/lib/ledger/types';
+import { buildFromParsed, gmailQuery, safeParse, type Books } from '@/lib/ledger/build';
+import type { Txn } from '@/lib/ledger/types';
+import { PARSER_VERSION, type Parsed } from '@/lib/parse/parse';
 import { fetchAll, BridgeError, type Bridge } from '@/lib/bridge/client';
 import {
   DEFAULT_SETTINGS,
@@ -99,7 +100,7 @@ export default function App() {
 
   const books: Books = useMemo(
     () =>
-      build(vault?.messages ?? [], {
+      buildFromParsed(Object.values(vault?.parsed ?? {}), {
         overrides: vault?.overrides ?? {},
         edits: (vault?.edits ?? {}) as Record<string, Txn['edited']>,
         now,
@@ -135,20 +136,28 @@ export default function App() {
           controller.signal,
         );
 
-        const byId = new Map<string, Message>();
-        for (const m of [...current.messages, ...fetched]) byId.set(m.id, m);
-        const messages = [...byId.values()].sort((a, b) => b.date - a.date);
+        /*
+         * Parsed on arrival, and the body dropped right here. The cache keeps
+         * what each email meant, never what it said.
+         */
+        const parsed: Record<string, Parsed> = { ...current.parsed };
+        let latestAt = current.latestAt;
+        for (const m of fetched) {
+          parsed[m.id] = safeParse(m);
+          latestAt = Math.max(latestAt, m.date || 0);
+        }
 
         await persist({
           ...current,
-          messages,
-          latestAt: messages.length ? messages[0].date : 0,
+          parsed,
+          parserVersion: PARSER_VERSION,
+          latestAt,
           savedAt: Date.now(),
         });
         const next = { ...settings, lastSyncAt: Date.now() };
         setSettings(next);
         await saveSettings(next);
-        setSync({ busy: false, fetched: messages.length });
+        setSync({ busy: false, fetched: Object.keys(parsed).length });
       } catch (e) {
         const message =
           e instanceof BridgeError
@@ -164,14 +173,30 @@ export default function App() {
     async (secret: string, mode: 'create' | 'unlock') => {
       setBusy(true);
       try {
-        const empty: Vault = { messages: [], latestAt: 0, overrides: {}, edits: {}, savedAt: 0 };
+        const empty: Vault = {
+          parsed: {},
+          parserVersion: PARSER_VERSION,
+          latestAt: 0,
+          overrides: {},
+          edits: {},
+          savedAt: 0,
+        };
         const loaded = mode === 'unlock' ? await loadVault(secret) : null;
         passphrase.current = secret;
-        const opened = loaded ?? empty;
+        /*
+         * A cache from an older parser — including the first release, which
+         * stored whole message bodies — is rebuilt from scratch rather than
+         * spread into the new one, so the bodies are gone on the next save.
+         * Hand corrections survive; they are keyed to transactions, not mail.
+         */
+        const opened: Vault =
+          loaded && loaded.parserVersion === PARSER_VERSION
+            ? loaded
+            : { ...empty, overrides: loaded?.overrides ?? {}, edits: loaded?.edits ?? {} };
         setVault(opened);
         setStage({ name: 'ready' });
         // A first unlock with nothing cached has nothing to show, so go and get it.
-        if (opened.messages.length === 0) void runSync(opened, settings.scanDays);
+        if (Object.keys(opened.parsed).length === 0) void runSync(opened, settings.scanDays);
       } catch (e) {
         passphrase.current = null;
         setStage({
