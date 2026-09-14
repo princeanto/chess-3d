@@ -1,0 +1,280 @@
+/*
+ * Loud but tidy: warm paper, ink outlines, hard offset shadows so everything
+ * sits on the page like a sticker, and one electric blue for anything you can
+ * press. Green and red are still reserved — they only ever appear at the
+ * reveal, because on this page they mean the answer.
+ */
+:root {
+  --bg: #fffcf4;
+  --surface: #ffffff;
+  --raise: #f4efe2;
+  --ink: #141310;
+  --ink-2: #4c4940;
+  --ink-3: #7d7969;
+  --line: #141310;
+  --accent: #2b4bff;
+  --on-accent: #ffffff;
+  --true: #0f9d5c;
+  --true-wash: #e4f7ed;
+  --fake: #ff4d3d;
+  --fake-wash: #ffe9e6;
+  --hard: 4px 4px 0 var(--line);
+  --hard-sm: 3px 3px 0 var(--line);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131316;
+    --surface: #1d1d21;
+    --raise: #27272d;
+    --ink: #f7f4eb;
+    --ink-2: #c4c0b5;
+    --ink-3: #8d8980;
+    --line: #f7f4eb;
+    --accent: #8ea3ff;
+    --on-accent: #131316;
+    --true: #3ddc97;
+    --true-wash: #123024;
+    --fake: #ff7d6d;
+    --fake-wash: #301a16;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131316;
+  --surface: #1d1d21;
+  --raise: #27272d;
+  --ink: #f7f4eb;
+  --ink-2: #c4c0b5;
+  --ink-3: #8d8980;
+  --line: #f7f4eb;
+  --accent: #8ea3ff;
+  --on-accent: #131316;
+  --true: #3ddc97;
+  --true-wash: #123024;
+  --fake: #ff7d6d;
+  --fake-wash: #301a16;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 16px/1.5 var(--font-body), system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+
+.wrap {
+  max-width: 540px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: 0 18px calc(28px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+}
+#view { width: 100%; margin-block: auto; }
+
+.rail { position: fixed; inset: 0 0 auto; height: 4px; background: transparent; z-index: 10; }
+.rail span { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.4s cubic-bezier(0.2, 0.7, 0.3, 1); }
+
+/* -------------------------------- header -------------------------------- */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: calc(20px + env(safe-area-inset-top)) 0 16px; }
+/* A display rule beats the browser's own [hidden], so say it here or the
+   header sits above the title on the start and game-over screens. */
+.top[hidden] { display: none; }
+.mark { margin: 0; font-family: var(--font-display), var(--font-body), sans-serif; font-size: 14px; font-weight: 700; letter-spacing: -0.02em; }
+.state { display: flex; align-items: center; gap: 14px; }
+.pips { display: flex; gap: 7px; }
+/* A spent life goes hollow, not red: red means the answer here. */
+.pip { width: 12px; height: 12px; border: 2px solid var(--line); border-radius: 50%; background: var(--ink); transition: background 0.25s ease, transform 0.25s ease; }
+.pip.lost { background: transparent; transform: scale(0.78) rotate(8deg); }
+.score { min-width: 2ch; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+
+/* --------------------------------- start -------------------------------- */
+.title {
+  margin: 0;
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  font-weight: 700;
+  font-size: clamp(34px, 10.5vw, 52px);
+  line-height: 1.02;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+.title em { font-style: normal; color: var(--accent); }
+.lede { margin: 18px 0 0; font-size: 17px; line-height: 1.5; color: var(--ink-2); max-width: 34ch; }
+.lede b { font-weight: 700; color: var(--ink); }
+.go, .next {
+  width: 100%;
+  margin-top: 24px;
+  padding: 16px;
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--on-accent);
+  background: var(--accent);
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--hard);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.go:active, .next:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--line); }
+.record { display: flex; gap: 12px; margin: 24px 0 0; }
+.record div { flex: 1; padding: 14px; background: var(--surface); border: 2px solid var(--line); border-radius: 14px; box-shadow: var(--hard-sm); }
+.record dt { font-size: 12px; font-weight: 600; color: var(--ink-3); }
+.record dd { margin: 4px 0 0; font-family: var(--font-display), var(--font-body), sans-serif; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.how { margin: 22px 0 0; font-size: 14px; line-height: 1.6; color: var(--ink-3); }
+.credit { margin: 16px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--ink-3); }
+
+/* --------------------------------- round -------------------------------- */
+.plate {
+  height: 128px;
+  margin-bottom: 16px;
+  background: var(--raise) center / cover no-repeat;
+  border: 2px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--hard);
+  filter: grayscale(1) contrast(1.05);
+  transition: filter 0.65s ease;
+}
+.plate.lit { filter: none; }
+.theme {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--raise);
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  transform: rotate(-1.2deg);
+}
+.ask { margin: 0 0 16px; font-size: 16px; font-weight: 600; color: var(--ink-2); }
+.cards { display: flex; flex-direction: column; gap: 12px; }
+.card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  width: 100%;
+  padding: 16px;
+  text-align: left;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--hard);
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.2s ease, opacity 0.2s ease;
+  animation: deal 0.36s cubic-bezier(0.2, 0.8, 0.3, 1.1) both;
+}
+/* Set down by hand rather than printed. */
+.card:nth-child(odd) { transform: rotate(-0.4deg); }
+.card:nth-child(even) { transform: rotate(0.45deg); }
+.card:nth-child(1) { animation-delay: 0.02s; }
+.card:nth-child(2) { animation-delay: 0.08s; }
+.card:nth-child(3) { animation-delay: 0.14s; }
+.card:nth-child(4) { animation-delay: 0.2s; }
+.card:active:not(:disabled) { transform: translate(3px, 3px) rotate(0deg); box-shadow: 1px 1px 0 var(--line); }
+.key {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--raise);
+  border: 2px solid var(--line);
+  border-radius: 9px;
+}
+.claim { font-size: 17.5px; font-weight: 500; line-height: 1.35; letter-spacing: -0.012em; color: var(--ink); }
+.verdict {
+  flex: none;
+  align-self: center;
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  opacity: 0;
+}
+/* Colour, at last. */
+.card.is-true { background: var(--true-wash); }
+.card.is-true .verdict { color: var(--true); opacity: 1; }
+.card.is-fake { background: var(--fake-wash); }
+.card.is-fake .verdict { color: var(--fake); opacity: 1; }
+.card.picked .key { color: var(--on-accent); background: var(--accent); }
+.card.wrong { animation: shake 0.44s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+.card.gone { opacity: 0.4; }
+.card:disabled { cursor: default; }
+.mine { display: block; margin-top: 5px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-3); }
+
+/* -------------------------------- reveal -------------------------------- */
+.outcome { margin-top: 22px; animation: lift 0.3s ease both; }
+.headline {
+  margin: 0;
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  font-size: clamp(19px, 5.4vw, 23px);
+  font-weight: 700;
+  line-height: 1.22;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.headline.good { color: var(--true); }
+.headline.bad { color: var(--fake); }
+.gain { display: inline-block; margin-left: 8px; font-family: var(--font-body), sans-serif; font-size: 16px; font-weight: 600; letter-spacing: 0; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.why {
+  margin: 14px 0 0;
+  padding: 16px;
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  background: var(--raise);
+  border: 2px solid var(--line);
+  border-radius: 16px;
+}
+.why b { font-weight: 700; color: var(--ink); }
+.hint {
+  display: block;
+  margin: 18px auto 0;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  box-shadow: var(--hard-sm);
+}
+.hint:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--line); }
+.hint:disabled { color: var(--ink-3); box-shadow: none; opacity: 0.6; cursor: default; }
+
+/* --------------------------------- done --------------------------------- */
+.done { text-align: center; }
+.grades { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 26px 0 0; }
+.grades div { padding: 16px 8px; background: var(--surface); border: 2px solid var(--line); border-radius: 14px; box-shadow: var(--hard-sm); }
+.grades dt { font-size: 12px; font-weight: 600; color: var(--ink-3); }
+.grades dd { margin: 6px 0 0; font-family: var(--font-display), var(--font-body), sans-serif; font-size: 21px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.blank { padding: 48px 24px; text-align: center; }
+.empty { padding: 30px 18px; text-align: center; color: var(--ink-3); margin: 0; }
+
+@keyframes deal { from { opacity: 0; transform: translateY(16px) rotate(0deg); } to { opacity: 1; } }
+@keyframes lift { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes shake {
+  10%, 90% { transform: translateX(-2px); }
+  20%, 80% { transform: translateX(5px); }
+  30%, 50%, 70% { transform: translateX(-8px); }
+  40%, 60% { transform: translateX(8px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
