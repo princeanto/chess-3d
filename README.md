@@ -1,6 +1,6 @@
-# Four apps
+# Five apps
 
-One repo, four unrelated apps, deployed independently from their own
+One repo, five unrelated apps, deployed independently from their own
 subdirectories.
 
 | | | |
@@ -9,6 +9,7 @@ subdirectories.
 | **[Legible](apps/legible)** | WCAG contrast auditor for design systems | [legible-eight.vercel.app](https://legible-eight.vercel.app) |
 | **[Runner](apps/dino)** | Offline-first endless runner | [runner-zeta-seven.vercel.app](https://runner-zeta-seven.vercel.app) |
 | **[Khata](apps/khata)** | Reads your bank mail and keeps your books | [khata-psi.vercel.app](https://khata-psi.vercel.app) |
+| **[Spot the Lie](apps/lie)** | Four statements, one of them invented | — |
 
 Each app is standalone: its own `package.json`, its own lockfile, its own
 `node_modules`. There is no workspace tooling, because there is nothing to
@@ -101,3 +102,17 @@ directions.
 The ledger is cached on the device, encrypted with AES-GCM under a passphrase
 that only exists in memory. Questions are answered with arithmetic, locally;
 nothing is sent to a model or a server.
+
+### Spot the Lie — [apps/lie](apps/lie)
+
+Four statements a round, three true and one invented; find the invention, with
+three lives before you start over. One HTML file, no dependencies, no build.
+
+The code is the easy half. The game only works because the true statements are
+chosen to be as unbelievable as the fake one — an inversion of something real,
+or a myth people already half-believe — and because all four in a round share a
+theme, so the invention cannot be found by spotting the odd topic out.
+
+Colour is reserved: the page is ink on paper until you answer, and only then does
+green mark what was true and red the invention. Even the theme photograph waits
+in greyscale until the reveal.
