@@ -9,7 +9,7 @@ subdirectories.
 | **[Legible](apps/legible)** | WCAG contrast auditor for design systems | [legible-eight.vercel.app](https://legible-eight.vercel.app) |
 | **[Runner](apps/dino)** | Offline-first endless runner | [runner-zeta-seven.vercel.app](https://runner-zeta-seven.vercel.app) |
 | **[Khata](apps/khata)** | Reads your bank mail and keeps your books | [khata-psi.vercel.app](https://khata-psi.vercel.app) |
-| **[Spot the Lie](apps/lie)** | Four statements, one of them invented | — |
+| **[Spot the Lie](apps/lie)** | Four statements, one of them invented | [spot-the-lie.vercel.app](https://spot-the-lie.vercel.app) |
 
 Each app is standalone: its own `package.json`, its own lockfile, its own
 `node_modules`. There is no workspace tooling, because there is nothing to
@@ -20,6 +20,7 @@ cd apps/chess   && npm install && npm run dev   # localhost:3000
 cd apps/legible && npm install && npm run dev   # localhost:3000
 cd apps/dino    && npm install && npm run dev   # localhost:3000
 cd apps/khata   && npm install && npm run dev   # localhost:3000
+cd apps/lie     && npm install && npm run dev   # localhost:3000
 ```
 
 Both ship with real test suites that run from the command line:
@@ -28,6 +29,7 @@ Both ship with real test suites that run from the command line:
 cd apps/chess   && npm test    # perft to depth 5 + tactics + self-play
 cd apps/legible && npm test    # colour conversion, gamut, APCA, the fix search
 cd apps/khata   && npm test    # parsing, reconciliation, insight
+cd apps/lie     && npm test    # the deck: four statements, one fake, no repeats
 ```
 
 ---
