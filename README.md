@@ -1,6 +1,6 @@
-# Five apps
+# Six apps
 
-One repo, five unrelated apps, deployed independently from their own
+One repo, six unrelated apps, deployed independently from their own
 subdirectories.
 
 | | | |
@@ -10,6 +10,7 @@ subdirectories.
 | **[Runner](apps/dino)** | Offline-first endless runner | [runner-zeta-seven.vercel.app](https://runner-zeta-seven.vercel.app) |
 | **[Khata](apps/khata)** | Reads your bank mail and keeps your books | [khata-psi.vercel.app](https://khata-psi.vercel.app) |
 | **[Spot the Lie](apps/lie)** | Four statements, one of them invented | [spot-the-lie.vercel.app](https://spot-the-lie.vercel.app) |
+| **[Mynah](apps/mynah)** | English that teaches from your mistakes | [mynah-two.vercel.app](https://mynah-two.vercel.app) |
 
 Each app is standalone: its own `package.json`, its own lockfile, its own
 `node_modules`. There is no workspace tooling, because there is nothing to
@@ -21,6 +22,7 @@ cd apps/legible && npm install && npm run dev   # localhost:3000
 cd apps/dino    && npm install && npm run dev   # localhost:3000
 cd apps/khata   && npm install && npm run dev   # localhost:3000
 cd apps/lie     && npm install && npm run dev   # localhost:3000
+cd apps/mynah   && npm install && npm run dev   # localhost:3000
 ```
 
 Both ship with real test suites that run from the command line:
@@ -30,6 +32,7 @@ cd apps/chess   && npm test    # perft to depth 5 + tactics + self-play
 cd apps/legible && npm test    # colour conversion, gamut, APCA, the fix search
 cd apps/khata   && npm test    # parsing, reconciliation, insight
 cd apps/lie     && npm test    # the deck: four statements, one fake, no repeats
+cd apps/mynah   && npm test    # the course, and the review schedule
 ```
 
 ---
@@ -118,3 +121,22 @@ theme, so the invention cannot be found by spotting the odd topic out.
 Colour is reserved: the page is ink on paper until you answer, and only then does
 green mark what was true and red the invention. Even the theme photograph waits
 in greyscale until the reveal.
+
+### Mynah — [apps/mynah](apps/mynah)
+
+An English course that teaches from your mistakes, A1 to C1. Free, offline, no
+account, no ads, nothing to lose when you get one wrong.
+
+Most drill apps march you down a fixed path and let you forget unit one while
+you are busy with unit six. Mynah runs a Leitner schedule, so a lesson is built
+from what you are about to forget rather than what comes next — and a miss drops
+an item all the way to the first box, because half-remembering is what produces
+the illusion of learning. Every wrong answer gets the reason, not just the
+correction.
+
+Content and exercises are separate things. You author a word inside a real
+sentence, or a mistake with its explanation; the lesson builder turns each into
+a meaning question, a gap cut from its own sentence, or a listening question,
+rotating by how often you have met it. Where a mistake has a word that is simply
+wrong you tap it; where the fix is a missing word there is nothing to point at,
+so it becomes a choice between two sentences instead.
