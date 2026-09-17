@@ -7,7 +7,7 @@ the browser and keeps working with no connection once it has loaded.
 
 ```bash
 npm install && npm run dev    # localhost:3000
-npm test                      # colour, patterns, type layout, seeds, recents, shortcuts
+npm test                      # colour, patterns, type, saves, fonts, drawing, shortcuts
 npm run build                 # static export in out/, plus the service worker
 ```
 
@@ -15,9 +15,10 @@ npm run build                 # static export in out/, plus the service worker
 | --- | --- |
 | COLOR — palettes and gradients | Built |
 | SHAPE — thirteen seeded patterns | Built |
-| TYPE — poster typography, seven presets | Built |
-| DRAW | Next |
-| MAKE | After |
+| TYPE — poster typography, seven presets, every Google font | Built |
+| DRAW — brushes, shapes, grid, symmetry | Built |
+| SAVED — everything kept, with backups | Built |
+| MAKE | Next |
 | PLAY | Last |
 
 ## Six tools, one playground
@@ -59,6 +60,42 @@ and fall back to ink or paper when the palette has none.
 
 Randomize is only fun if the last one can come back: SHAPE and TYPE keep an undo
 history, with a dragged slider or a run of typing counted as one step.
+
+## Saved, and why it has a backup button
+
+⌘S saves in every tool, and everything saved appears in that tool's Saved row
+and on the Saved page, where it can be renamed, filtered and deleted. A save is
+a recipe, like Recent, except for drawings, whose strokes go in IndexedDB with
+a small thumbnail beside the entry.
+
+Nothing leaves the device, which means clearing the browser's site data erases
+it. The backup is one JSON file with every entry and every drawing in it; loading
+it merges, skipping anything already there, and ignores entries that are not
+valid rather than trusting the file.
+
+## Every Google font, one at a time
+
+The whole Google Fonts catalogue — 1,946 families, 15 KB gzipped — ships with
+the app (`npm run fonts` refreshes it), so browsing and search work offline.
+A font loads only when picked. The list previews each family using just the
+letters of its name, a few hundred bytes a row, and only for the rows in view.
+Fonts are registered through the FontFace API under separate names for preview
+and use, so a name-only preview can never stand in for the real font.
+
+Picked fonts are cached by the service worker and work offline afterwards.
+Exports embed only the faces the text needs. This is the one place Playground
+talks to anyone else, and the dialog says so.
+
+## Drawing as strokes
+
+DRAW stores strokes, not pixels, in coordinates centred on the canvas with 1000
+units across its shorter side, so resizing redraws rather than crops, undo drops
+a stroke, and SVG export is exact. Each stroke is painted opaque onto a scratch
+canvas and composited once at its opacity, so a translucent marker does not
+darken where it crosses itself or its symmetry copies. The eraser composites the
+same way, removing ink and never the background, and exports as an SVG mask
+over what came before it. Symmetry is stored per stroke. A stylus gets pressure,
+and once one is used, touches are ignored so a resting palm does not draw.
 
 ## Colour that looks designed
 

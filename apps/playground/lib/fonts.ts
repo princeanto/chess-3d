@@ -9,9 +9,18 @@
  * has that machine's fonts, and an SVG drawn into a canvas for PNG export has
  * none at all; carrying the font inside the file is the only way either looks
  * the way it did on screen.
+ *
+ * Any Google Fonts family can join the kit too. Its id is `google:<family>`, and
+ * the families someone has picked are remembered on this device, so a poster
+ * set in one reopens in it.
  */
 
-export type FontId = 'inter' | 'archivo' | 'instrument' | 'plex' | 'syne';
+import { facesFor, loadFamily, type GoogleFamily } from './googleFonts';
+import { load, save } from './storage';
+
+export type BundledId = 'inter' | 'archivo' | 'instrument' | 'plex' | 'syne';
+/** A bundled id, or `google:<family>`. */
+export type FontId = string;
 
 interface FontFile {
   url: string;
@@ -22,6 +31,8 @@ interface FontFile {
 
 export interface FontInfo {
   id: FontId;
+  /** Set for a Google Fonts family, which loads on demand. */
+  google?: GoogleFamily;
   label: string;
   family: string;
   fallback: string;
@@ -66,7 +77,66 @@ export const FONTS: FontInfo[] = [
   },
 ];
 
-export const fontById = (id: FontId): FontInfo => FONTS.find((font) => font.id === id) ?? FONTS[0];
+/* ------------------------------ google fonts ----------------------------- */
+
+const USED_LIMIT = 12;
+const GOOGLE = 'google:';
+const FALLBACK: Record<GoogleFamily['category'], string> = {
+  'Sans Serif': 'ui-sans-serif, system-ui, sans-serif',
+  Serif: 'Georgia, serif',
+  Display: 'ui-sans-serif, system-ui, sans-serif',
+  Handwriting: 'cursive',
+  Monospace: 'ui-monospace, monospace',
+};
+
+export const googleFontId = (family: string): FontId => `${GOOGLE}${family}`;
+
+export function googleFontInfo(google: GoogleFamily): FontInfo {
+  return {
+    id: googleFontId(google.family),
+    google,
+    label: google.family,
+    family: google.family,
+    fallback: FALLBACK[google.category] ?? 'sans-serif',
+    weights: google.weights.length ? google.weights : google.italics,
+    italic: google.italics.length > 0,
+    files: [],
+  };
+}
+
+let used: GoogleFamily[] | null = null;
+
+/** Google families picked on this device, most recent first. */
+export function usedGoogleFonts(): GoogleFamily[] {
+  used ??= load<GoogleFamily[]>('fonts.google', []);
+  return used;
+}
+
+export function rememberGoogleFont(font: GoogleFamily): void {
+  used = [font, ...usedGoogleFonts().filter((f) => f.family !== font.family)].slice(0, USED_LIMIT);
+  save('fonts.google', used);
+}
+
+/*
+ * Families met without being picked here — in a backup from another device, or
+ * a saved poster — known for this session so they draw in the right font.
+ */
+const known = new Map<string, GoogleFamily>();
+export const knowGoogleFont = (font: GoogleFamily): void => { known.set(font.family, font); };
+
+export function fontById(id: FontId): FontInfo {
+  if (id.startsWith(GOOGLE)) {
+    const family = id.slice(GOOGLE.length);
+    const google = usedGoogleFonts().find((f) => f.family === family) ?? known.get(family);
+    if (google) return googleFontInfo(google);
+  }
+  return FONTS.find((font) => font.id === id) ?? FONTS[0];
+}
+
+/** Resolves once the font can be drawn. Bundled fonts are always ready. */
+export function ensureFont(font: FontInfo): Promise<void> {
+  return font.google ? loadFamily(font.google) : Promise.resolve();
+}
 
 /** The closest weight the font really has. */
 export function nearestWeight(font: FontInfo, weight: number): number {
@@ -89,8 +159,24 @@ async function base64Of(url: string): Promise<string> {
   return value;
 }
 
-/** @font-face rules with the font inside them, for a self-contained SVG. */
-export async function embeddedFontCss(font: FontInfo, italic: boolean): Promise<string> {
+/**
+ * @font-face rules with the font inside them, for a self-contained SVG.
+ *
+ * For a Google family only the faces the text needs go in: the right style,
+ * a file covering the weight, and the scripts the letters come from.
+ */
+export async function embeddedFontCss(font: FontInfo, italic: boolean, weight: number, text: string): Promise<string> {
+  if (font.google) {
+    const faces = await facesFor(font.google, weight, italic && font.italic, text);
+    const rules = await Promise.all(
+      faces.map(async (face) =>
+        `@font-face{font-family:'${font.family}';font-style:${face.style};font-weight:${face.weight};` +
+        (face.unicodeRange ? `unicode-range:${face.unicodeRange};` : '') +
+        `src:url(data:font/woff2;base64,${await base64Of(face.url)}) format('woff2');}`,
+      ),
+    );
+    return rules.join('');
+  }
   const style = italic && font.italic ? 'italic' : 'normal';
   const files = font.files.filter((file) => file.style === style);
   const rules = await Promise.all(

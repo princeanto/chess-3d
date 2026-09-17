@@ -1,0 +1,79 @@
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: start center;
+  padding: 8vh 16px 16px;
+  background: rgba(0, 0, 0, 0.42);
+  animation: fade 0.14s var(--ease);
+}
+.dialog {
+  display: grid;
+  gap: 12px;
+  width: min(620px, 100%);
+  max-height: calc(100vh - 10vh - 16px);
+  padding: 18px 18px 14px;
+  color: var(--ink);
+  background: var(--surface);
+  border-radius: 14px;
+  box-shadow: 0 0 0 1px var(--line), 0 30px 80px -20px rgba(0, 0, 0, 0.5);
+  animation: rise 0.18s var(--ease);
+}
+.head { display: flex; align-items: baseline; gap: 10px; }
+.title { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+.total { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.close {
+  margin-left: auto;
+  height: 26px;
+  padding: 0 8px;
+  font: 600 11.5px var(--ui);
+  color: var(--muted);
+  background: var(--sunk);
+  border: 0;
+  border-radius: 5px;
+}
+.close:hover { color: var(--ink); }
+.search {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  font: 500 16px var(--ui);
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.search:focus { outline: 2px solid var(--ink); outline-offset: 0; border-color: transparent; }
+.filters { min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.filters::-webkit-scrollbar { display: none; }
+.notice { margin: 0; padding: 8px 10px; font-size: 13px; background: var(--sunk); border-radius: 7px; }
+
+.list { position: relative; max-height: 52vh; overflow-y: auto; overscroll-behavior: contain; margin: 0 -6px; }
+.option {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 56px;
+  padding: 0 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.active { background: var(--sunk); }
+.name { overflow: hidden; font-size: 24px; line-height: 1.2; white-space: nowrap; text-overflow: ellipsis; }
+.meta { flex: none; font-size: 12px; font-weight: 600; color: var(--muted); }
+.empty { margin: 0; padding: 24px 12px; color: var(--muted); }
+.foot { margin: 0; font-size: 11.5px; line-height: 1.45; color: var(--muted); }
+
+@keyframes fade { from { opacity: 0; } }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .scrim, .dialog { animation: none; } }
+@media (max-width: 560px) {
+  .scrim { padding: 12px 8px; }
+  .name { font-size: 20px; }
+  .meta { display: none; }
+}

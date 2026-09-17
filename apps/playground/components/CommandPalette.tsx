@@ -35,6 +35,7 @@ export default function CommandPalette() {
     for (const t of TOOLS) {
       list.push({ id: `open-${t.id}`, label: `Open ${t.title}`, group: 'Tools', hint: t.key.toUpperCase(), run: () => store.setTool(t.id) });
     }
+    list.push({ id: 'open-saved', label: 'Open Saved', group: 'Tools', run: () => store.setTool('saved') });
     list.push({ id: 'challenge', label: 'Give me a challenge', group: 'Tools', run: () => store.setTool('play') });
     for (const theme of ['light', 'dark', 'system'] as const) {
       list.push({ id: `theme-${theme}`, label: `Theme: ${theme[0].toUpperCase()}${theme.slice(1)}`, group: 'Preferences', run: () => store.setTheme(theme) });
@@ -42,6 +43,9 @@ export default function CommandPalette() {
     const now = Date.now();
     for (const recent of store.recents.slice(0, 8)) {
       list.push({ id: `recent-${recent.id}`, label: `${recent.kind} · ${ago(recent.at, now)}`, group: 'Recent', run: () => store.openRecent(recent) });
+    }
+    for (const item of store.saved.slice(0, 8)) {
+      list.push({ id: `saved-${item.id}`, label: `${item.name} · ${item.kind}`, group: 'Saved', run: () => store.openSaved(item) });
     }
     return list;
     // The palette is rebuilt each time it opens, which is when this mounts.

@@ -14,12 +14,14 @@ import { StoreProvider, useStore } from '@/lib/store';
 import { TOOLS, toolById } from '@/lib/tools';
 import { mostChromatic, luminance, readableOn } from '@/lib/color';
 import { isEditable, modLabel, spaceIsTaken } from '@/lib/shortcuts';
-import { ago } from '@/lib/storage';
+import { ago, type ToolId } from '@/lib/storage';
 import { Kbd, Segmented } from './ui';
 
 const ColorTool = dynamic(() => import('@/tools/color/ColorTool'), { ssr: false, loading: () => <Loading /> });
 const TypeTool = dynamic(() => import('@/tools/type/TypeTool'), { ssr: false, loading: () => <Loading /> });
 const ShapeTool = dynamic(() => import('@/tools/shape/ShapeTool'), { ssr: false, loading: () => <Loading /> });
+const DrawTool = dynamic(() => import('@/tools/draw/DrawTool'), { ssr: false, loading: () => <Loading /> });
+const SavedPage = dynamic(() => import('@/tools/SavedPage'), { ssr: false, loading: () => <Loading /> });
 const Soon = dynamic(() => import('@/tools/Soon'), { ssr: false, loading: () => <Loading /> });
 const CommandPalette = dynamic(() => import('./CommandPalette'), { ssr: false });
 
@@ -80,7 +82,10 @@ const OFFLINE_LABEL: Record<Offline, string> = {
 
 function Frame() {
   const store = useStore();
-  const info = toolById(store.tool);
+  const onSaved = store.tool === 'saved';
+  const info = onSaved
+    ? { title: 'Saved', description: 'Everything you kept, from every tool. On this device, nowhere else.' }
+    : toolById(store.tool as ToolId);
   const offline = useOffline();
   const [mod, setMod] = useState('⌘');
   const [now, setNow] = useState(() => Date.now());
@@ -202,6 +207,17 @@ function Frame() {
                 </button>
               </li>
             ))}
+            <li className="nav-sep">
+              <button
+                className={`nav-item${onSaved ? ' on' : ''}`}
+                aria-current={onSaved ? 'page' : undefined}
+                onClick={() => store.setTool('saved')}
+                onPointerUp={(e) => e.currentTarget.blur()}
+              >
+                <span>SAVED</span>
+                <span className="nav-count">{store.saved.length || ''}</span>
+              </button>
+            </li>
           </ul>
         </nav>
 
@@ -259,11 +275,13 @@ function Frame() {
           <h1 className="tool-title">{info.title}</h1>
           <p className="tool-desc">{info.description}</p>
         </header>
-        <div className="tool-body" key={store.tool}>
+        <div className="tool-body" key={`${store.tool}:${store.opened}`}>
           {store.tool === 'color' ? <ColorTool />
             : store.tool === 'type' ? <TypeTool />
             : store.tool === 'shape' ? <ShapeTool />
-            : <Soon tool={info} />}
+            : store.tool === 'draw' ? <DrawTool />
+            : store.tool === 'saved' ? <SavedPage />
+            : <Soon tool={toolById(store.tool)} />}
         </div>
       </main>
 

@@ -23,6 +23,8 @@ import {
   type Aspect, type PatternKind, type PatternState,
 } from '@/lib/pattern';
 import { PickMany, PickOne } from '../ColorChips';
+import SavedStrip from '../SavedStrip';
+import SavedPalettes from '../SavedPalettes';
 
 const ASPECT_OPTIONS = (Object.keys(ASPECTS) as Aspect[]).map((id) => ({ id, label: ASPECTS[id].label }));
 const THUMB_SEED = 424242;
@@ -65,6 +67,13 @@ export default function ShapeTool() {
 
   const remember = () =>
     store.remember({ tool: 'shape', kind: PATTERNS.find((p) => p.id === state.kind)?.label ?? 'Pattern', colors: [state.background, ...state.colors].slice(0, 5), recipe: { ...state } as Record<string, unknown> });
+
+  const kindLabel = PATTERNS.find((p) => p.id === state.kind)?.label ?? 'Pattern';
+  const savePattern = () => {
+    const result = store.saveItem({ tool: 'shape', kind: kindLabel, colors: [state.background, ...state.colors].slice(0, 5), recipe: { ...state } as Record<string, unknown> });
+    store.toast(!result ? 'Storage is full. Download a backup from Saved, then delete a few.' : result.repeat ? `Already saved as ${result.item.name}` : `Saved as ${result.item.name}`);
+    if (result) remember();
+  };
 
   const patch = (changes: Partial<PatternState>, tag?: string) => set((s) => ({ ...s, ...changes }), tag);
 
@@ -121,6 +130,7 @@ export default function ShapeTool() {
     { id: 's-random', label: 'Randomize pattern', group: 'Shape', hint: 'Space', run: randomize },
     { id: 's-seed', label: 'New seed, same settings', group: 'Shape', run: newSeedOnly },
     { id: 's-copy-seed', label: 'Copy seed', group: 'Shape', run: copySeed },
+    { id: 's-save', label: 'Save pattern', group: 'Shape', hint: '⌘S', run: savePattern },
     { id: 's-recolour', label: 'Recolour from palette', group: 'Shape', run: recolour },
     { id: 's-png', label: 'Export pattern as PNG', group: 'Shape', hint: 'E', run: () => exportAs('png') },
     { id: 's-svg', label: 'Export pattern as SVG', group: 'Shape', run: () => exportAs('svg') },
@@ -131,7 +141,7 @@ export default function ShapeTool() {
   useToolActions({
     randomize,
     exportDefault: () => exportAs('png'),
-    save: () => { remember(); store.toast('Saved to Recent'); },
+    save: savePattern,
     undo: () => { if (!undo()) store.toast('Nothing to undo'); },
     redo: () => { if (!redo()) store.toast('Nothing to redo'); },
     commands,
@@ -183,6 +193,7 @@ export default function ShapeTool() {
             onChange={(colors, tag) => patch({ colors }, tag)}
             onEmpty={() => store.toast('A pattern needs at least one colour')}
           />
+          <SavedPalettes onPick={(hexes, name) => { patch(colorsFrom(hexes, createRng(newSeed()))); store.toast(`Colours from ${name}`); }} />
         </div>
 
         <div className={styles.group}>
@@ -217,6 +228,7 @@ export default function ShapeTool() {
             <Button variant="ghost" onClick={copySeed} title="Copy seed">Copy</Button>
           </div>
           <Button onClick={newSeedOnly}>Random seed</Button>
+          <Button onClick={savePattern}>Save</Button>
           <Menu
             label="Export"
             variant="line"
@@ -229,6 +241,7 @@ export default function ShapeTool() {
           />
         </div>
         <p className={styles.hint}><b>Space</b> for a new pattern · Same seed, same settings, same pattern · <b>{modLabel()}Z</b> brings the last one back</p>
+        <SavedStrip tool="shape" />
       </div>
     </div>
   );

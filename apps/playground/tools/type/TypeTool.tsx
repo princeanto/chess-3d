@@ -21,12 +21,19 @@ import { copyText, downloadBlob, downloadText, fileName } from '@/lib/export';
 import { svgToPng } from '@/lib/render';
 import { modLabel } from '@/lib/shortcuts';
 import { ASPECTS, type Aspect } from '@/lib/pattern';
-import { FONTS, embeddedFontCss, fontById, nearestWeight, type FontId } from '@/lib/fonts';
 import {
-  CAP, DARK, DEFAULT_TYPE, LIGHT, PRESETS, applyPreset, backgroundOf, padding, randomType, toLines, applyCase,
+  FONTS, embeddedFontCss, ensureFont, fontById, googleFontId, knowGoogleFont, nearestWeight, rememberGoogleFont,
+  usedGoogleFonts, type FontId,
+} from '@/lib/fonts';
+import { loadPreview, type GoogleFamily } from '@/lib/googleFonts';
+import {
+  CAP, DARK, DEFAULT_TYPE, LIGHT, PRESETS, applyPreset, colourPair, backgroundOf, padding, randomType, toLines, applyCase,
   typeCss, typeSvg, type Align, type Background, type Break, type Case, type PresetId, type TypeState, type VAlign,
 } from '@/lib/typeset';
 import { PickOne } from '../ColorChips';
+import SavedStrip from '../SavedStrip';
+import SavedPalettes from '../SavedPalettes';
+import FontBrowser from './FontBrowser';
 
 const ASPECT_OPTIONS = (Object.keys(ASPECTS) as Aspect[]).map((id) => ({ id, label: ASPECTS[id].label }));
 const MEASURE_AT = 100;
@@ -38,6 +45,9 @@ export default function TypeTool() {
   const store = useStore();
   const { state, set, undo, redo } = useHistory<TypeState>(() => ({ ...DEFAULT_TYPE, ...load<Partial<TypeState>>('type.state', {}) }));
   const [fitted, setFitted] = useState<number | null>(null);
+  const [browsing, setBrowsing] = useState(false);
+  const [recentFonts, setRecentFonts] = useState<GoogleFamily[]>(() => usedGoogleFonts());
+  const [previewNames, setPreviewNames] = useState<Record<string, string>>({});
   const measurer = useRef<HTMLDivElement>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const font = fontById(state.font);
@@ -47,12 +57,24 @@ export default function TypeTool() {
 
   useEffect(() => { save('type.state', state); }, [state]);
 
-  /* Opened from Recent. */
+  /* Opened from Recent or Saved. */
   useEffect(() => {
-    const recipe = store.takePending('type')?.recipe as TypeState | undefined;
-    if (recipe?.text !== undefined) set({ ...DEFAULT_TYPE, ...recipe });
+    const recipe = store.takePending('type')?.recipe as (TypeState & { googleFont?: GoogleFamily }) | undefined;
+    if (recipe?.text === undefined) return;
+    const { googleFont, ...rest } = recipe;
+    if (googleFont) knowGoogleFont(googleFont);
+    set({ ...DEFAULT_TYPE, ...rest });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /* The Google fonts listed in the panel, each named in its own face. */
+  const recentKey = recentFonts.map((f) => f.family).join('|');
+  useEffect(() => {
+    for (const font of recentFonts.slice(0, 5)) {
+      loadPreview(font).then((alias) => setPreviewNames((names) => ({ ...names, [font.family]: alias })), () => undefined);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recentKey]);
 
   /*
    * Fit to width. The font is loaded first — measuring the fallback and then
@@ -63,6 +85,11 @@ export default function TypeTool() {
     let cancelled = false;
     const measure = async () => {
       const weight = nearestWeight(font, state.weight);
+      try {
+        await ensureFont(font);
+      } catch {
+        if (!cancelled) store.toast(navigator.onLine ? `Couldn’t load ${font.label}.` : `${font.label} needs a connection the first time.`);
+      }
       await document.fonts.load(`${state.italic && font.italic ? 'italic ' : ''}${weight} ${MEASURE_AT}px '${font.family}'`).catch(() => undefined);
       const host = measurer.current;
       if (cancelled || !host) return;
@@ -85,12 +112,34 @@ export default function TypeTool() {
   const svg = useMemo(() => typeSvg(state, size), [state, size]);
   const patch = (changes: Partial<TypeState>, tag?: string) => set((s) => ({ ...s, ...changes }), tag);
 
+  /* The size as drawn, and the Google family itself, so it reopens anywhere. */
+  const recipe = (): Record<string, unknown> => ({ ...state, size: Math.round(size), ...(font.google ? { googleFont: font.google } : {}) });
   const remember = () =>
-    store.remember({ tool: 'type', kind: 'Poster', colors: [ground ?? '#FFFFFF', state.color], recipe: { ...state } as Record<string, unknown> });
+    store.remember({ tool: 'type', kind: 'Poster', colors: [ground ?? '#FFFFFF', state.color], recipe: recipe() });
+  const savePoster = () => {
+    const result = store.saveItem({ tool: 'type', kind: 'Poster', colors: [ground ?? '#FFFFFF', state.color], recipe: recipe() });
+    store.toast(!result ? 'Storage is full. Download a backup from Saved, then delete a few.' : result.repeat ? `Already saved as ${result.item.name}` : `Saved as ${result.item.name}`);
+    if (result) remember();
+  };
+  const useStyle = (item: { recipe: Record<string, unknown>; name: string }) => {
+    const { googleFont, text: _text, ...style } = item.recipe as unknown as TypeState & { googleFont?: GoogleFamily };
+    if (googleFont) knowGoogleFont(googleFont);
+    set({ ...DEFAULT_TYPE, ...style, text: state.text });
+    store.toast(`${item.name}’s style, your words`);
+  };
+  const pickGoogle = (google: GoogleFamily) => {
+    rememberGoogleFont(google);
+    setRecentFonts(usedGoogleFonts());
+    chooseFont(googleFontId(google.family));
+  };
 
   const chooseFont = (id: FontId) => {
     const next = fontById(id);
     patch({ font: id, weight: nearestWeight(next, state.weight), italic: state.italic && next.italic });
+    if (next.google) {
+      rememberGoogleFont(next.google);
+      setRecentFonts(usedGoogleFonts());
+    }
   };
   const usePreset = (id: PresetId) => set(applyPreset(state, id, store.palette, createRng(newSeed())));
   const randomize = () => set(randomType(createRng(newSeed()), store.palette, state));
@@ -99,7 +148,7 @@ export default function TypeTool() {
     const name = fileName('type', 'poster', slug(applyCase(state.text, state.textCase)), format);
     let ok = false;
     try {
-      const fontCss = await embeddedFontCss(font, state.italic);
+      const fontCss = await embeddedFontCss(font, state.italic, nearestWeight(font, state.weight), toLines(applyCase(state.text, state.textCase), state.breakMode).join(''));
       if (format === 'svg') {
         ok = downloadText(typeSvg(state, size, { fontCss }), name, 'image/svg+xml');
       } else {
@@ -121,6 +170,8 @@ export default function TypeTool() {
   const commands: Command[] = [
     { id: 't-random', label: 'Randomize typography', group: 'Type', hint: 'Space', run: randomize },
     { id: 't-edit', label: 'Edit text', group: 'Type', run: () => textarea.current?.focus() },
+    { id: 't-google', label: 'Browse Google Fonts', group: 'Type', run: () => setBrowsing(true) },
+    { id: 't-save', label: 'Save poster', group: 'Type', hint: '⌘S', run: savePoster },
     { id: 't-png', label: 'Export poster as PNG', group: 'Type', hint: 'E', run: () => exportAs('png') },
     { id: 't-svg', label: 'Export poster as SVG', group: 'Type', run: () => exportAs('svg') },
     { id: 't-css', label: 'Copy type CSS', group: 'Type', run: copyCss },
@@ -131,7 +182,7 @@ export default function TypeTool() {
   useToolActions({
     randomize,
     exportDefault: () => exportAs('png'),
-    save: () => { remember(); store.toast('Saved to Recent'); },
+    save: savePoster,
     undo: () => { if (!undo()) store.toast('Nothing to undo'); },
     redo: () => { if (!redo()) store.toast('Nothing to redo'); },
     commands,
@@ -181,7 +232,22 @@ export default function TypeTool() {
                 <small>{f.weights.length > 1 ? `${f.weights[0]}–${f.weights[f.weights.length - 1]}` : f.italic ? 'Roman + italic' : f.weights[0]}</small>
               </button>
             ))}
+            {recentFonts.slice(0, 5).map((g) => (
+              <button
+                key={g.family}
+                type="button"
+                className={styles.font}
+                aria-pressed={googleFontId(g.family) === state.font}
+                style={previewNames[g.family] ? { fontFamily: `'${previewNames[g.family]}', sans-serif` } : undefined}
+                onClick={() => chooseFont(googleFontId(g.family))}
+                onPointerUp={(e) => e.currentTarget.blur()}
+              >
+                {g.family}
+                <small>Google</small>
+              </button>
+            ))}
           </div>
+          <Button onClick={() => setBrowsing(true)}>Browse all Google Fonts</Button>
           <div>
             <Segmented
               compact
@@ -243,6 +309,7 @@ export default function TypeTool() {
             )}
           </div>
           <PickOne label="Text colour" options={inks} value={state.color} onChange={(hex, tag) => patch({ color: hex }, tag)} />
+          <SavedPalettes onPick={(hexes, name) => { patch(colourPair(hexes, createRng(newSeed()), 'color')); store.toast(`Colours from ${name}`); }} />
         </div>
 
         <div className={styles.group}>
@@ -264,6 +331,7 @@ export default function TypeTool() {
         />
         <div className={styles.bar}>
           <Button variant="solid" onClick={randomize}>Randomize</Button>
+          <Button onClick={savePoster}>Save</Button>
           <Button onClick={copyCss}>Copy CSS</Button>
           <Menu
             label="Export"
@@ -275,7 +343,9 @@ export default function TypeTool() {
           />
         </div>
         <p className={styles.hint}><b>Space</b> for a new composition · Click the poster to edit the words · <b>{modLabel()}Z</b> to go back</p>
+        <SavedStrip tool="type" extra={{ label: 'Style only', title: 'Use this style with your words', run: useStyle }} />
       </div>
+      {browsing && <FontBrowser current={state.font} onPick={pickGoogle} onClose={() => setBrowsing(false)} />}
 
       {/* Off-screen, but laid out: getBBox needs real layout to measure. */}
       <div ref={measurer} aria-hidden="true" style={{ position: 'fixed', left: -99999, top: 0, width: w, visibility: 'hidden', pointerEvents: 'none' }} />

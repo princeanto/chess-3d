@@ -20,6 +20,8 @@ export interface History<T> {
   set: (update: T | ((previous: T) => T), tag?: string) => void;
   undo: () => boolean;
   redo: () => boolean;
+  /** Replace the state with no way back — for loading, not for edits. */
+  reset: (value: T) => void;
 }
 
 export function useHistory<T>(initial: () => T): History<T> {
@@ -58,5 +60,13 @@ export function useHistory<T>(initial: () => T): History<T> {
   const undo = useCallback(() => move(past, future), []);
   const redo = useCallback(() => move(future, past), []);
 
-  return { state, set, undo, redo };
+  const reset = useCallback((value: T) => {
+    past.current = [];
+    future.current = [];
+    last.current = { tag: '', at: 0 };
+    current.current = value;
+    setState(value);
+  }, []);
+
+  return { state, set, undo, redo, reset };
 }

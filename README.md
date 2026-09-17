@@ -35,7 +35,7 @@ cd apps/legible && npm test    # colour conversion, gamut, APCA, the fix search
 cd apps/khata   && npm test    # parsing, reconciliation, insight
 cd apps/lie     && npm test    # the deck: four statements, one fake, no repeats
 cd apps/mynah   && npm test    # the course, and the review schedule
-cd apps/playground && npm test    # colour maths, seeds, gradients, shortcuts
+cd apps/playground && npm test    # colour, patterns, type, saves, fonts, drawing
 ```
 
 ---

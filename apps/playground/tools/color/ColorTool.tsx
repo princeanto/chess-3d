@@ -18,18 +18,11 @@ import { load, save } from '@/lib/storage';
 import { copyText, downloadText, fileName } from '@/lib/export';
 import { fromPalette, gradientSvg, toCss, type Gradient } from '@/lib/gradient';
 import GradientEditor from './GradientEditor';
-import { CloseIcon, LockIcon, RefreshIcon } from './icons';
+import { LockIcon, RefreshIcon } from './icons';
 import * as out from './exports';
+import SavedStrip from '../SavedStrip';
 
 type Mode = 'palette' | 'gradient';
-
-interface Favourite {
-  id: string;
-  hexes: string[];
-  at: number;
-}
-
-const FAVOURITE_LIMIT = 24;
 
 export default function ColorTool() {
   const store = useStore();
@@ -44,7 +37,6 @@ export default function ColorTool() {
   const [gradient, setGradient] = useState<Gradient>(
     () => load<Gradient | null>('color.gradient', null) ?? fromPalette(swatches.map((s) => s.hex), createRng(seed)),
   );
-  const [favourites, setFavourites] = useState<Favourite[]>(() => load<Favourite[]>('color.favourites', []));
   const clickSeq = useRef(0);
   const cancelledThrough = useRef(0);
   const hexes = swatches.map((s) => s.hex);
@@ -59,7 +51,6 @@ export default function ColorTool() {
   useEffect(() => { save('color.mode', mode); }, [mode]);
   useEffect(() => { save('color.scheme', scheme); }, [scheme]);
   useEffect(() => { save('color.gradient', gradient); }, [gradient]);
-  useEffect(() => { save('color.favourites', favourites); }, [favourites]);
 
   /* Opened from Recent: put back exactly what was there. */
   useEffect(() => {
@@ -155,10 +146,16 @@ export default function ColorTool() {
   };
 
   const savePalette = () => {
-    const key = hexes.join();
-    setFavourites((list) => [{ id: `${Date.now()}`, hexes, at: Date.now() }, ...list.filter((f) => f.hexes.join() !== key)].slice(0, FAVOURITE_LIMIT));
-    rememberPalette();
-    store.toast('Saved locally');
+    const result = store.saveItem({ tool: 'color', kind: 'Palette', colors: hexes, recipe: { colors: hexes, scheme, seed } });
+    store.toast(!result ? 'Storage is full. Download a backup from Saved, then delete a few.' : result.repeat ? `Already saved as ${result.item.name}` : `Saved as ${result.item.name}`);
+    if (result) rememberPalette();
+  };
+
+  const saveGradient = () => {
+    const colors = gradient.stops.map((stop) => stop.hex);
+    const result = store.saveItem({ tool: 'color', kind: 'Gradient', colors, recipe: { gradient } });
+    store.toast(!result ? 'Storage is full. Download a backup from Saved, then delete a few.' : result.repeat ? `Already saved as ${result.item.name}` : `Saved as ${result.item.name}`);
+    if (result) rememberGradient();
   };
 
   /* ------------------------------- gradient ------------------------------ */
@@ -190,14 +187,15 @@ export default function ColorTool() {
     { id: 'c-copy', label: 'Copy HEX codes', group: 'Color', run: () => { copy(hexes.join(', '), 'Copied all five HEX codes'); } },
     { id: 'c-css', label: 'Copy gradient CSS', group: 'Color', run: copyCss },
     { id: 'c-png', label: 'Export palette as PNG', group: 'Color', run: () => exportPalette('png') },
-    { id: 'c-save', label: 'Save palette locally', group: 'Color', hint: `${'⌘'}S`, run: savePalette },
+    { id: 'c-save', label: 'Save palette', group: 'Color', hint: `${'⌘'}S`, run: savePalette },
+    { id: 'c-save-gradient', label: 'Save gradient', group: 'Color', run: saveGradient },
     ...SCHEMES.map((s) => ({ id: `c-scheme-${s.id}`, label: `Scheme: ${s.label}`, group: 'Color', run: () => { setMode('palette'); changeScheme(s.id); } })),
   ];
 
   useToolActions({
     randomize: mode === 'palette' ? newPalette : randomGradient,
     exportDefault: () => (mode === 'palette' ? exportPalette('png') : exportGradient('png')),
-    save: mode === 'palette' ? savePalette : () => { rememberGradient(); store.toast('Saved locally'); },
+    save: mode === 'palette' ? savePalette : saveGradient,
     commands,
   });
 
@@ -225,6 +223,7 @@ export default function ColorTool() {
               <Button onClick={() => { copy(hexes.join(', '), 'Copied all five HEX codes').then((ok) => ok && rememberPalette()); }}>
                 Copy HEX
               </Button>
+              <Button onClick={savePalette}>Save</Button>
               <Menu
                 label="Export"
                 variant="line"
@@ -240,6 +239,7 @@ export default function ColorTool() {
             <>
               <Button variant="solid" onClick={randomGradient}>Randomize</Button>
               <Button onClick={copyCss}>Copy CSS</Button>
+              <Button onClick={saveGradient}>Save</Button>
               <Menu
                 label="Export"
                 variant="line"
@@ -300,38 +300,13 @@ export default function ColorTool() {
             <b>Space</b> for a new palette · Click a colour to copy · Double-click to change one · Lock the ones you love
           </p>
 
-          <section className={styles.saved} aria-labelledby="saved-h">
-            <h2 id="saved-h" className="side-label">Saved</h2>
-            {favourites.length === 0 ? (
-              <p className={styles.savedEmpty}>Nothing saved yet. Press ⌘S to keep a palette.</p>
-            ) : (
-              <ul className={styles.savedList}>
-                {favourites.map((f) => (
-                  <li key={f.id} className={styles.savedRow}>
-                    <button
-                      className={styles.savedItem}
-                      aria-label={`Use palette ${f.hexes.join(', ')}`}
-                      onClick={() => setSwatches(f.hexes.map((hex) => ({ hex, locked: false })))}
-                    >
-                      {f.hexes.map((hex, i) => (
-                        <i key={i} style={{ background: hex }} />
-                      ))}
-                    </button>
-                    <button
-                      className={styles.remove}
-                      aria-label="Remove saved palette"
-                      onClick={() => setFavourites((list) => list.filter((x) => x.id !== f.id))}
-                    >
-                      <CloseIcon />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+          <SavedStrip tool="color" />
         </>
       ) : (
-        <GradientEditor gradient={gradient} onChange={setGradient} palette={hexes} />
+        <>
+          <GradientEditor gradient={gradient} onChange={setGradient} palette={hexes} />
+          <SavedStrip tool="color" />
+        </>
       )}
     </div>
   );
