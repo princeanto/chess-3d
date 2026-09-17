@@ -1,6 +1,6 @@
-# Six apps
+# Seven apps
 
-One repo, six unrelated apps, deployed independently from their own
+One repo, seven unrelated apps, deployed independently from their own
 subdirectories.
 
 | | | |
@@ -11,6 +11,7 @@ subdirectories.
 | **[Khata](apps/khata)** | Reads your bank mail and keeps your books | [khata-psi.vercel.app](https://khata-psi.vercel.app) |
 | **[Spot the Lie](apps/lie)** | Four statements, one of them invented | [spot-the-lie.vercel.app](https://spot-the-lie.vercel.app) |
 | **[Mynah](apps/mynah)** | English that teaches from your mistakes | [mynah-two.vercel.app](https://mynah-two.vercel.app) |
+| **[Playground](apps/playground)** | Offline creative tools: color, type, shape, draw, make, play | [playground-phi-orpin.vercel.app](https://playground-phi-orpin.vercel.app) |
 
 Each app is standalone: its own `package.json`, its own lockfile, its own
 `node_modules`. There is no workspace tooling, because there is nothing to
@@ -23,6 +24,7 @@ cd apps/dino    && npm install && npm run dev   # localhost:3000
 cd apps/khata   && npm install && npm run dev   # localhost:3000
 cd apps/lie     && npm install && npm run dev   # localhost:3000
 cd apps/mynah   && npm install && npm run dev   # localhost:3000
+cd apps/playground && npm install && npm run dev   # localhost:3000
 ```
 
 Both ship with real test suites that run from the command line:
@@ -33,6 +35,7 @@ cd apps/legible && npm test    # colour conversion, gamut, APCA, the fix search
 cd apps/khata   && npm test    # parsing, reconciliation, insight
 cd apps/lie     && npm test    # the deck: four statements, one fake, no repeats
 cd apps/mynah   && npm test    # the course, and the review schedule
+cd apps/playground && npm test    # colour maths, seeds, gradients, shortcuts
 ```
 
 ---
@@ -140,3 +143,20 @@ a meaning question, a gap cut from its own sentence, or a listening question,
 rotating by how often you have met it. Where a mistake has a word that is simply
 wrong you tap it; where the fix is a missing word there is nothing to point at,
 so it becomes a choice between two sentences instead.
+
+### Playground — [apps/playground](apps/playground)
+
+`playground●` — an offline creative playground. Open, make something, export: no
+account, no backend, and it keeps working with no connection. Being built in
+five phases; COLOR is live, with TYPE, SHAPE, DRAW, MAKE and PLAY to follow.
+
+The six tools share one palette — the dot in the wordmark takes its most
+colourful entry — and one seeded generator, so every creation reproduces and
+Recent stores recipes, not pictures. Palettes are built in OKLCH from a value
+plan (dark, light, steps between) rather than rotated in HSL, which is why they
+look designed. Gradient exports reproduce CSS's own line geometry, so the PNG
+matches the preview at every angle.
+
+The build writes a service worker listing every file, because tools load as
+separate chunks and caching only what a first visit fetched would leave the
+unopened ones broken offline.
