@@ -7,15 +7,16 @@ the browser and keeps working with no connection once it has loaded.
 
 ```bash
 npm install && npm run dev    # localhost:3000
-npm test                      # colour, seeds, gradients, recents, shortcuts
+npm test                      # colour, patterns, type layout, seeds, recents, shortcuts
 npm run build                 # static export in out/, plus the service worker
 ```
 
 | Tool | Status |
 | --- | --- |
 | COLOR — palettes and gradients | Built |
-| SHAPE, TYPE | Next |
-| DRAW | After |
+| SHAPE — thirteen seeded patterns | Built |
+| TYPE — poster typography, seven presets | Built |
+| DRAW | Next |
 | MAKE | After |
 | PLAY | Last |
 
@@ -29,6 +30,35 @@ sharing a sidebar.
 Everything has a seed. One generator drives every tool, so any creation can be
 reproduced, and Recent stores a recipe — a tool, a seed, a few settings — rather
 than a picture. It reopens exactly as it was and costs almost nothing to keep.
+
+## Patterns you can hand to someone
+
+A SHAPE pattern is a pure function of what the panel shows: the kind, the seed,
+density, scale, rotation, spacing and the colours. The same state draws the same
+SVG, byte for byte, which is what makes a copied seed worth anything. The preview,
+the PNG, the SVG and the CSS background are all that one SVG.
+
+Patterns are drawn across a square as wide as the canvas's diagonal and rotated
+about the centre, so turning one never shows a bare corner. Randomize picks from
+ranges tuned per pattern, because every kind has a density past which it turns to
+grey mush and a scale below which it vanishes. Shape colours too close to the
+background to see are left out.
+
+## Type that fits, and exports as it looked
+
+"Fit to width" measures the real glyphs after the font has loaded, then sizes
+the longest line to the width, capped so a column of single words cannot run
+off the bottom. Right- and centre-aligned lines are shifted by one letter-space,
+because tracking is added after the last character too.
+
+Exports carry the font inside the SVG. An SVG drawn into a canvas for PNG
+export cannot see the page's fonts, and one opened on another machine only has
+that machine's, so embedding is the only way either looks like the preview.
+Presets and Randomize only choose text and background pairs that clear 4.5:1,
+and fall back to ink or paper when the palette has none.
+
+Randomize is only fun if the last one can come back: SHAPE and TYPE keep an undo
+history, with a dragged slider or a run of typing counted as one step.
 
 ## Colour that looks designed
 

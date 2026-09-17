@@ -9,7 +9,7 @@
     "start": "npx serve@latest out -l 3000",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "npm run typecheck && tsx scripts/logic-test.ts"
+    "test": "npm run typecheck && tsx scripts/logic-test.ts && tsx scripts/shape-test.ts && tsx scripts/type-test.ts"
   },
   "dependencies": {
     "next": "14.2.35",

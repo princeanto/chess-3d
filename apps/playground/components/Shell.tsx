@@ -18,6 +18,8 @@ import { ago } from '@/lib/storage';
 import { Kbd, Segmented } from './ui';
 
 const ColorTool = dynamic(() => import('@/tools/color/ColorTool'), { ssr: false, loading: () => <Loading /> });
+const TypeTool = dynamic(() => import('@/tools/type/TypeTool'), { ssr: false, loading: () => <Loading /> });
+const ShapeTool = dynamic(() => import('@/tools/shape/ShapeTool'), { ssr: false, loading: () => <Loading /> });
 const Soon = dynamic(() => import('@/tools/Soon'), { ssr: false, loading: () => <Loading /> });
 const CommandPalette = dynamic(() => import('./CommandPalette'), { ssr: false });
 
@@ -258,7 +260,10 @@ function Frame() {
           <p className="tool-desc">{info.description}</p>
         </header>
         <div className="tool-body" key={store.tool}>
-          {store.tool === 'color' ? <ColorTool /> : <Soon tool={info} />}
+          {store.tool === 'color' ? <ColorTool />
+            : store.tool === 'type' ? <TypeTool />
+            : store.tool === 'shape' ? <ShapeTool />
+            : <Soon tool={info} />}
         </div>
       </main>
 
