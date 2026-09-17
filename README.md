@@ -1,6 +1,6 @@
-# Seven apps
+# Eight apps
 
-One repo, seven unrelated apps, deployed independently from their own
+One repo, eight unrelated apps, deployed independently from their own
 subdirectories.
 
 | | | |
@@ -12,6 +12,7 @@ subdirectories.
 | **[Spot the Lie](apps/lie)** | Four statements, one of them invented | [spot-the-lie.vercel.app](https://spot-the-lie.vercel.app) |
 | **[Mynah](apps/mynah)** | English that teaches from your mistakes | [mynah-two.vercel.app](https://mynah-two.vercel.app) |
 | **[Playground](apps/playground)** | Offline creative tools: color, type, shape, draw, make, dare | [playground-phi-orpin.vercel.app](https://playground-phi-orpin.vercel.app) |
+| **[Pocket Tools](apps/pocket-tools)** | 43 tiny everyday utilities, private and offline | _deploying_ |
 
 Each app is standalone: its own `package.json`, its own lockfile, its own
 `node_modules`. There is no workspace tooling, because there is nothing to
@@ -25,6 +26,7 @@ cd apps/khata   && npm install && npm run dev   # localhost:3000
 cd apps/lie     && npm install && npm run dev   # localhost:3000
 cd apps/mynah   && npm install && npm run dev   # localhost:3000
 cd apps/playground && npm install && npm run dev   # localhost:3000
+cd apps/pocket-tools && npm install && npm run dev # localhost:3000
 ```
 
 Both ship with real test suites that run from the command line:
@@ -36,6 +38,7 @@ cd apps/khata   && npm test    # parsing, reconciliation, insight
 cd apps/lie     && npm test    # the deck: four statements, one fake, no repeats
 cd apps/mynah   && npm test    # the course, and the review schedule
 cd apps/playground && npm test    # colour, patterns, type, saves, fonts, drawing, posters, briefs
+cd apps/pocket-tools && npm test  # money, dates, units, search intent, PDF, QR
 ```
 
 ---
@@ -147,8 +150,8 @@ so it becomes a choice between two sentences instead.
 ### Playground — [apps/playground](apps/playground)
 
 `playground●` — an offline creative playground. Open, make something, export: no
-account, no backend, and it keeps working with no connection. Being built in
-all six tools are live: COLOR, TYPE, SHAPE, DRAW, MAKE and DARE.
+account, no backend, and it keeps working with no connection. All six tools are
+live: COLOR, TYPE, SHAPE, DRAW, MAKE and DARE.
 
 The six tools share one palette — the dot in the wordmark takes its most
 colourful entry — and one seeded generator, so every creation reproduces and
@@ -160,3 +163,12 @@ matches the preview at every angle.
 The build writes a service worker listing every file, because tools load as
 separate chunks and caching only what a first visit fetched would leave the
 unopened ones broken offline.
+
+### Pocket Tools — [apps/pocket-tools](apps/pocket-tools)
+
+**Small problems. Solved quickly.** 43 tiny utilities — image compressor, split bill,
+GST and EMI, unit converter, QR codes, invoices and more — that run entirely in the
+browser and keep working offline. Search understands plain requests ("split ₹4,500
+between 5 people") with local pattern matching, fills in the tool and shows the answer.
+Images are processed in a Web Worker, PDFs are written on the device, and nothing is
+ever uploaded because there is no server to upload to.

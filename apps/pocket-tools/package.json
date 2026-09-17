@@ -1,0 +1,26 @@
+{
+  "name": "pocket-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pocket Tools — small problems, solved quickly. Tiny utilities that run on your device.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build && node scripts/build-sw.mjs",
+    "start": "npx serve@latest out -l 3000",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run typecheck && tsx scripts/tools-test.ts"
+  },
+  "dependencies": {
+    "next": "14.2.35",
+    "qrcode-generator": "2.0.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2"
+  }
+}

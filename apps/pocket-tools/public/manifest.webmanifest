@@ -1,0 +1,22 @@
+{
+  "name": "Pocket Tools",
+  "short_name": "Pocket Tools",
+  "description": "Small problems. Solved quickly. Tiny utilities that run on your device, offline.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F5F5F2",
+  "theme_color": "#F5F5F2",
+  "categories": ["utilities", "productivity"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Image Compressor", "url": "/tools/image-compressor/" },
+    { "name": "Split Bill", "url": "/tools/split-bill/" },
+    { "name": "QR Code", "url": "/tools/qr-code/" },
+    { "name": "Unit Converter", "url": "/tools/unit-converter/" }
+  ]
+}
