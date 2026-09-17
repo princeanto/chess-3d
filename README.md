@@ -12,7 +12,7 @@ subdirectories.
 | **[Spot the Lie](apps/lie)** | Four statements, one of them invented | [spot-the-lie.vercel.app](https://spot-the-lie.vercel.app) |
 | **[Mynah](apps/mynah)** | English that teaches from your mistakes | [mynah-two.vercel.app](https://mynah-two.vercel.app) |
 | **[Playground](apps/playground)** | Offline creative tools: color, type, shape, draw, make, dare | [playground-phi-orpin.vercel.app](https://playground-phi-orpin.vercel.app) |
-| **[Pocket Tools](apps/pocket-tools)** | 43 tiny everyday utilities, private and offline | _deploying_ |
+| **[Pocket Tools](apps/pocket-tools)** | 43 tiny everyday utilities, private and offline | [pocket-tools-seven.vercel.app](https://pocket-tools-seven.vercel.app) |
 
 Each app is standalone: its own `package.json`, its own lockfile, its own
 `node_modules`. There is no workspace tooling, because there is nothing to
