@@ -115,7 +115,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .nav-item:hover { color: var(--side-ink); }
 .nav-item.on { color: var(--side-ink); }
 .nav-item.on span:first-child::before { content: '● '; font-size: 9px; vertical-align: 2px; }
-/* The challenge clock, while you make the thing somewhere else. */
+/* The dare's clock, while you make the thing somewhere else. */
 .timer-pill {
   display: grid;
   grid-template-columns: auto auto;

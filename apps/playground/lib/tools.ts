@@ -23,7 +23,8 @@ export const TOOLS: ToolInfo[] = [
   { id: 'shape', label: 'SHAPE', title: 'Shape', description: 'Patterns from a seed. Same seed, same pattern.', key: 's', ready: true },
   { id: 'draw', label: 'DRAW', title: 'Draw', description: 'Blank canvas. Your move.', key: 'd', ready: true },
   { id: 'make', label: 'MAKE', title: 'Make', description: 'Posters, wallpapers and cards in a minute.', key: 'm', ready: true },
-  { id: 'play', label: 'PLAY', title: 'Play', description: 'A small brief when you need one.', key: 'p', ready: true },
+  // Shown as DARE. The id stays 'play' so saved work, backups and the timer carry over.
+  { id: 'play', label: 'DARE', title: 'Dare', description: 'Something to make, and a clock to beat.', key: 'a', ready: true },
 ];
 
 export const toolById = (id: ToolId): ToolInfo => TOOLS.find((tool) => tool.id === id) ?? TOOLS[0];

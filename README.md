@@ -11,7 +11,7 @@ subdirectories.
 | **[Khata](apps/khata)** | Reads your bank mail and keeps your books | [khata-psi.vercel.app](https://khata-psi.vercel.app) |
 | **[Spot the Lie](apps/lie)** | Four statements, one of them invented | [spot-the-lie.vercel.app](https://spot-the-lie.vercel.app) |
 | **[Mynah](apps/mynah)** | English that teaches from your mistakes | [mynah-two.vercel.app](https://mynah-two.vercel.app) |
-| **[Playground](apps/playground)** | Offline creative tools: color, type, shape, draw, make, play | [playground-phi-orpin.vercel.app](https://playground-phi-orpin.vercel.app) |
+| **[Playground](apps/playground)** | Offline creative tools: color, type, shape, draw, make, dare | [playground-phi-orpin.vercel.app](https://playground-phi-orpin.vercel.app) |
 
 Each app is standalone: its own `package.json`, its own lockfile, its own
 `node_modules`. There is no workspace tooling, because there is nothing to
@@ -148,7 +148,7 @@ so it becomes a choice between two sentences instead.
 
 `playground●` — an offline creative playground. Open, make something, export: no
 account, no backend, and it keeps working with no connection. Being built in
-five phases; COLOR is live, with TYPE, SHAPE, DRAW, MAKE and PLAY to follow.
+all six tools are live: COLOR, TYPE, SHAPE, DRAW, MAKE and DARE.
 
 The six tools share one palette — the dot in the wordmark takes its most
 colourful entry — and one seeded generator, so every creation reproduces and

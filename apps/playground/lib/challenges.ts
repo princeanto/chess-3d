@@ -1,5 +1,5 @@
 /**
- * PLAY's briefs.
+ * DARE's briefs.
  *
  * A hand-written deck first, because the best prompts are specific and a little
  * absurd in a way templates rarely manage. Behind it, a generator that combines
@@ -225,7 +225,7 @@ export function toolFor(challenge: Pick<Challenge, 'categories' | 'text'>): Tool
   return 'make';
 }
 
-export const TOOL_NAME: Record<ToolId, string> = { color: 'COLOR', type: 'TYPE', shape: 'SHAPE', draw: 'DRAW', make: 'MAKE', play: 'PLAY' };
+export const TOOL_NAME: Record<ToolId, string> = { color: 'COLOR', type: 'TYPE', shape: 'SHAPE', draw: 'DRAW', make: 'MAKE', play: 'DARE' };
 
 export function formatClock(ms: number): string {
   const total = Math.max(0, Math.ceil(ms / 1000));

@@ -37,7 +37,7 @@ export type Theme = 'light' | 'dark' | 'system';
 export type Place = ToolId | 'saved';
 
 /**
- * PLAY's countdown. It belongs to the playground rather than to PLAY, because
+ * DARE's countdown. It belongs to the playground rather than to DARE, because
  * the point of starting one is to go and make something in another tool.
  */
 export interface ChallengeTimer {
@@ -162,7 +162,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   /* The URL hash is the tool, so Back moves between tools and a link opens one. */
   useEffect(() => {
     const read = () => {
-      const hash = window.location.hash.slice(1) as Place;
+      const raw = window.location.hash.slice(1);
+      // DARE lives at #dare; #play still works for links made before the rename.
+      const hash = (raw === 'dare' ? 'play' : raw) as Place;
       setToolState(PLACES.includes(hash) ? hash : 'color');
     };
     read();
@@ -172,7 +174,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const setTool = useCallback((id: Place) => {
     setToolState(id);
-    const target = id === 'color' ? window.location.pathname : `#${id}`;
+    const target = id === 'color' ? window.location.pathname : `#${id === 'play' ? 'dare' : id}`;
     const current = window.location.hash ? window.location.hash : window.location.pathname;
     if (current !== target) window.history.pushState(null, '', target);
   }, []);

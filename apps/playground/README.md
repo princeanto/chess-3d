@@ -19,7 +19,7 @@ npm run build                 # static export in out/, plus the service worker
 | DRAW — brushes, shapes, grid, symmetry | Built |
 | SAVED — everything kept, with backups | Built |
 | MAKE — posters, drag and drop, Surprise me, drafts | Built |
-| PLAY — briefs, filters, a timer that follows you | Built |
+| DARE — dares, filters, a clock that follows you | Built |
 
 ## Six tools, one playground
 
@@ -110,7 +110,7 @@ comes back in on the other, on screen and in the result, so tiles join. The tile
 is written once in the SVG and placed with `<use>` in grid, brick, half-drop,
 mirror or rotate repeats.
 
-## MAKE and PLAY
+## MAKE and DARE
 
 A MAKE poster is a template's text blocks, a layout, an alignment and a spacing,
 with any dragging kept as offsets on top, so positions are shares of the canvas
@@ -121,7 +121,7 @@ and spacing from short curated lists, keeps your words, only picks readable
 colour pairs, and fades any shape that would sit behind text it makes hard to
 read. Duplicate makes a draft to try something different.
 
-PLAY has a hand-written deck of over a hundred briefs across eight categories,
+DARE (formerly PLAY) has a hand-written deck of over a hundred briefs across eight categories,
 with a generator behind it so a narrow filter never runs dry, and a shuffle that
 keeps recent ones from repeating. The timer counts against the clock rather than
 ticks, so a background tab stays honest, and it follows you: while you make the

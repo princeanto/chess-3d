@@ -84,7 +84,7 @@ const OFFLINE_LABEL: Record<Offline, string> = {
 };
 
 /**
- * A running challenge follows you: the clock sits in the sidebar while you make
+ * A running dare follows you: the clock sits in the sidebar while you make
  * the thing in another tool, and the tab title counts down too.
  */
 function TimerPill({ compact = false }: { compact?: boolean }) {
@@ -106,7 +106,7 @@ function TimerPill({ compact = false }: { compact?: boolean }) {
       className={`timer-pill timer-${timer.status}${compact ? ' timer-compact' : ''}`}
       onClick={() => store.setTool('play')}
       title={timer.text}
-      aria-label={`Challenge timer: ${label}. Open Play.`}
+      aria-label={`Dare timer: ${label}. Open Dare.`}
     >
       <span className="timer-dot" aria-hidden="true" />
       <span className="timer-clock">{label}</span>

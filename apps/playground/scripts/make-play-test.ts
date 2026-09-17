@@ -1,5 +1,5 @@
 /**
- * MAKE's layout and Surprise me, and PLAY's briefs.
+ * MAKE's layout and Surprise me, and DARE's briefs.
  */
 
 import { createRng } from '../lib/random';
@@ -84,7 +84,7 @@ console.log('\nMAKE');
     === JSON.stringify((() => { const x = surprise(templatePoster('quote', 'square', PALETTE, createRng(9)), PALETTE, createRng(11)); return { ...x, blocks: x.blocks.map(({ id, ...b }) => b), shapes: x.shapes.map(({ id, ...s }) => s) }; })()));
 }
 
-console.log('\nPLAY');
+console.log('\nDARE');
 {
   ok('the deck is big enough to play for a while', DECK.length >= 100, `${DECK.length}`);
   ok('every brief ends properly and has a category', DECK.every((c) => /[.!?]$/.test(c.text) && c.categories.length > 0));

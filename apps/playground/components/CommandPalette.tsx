@@ -36,7 +36,7 @@ export default function CommandPalette() {
       list.push({ id: `open-${t.id}`, label: `Open ${t.title}`, group: 'Tools', hint: t.key.toUpperCase(), run: () => store.setTool(t.id) });
     }
     list.push({ id: 'open-saved', label: 'Open Saved', group: 'Tools', run: () => store.setTool('saved') });
-    list.push({ id: 'challenge', label: 'Give me a challenge', group: 'Tools', run: () => store.setTool('play') });
+    list.push({ id: 'challenge', label: 'Give me a dare', group: 'Tools', run: () => store.setTool('play') });
     for (const theme of ['light', 'dark', 'system'] as const) {
       list.push({ id: `theme-${theme}`, label: `Theme: ${theme[0].toUpperCase()}${theme.slice(1)}`, group: 'Preferences', run: () => store.setTheme(theme) });
     }
