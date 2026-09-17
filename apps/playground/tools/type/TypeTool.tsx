@@ -33,7 +33,7 @@ import {
 import { PickOne } from '../ColorChips';
 import SavedStrip from '../SavedStrip';
 import SavedPalettes from '../SavedPalettes';
-import FontBrowser from './FontBrowser';
+import GoogleFontList from './GoogleFontList';
 
 const ASPECT_OPTIONS = (Object.keys(ASPECTS) as Aspect[]).map((id) => ({ id, label: ASPECTS[id].label }));
 const MEASURE_AT = 100;
@@ -45,7 +45,6 @@ export default function TypeTool() {
   const store = useStore();
   const { state, set, undo, redo } = useHistory<TypeState>(() => ({ ...DEFAULT_TYPE, ...load<Partial<TypeState>>('type.state', {}) }));
   const [fitted, setFitted] = useState<number | null>(null);
-  const [browsing, setBrowsing] = useState(false);
   const [recentFonts, setRecentFonts] = useState<GoogleFamily[]>(() => usedGoogleFonts());
   const [previewNames, setPreviewNames] = useState<Record<string, string>>({});
   const measurer = useRef<HTMLDivElement>(null);
@@ -170,7 +169,9 @@ export default function TypeTool() {
   const commands: Command[] = [
     { id: 't-random', label: 'Randomize typography', group: 'Type', hint: 'Space', run: randomize },
     { id: 't-edit', label: 'Edit text', group: 'Type', run: () => textarea.current?.focus() },
-    { id: 't-google', label: 'Browse Google Fonts', group: 'Type', run: () => setBrowsing(true) },
+    { id: 't-left', label: 'Align left', group: 'Type', run: () => patch({ align: 'left' }) },
+    { id: 't-center', label: 'Align center', group: 'Type', run: () => patch({ align: 'center' }) },
+    { id: 't-right', label: 'Align right', group: 'Type', run: () => patch({ align: 'right' }) },
     { id: 't-save', label: 'Save poster', group: 'Type', hint: '⌘S', run: savePoster },
     { id: 't-png', label: 'Export poster as PNG', group: 'Type', hint: 'E', run: () => exportAs('png') },
     { id: 't-svg', label: 'Export poster as SVG', group: 'Type', run: () => exportAs('svg') },
@@ -204,6 +205,20 @@ export default function TypeTool() {
             spellCheck={false}
             onChange={(e) => patch({ text: e.target.value }, 'text')}
           />
+          <div className={styles.alignRow}>
+            <Segmented<Align>
+              label="Alignment"
+              value={state.align}
+              onChange={(align) => patch({ align })}
+              options={[{ id: 'left', label: 'Left' }, { id: 'center', label: 'Center' }, { id: 'right', label: 'Right' }]}
+            />
+            <Segmented<VAlign>
+              label="Vertical position"
+              value={state.valign}
+              onChange={(valign) => patch({ valign })}
+              options={[{ id: 'top', label: 'Top' }, { id: 'middle', label: 'Middle' }, { id: 'bottom', label: 'Bottom' }]}
+            />
+          </div>
         </div>
 
         <div className={styles.group}>
@@ -247,7 +262,7 @@ export default function TypeTool() {
               </button>
             ))}
           </div>
-          <Button onClick={() => setBrowsing(true)}>Browse all Google Fonts</Button>
+          <GoogleFontList current={state.font} onPick={pickGoogle} />
           <div>
             <Segmented
               compact
@@ -281,8 +296,6 @@ export default function TypeTool() {
 
         <div className={styles.group}>
           <p className={styles.label}>Layout</p>
-          <Segmented<Align> label="Alignment" value={state.align} onChange={(align) => patch({ align })} options={[{ id: 'left', label: 'Left' }, { id: 'center', label: 'Center' }, { id: 'right', label: 'Right' }]} />
-          <Segmented<VAlign> label="Vertical position" value={state.valign} onChange={(valign) => patch({ valign })} options={[{ id: 'top', label: 'Top' }, { id: 'middle', label: 'Middle' }, { id: 'bottom', label: 'Bottom' }]} />
           <div className={styles.scroll}>
             <Segmented<Case> label="Case" value={state.textCase} onChange={(textCase) => patch({ textCase })} options={[{ id: 'normal', label: 'Aa' }, { id: 'upper', label: 'AA' }, { id: 'lower', label: 'aa' }, { id: 'title', label: 'Title' }]} />
           </div>
@@ -345,7 +358,7 @@ export default function TypeTool() {
         <p className={styles.hint}><b>Space</b> for a new composition · Click the poster to edit the words · <b>{modLabel()}Z</b> to go back</p>
         <SavedStrip tool="type" extra={{ label: 'Style only', title: 'Use this style with your words', run: useStyle }} />
       </div>
-      {browsing && <FontBrowser current={state.font} onPick={pickGoogle} onClose={() => setBrowsing(false)} />}
+
 
       {/* Off-screen, but laid out: getBBox needs real layout to measure. */}
       <div ref={measurer} aria-hidden="true" style={{ position: 'fixed', left: -99999, top: 0, width: w, visibility: 'hidden', pointerEvents: 'none' }} />

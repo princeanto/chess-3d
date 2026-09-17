@@ -36,6 +36,21 @@ export type Theme = 'light' | 'dark' | 'system';
 /** Where the main area is: a tool, or the Saved page. */
 export type Place = ToolId | 'saved';
 
+/**
+ * PLAY's countdown. It belongs to the playground rather than to PLAY, because
+ * the point of starting one is to go and make something in another tool.
+ */
+export interface ChallengeTimer {
+  text: string;
+  tool: ToolId;
+  total: number;
+  /** When running: the moment it ends. Clock time, so a background tab stays honest. */
+  endsAt: number | null;
+  /** When paused or done: what was left. */
+  left: number;
+  status: 'running' | 'paused' | 'done';
+}
+
 /** What a tool is being opened with, from Recent or Saved. */
 export type Pending = Pick<Recent, 'tool' | 'kind' | 'recipe'> & { doc?: string; name?: string };
 
@@ -90,6 +105,12 @@ interface StoreValue {
   removeItem: (id: string) => void;
   importItems: (items: Saved[], docs: Record<string, unknown>) => Promise<{ added: number; skipped: number }>;
   openSaved: (item: Saved) => void;
+  timer: ChallengeTimer | null;
+  startTimer: (text: string, minutes: number, tool: ToolId) => void;
+  pauseTimer: () => void;
+  resumeTimer: () => void;
+  resetTimer: () => void;
+  endTimer: () => void;
   toasts: Toast[];
   toast: (message: string) => void;
   commandOpen: boolean;
@@ -108,6 +129,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [opened, setOpened] = useState(0);
   const [saved, setSaved] = useState<Saved[]>([]);
   const savedRef = useRef<Saved[]>([]);
+  const [timer, setTimerState] = useState<ChallengeTimer | null>(null);
+  const audio = useRef<AudioContext | null>(null);
   const [theme, setThemeState] = useState<Theme>('system');
   const [palette, setPaletteState] = useState<string[]>(DEFAULT_PALETTE);
   const [recents, setRecents] = useState<Recent[]>([]);
@@ -131,6 +154,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
     savedRef.current = list;
     setSaved(list);
+    const kept = load<ChallengeTimer | null>('play.timer', null);
+    if (kept?.status === 'running' && kept.endsAt !== null && kept.endsAt <= Date.now()) setTimerState({ ...kept, status: 'done', endsAt: null, left: 0 });
+    else setTimerState(kept);
   }, []);
 
   /* The URL hash is the tool, so Back moves between tools and a link opens one. */
@@ -246,6 +272,92 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return recent;
   }, []);
 
+  const setTimer = useCallback((next: ChallengeTimer | null) => {
+    setTimerState(next);
+    save('play.timer', next);
+  }, []);
+
+  /* Browsers only allow sound after a click, so the chime is readied on Start. */
+  const readyAudio = () => {
+    try {
+      const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!audio.current && Ctor) audio.current = new Ctor();
+      audio.current?.resume();
+    } catch {
+      /* no sound, no problem */
+    }
+  };
+
+  const chime = () => {
+    const ctx = audio.current;
+    if (!ctx) return;
+    try {
+      [0, 0.18, 0.36].forEach((at, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.value = [880, 1108.7, 1318.5][i];
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime + at);
+        gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + at + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + at + 0.5);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(ctx.currentTime + at);
+        osc.stop(ctx.currentTime + at + 0.55);
+      });
+    } catch {
+      /* ignore */
+    }
+    navigator.vibrate?.([120, 80, 120]);
+  };
+
+  const startTimer = useCallback((text: string, minutes: number, forTool: ToolId) => {
+    readyAudio();
+    const total = minutes * 60_000;
+    setTimer({ text, tool: forTool, total, endsAt: Date.now() + total, left: total, status: 'running' });
+  }, [setTimer]);
+
+  const pauseTimer = useCallback(() => {
+    setTimerState((t) => {
+      if (!t || t.status !== 'running' || t.endsAt === null) return t;
+      const next = { ...t, status: 'paused' as const, left: Math.max(0, t.endsAt - Date.now()), endsAt: null };
+      save('play.timer', next);
+      return next;
+    });
+  }, []);
+
+  const resumeTimer = useCallback(() => {
+    readyAudio();
+    setTimerState((t) => {
+      if (!t || t.status !== 'paused') return t;
+      const next = { ...t, status: 'running' as const, endsAt: Date.now() + t.left };
+      save('play.timer', next);
+      return next;
+    });
+  }, []);
+
+  const resetTimer = useCallback(() => {
+    setTimerState((t) => {
+      if (!t) return t;
+      const next = { ...t, status: 'paused' as const, left: t.total, endsAt: null };
+      save('play.timer', next);
+      return next;
+    });
+  }, []);
+
+  const endTimer = useCallback(() => setTimer(null), [setTimer]);
+
+  /* The moment it runs out, wherever you are. */
+  useEffect(() => {
+    if (timer?.status !== 'running' || timer.endsAt === null) return;
+    const wait = Math.max(0, timer.endsAt - Date.now());
+    const id = window.setTimeout(() => {
+      setTimer({ ...timer, status: 'done', endsAt: null, left: 0 });
+      toast('Time’s up. Save what you made.');
+      chime();
+    }, wait);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timer]);
+
   const registerActions = useCallback((ref: MutableRefObject<ToolActions> | null) => {
     toolActions.current = ref;
   }, []);
@@ -256,10 +368,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     () => ({
       tool, setTool, opened, theme, setTheme, palette, setPalette, recents, remember, openRecent, takePending,
       saved, saveItem, renameItem, removeItem, importItems, openSaved,
+      timer, startTimer, pauseTimer, resumeTimer, resetTimer, endTimer,
       toasts, toast, commandOpen, setCommandOpen, registerActions, actions, secret, setSecret,
     }),
     [tool, setTool, opened, theme, setTheme, palette, setPalette, recents, remember, openRecent, takePending,
       saved, saveItem, renameItem, removeItem, importItems, openSaved,
+      timer, startTimer, pauseTimer, resumeTimer, resetTimer, endTimer,
       toasts, toast, commandOpen, registerActions, actions, secret],
   );
 

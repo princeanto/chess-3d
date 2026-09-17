@@ -22,8 +22,8 @@ export const TOOLS: ToolInfo[] = [
   { id: 'type', label: 'TYPE', title: 'Type', description: 'Set a line of words like you mean it.', key: 't', ready: true },
   { id: 'shape', label: 'SHAPE', title: 'Shape', description: 'Patterns from a seed. Same seed, same pattern.', key: 's', ready: true },
   { id: 'draw', label: 'DRAW', title: 'Draw', description: 'Blank canvas. Your move.', key: 'd', ready: true },
-  { id: 'make', label: 'MAKE', title: 'Make', description: 'Posters, wallpapers and cards in a minute.', key: 'm', ready: false },
-  { id: 'play', label: 'PLAY', title: 'Play', description: 'A small brief when you need one.', key: 'p', ready: false },
+  { id: 'make', label: 'MAKE', title: 'Make', description: 'Posters, wallpapers and cards in a minute.', key: 'm', ready: true },
+  { id: 'play', label: 'PLAY', title: 'Play', description: 'A small brief when you need one.', key: 'p', ready: true },
 ];
 
 export const toolById = (id: ToolId): ToolInfo => TOOLS.find((tool) => tool.id === id) ?? TOOLS[0];

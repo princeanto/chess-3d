@@ -15,6 +15,8 @@ import { TOOLS, toolById } from '@/lib/tools';
 import { mostChromatic, luminance, readableOn } from '@/lib/color';
 import { isEditable, modLabel, spaceIsTaken } from '@/lib/shortcuts';
 import { ago, type ToolId } from '@/lib/storage';
+import { useNow } from '@/lib/useNow';
+import { formatClock } from '@/lib/challenges';
 import { Kbd, Segmented } from './ui';
 
 const ColorTool = dynamic(() => import('@/tools/color/ColorTool'), { ssr: false, loading: () => <Loading /> });
@@ -22,7 +24,8 @@ const TypeTool = dynamic(() => import('@/tools/type/TypeTool'), { ssr: false, lo
 const ShapeTool = dynamic(() => import('@/tools/shape/ShapeTool'), { ssr: false, loading: () => <Loading /> });
 const DrawTool = dynamic(() => import('@/tools/draw/DrawTool'), { ssr: false, loading: () => <Loading /> });
 const SavedPage = dynamic(() => import('@/tools/SavedPage'), { ssr: false, loading: () => <Loading /> });
-const Soon = dynamic(() => import('@/tools/Soon'), { ssr: false, loading: () => <Loading /> });
+const MakeTool = dynamic(() => import('@/tools/make/MakeTool'), { ssr: false, loading: () => <Loading /> });
+const PlayTool = dynamic(() => import('@/tools/play/PlayTool'), { ssr: false, loading: () => <Loading /> });
 const CommandPalette = dynamic(() => import('./CommandPalette'), { ssr: false });
 
 function Loading() {
@@ -79,6 +82,38 @@ const OFFLINE_LABEL: Record<Offline, string> = {
   saving: 'Saving for offline…',
   local: 'Works locally',
 };
+
+/**
+ * A running challenge follows you: the clock sits in the sidebar while you make
+ * the thing in another tool, and the tab title counts down too.
+ */
+function TimerPill({ compact = false }: { compact?: boolean }) {
+  const store = useStore();
+  const timer = store.timer;
+  const now = useNow(timer?.status === 'running', 500);
+  const left = !timer ? 0 : timer.status === 'running' && timer.endsAt !== null ? Math.max(0, timer.endsAt - now) : timer.left;
+
+  useEffect(() => {
+    if (compact) return;
+    document.title = timer?.status === 'running' ? `${formatClock(left)} · Playground` : timer?.status === 'done' ? 'Time’s up · Playground' : 'Playground';
+  }, [compact, timer?.status, left]);
+
+  if (!timer || store.tool === 'play') return null;
+  const label = timer.status === 'done' ? 'Time’s up' : formatClock(left);
+  return (
+    <button
+      type="button"
+      className={`timer-pill timer-${timer.status}${compact ? ' timer-compact' : ''}`}
+      onClick={() => store.setTool('play')}
+      title={timer.text}
+      aria-label={`Challenge timer: ${label}. Open Play.`}
+    >
+      <span className="timer-dot" aria-hidden="true" />
+      <span className="timer-clock">{label}</span>
+      {!compact && <span className="timer-text">{timer.text}</span>}
+    </button>
+  );
+}
 
 function Frame() {
   const store = useStore();
@@ -186,6 +221,7 @@ function Frame() {
           <button className="mark" onClick={onLogo} aria-label="Playground. Back to Color">
             playground<span className="mark-dot" style={{ color: dot }} aria-hidden="true">●</span>
           </button>
+          <TimerPill compact />
           <span className={`status status-${offline} status-mobile`} title={OFFLINE_LABEL[offline]}>
             <span className="status-dot" aria-hidden="true" />
             <span className="sr-only">{OFFLINE_LABEL[offline]}</span>
@@ -220,6 +256,8 @@ function Frame() {
             </li>
           </ul>
         </nav>
+
+        <TimerPill />
 
         <button className="find" onClick={() => store.setCommandOpen(true)}>
           <span>Search</span>
@@ -280,8 +318,9 @@ function Frame() {
             : store.tool === 'type' ? <TypeTool />
             : store.tool === 'shape' ? <ShapeTool />
             : store.tool === 'draw' ? <DrawTool />
-            : store.tool === 'saved' ? <SavedPage />
-            : <Soon tool={toolById(store.tool)} />}
+            : store.tool === 'make' ? <MakeTool />
+            : store.tool === 'play' ? <PlayTool />
+            : <SavedPage />}
         </div>
       </main>
 

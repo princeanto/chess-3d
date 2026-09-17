@@ -115,6 +115,34 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .nav-item:hover { color: var(--side-ink); }
 .nav-item.on { color: var(--side-ink); }
 .nav-item.on span:first-child::before { content: '● '; font-size: 9px; vertical-align: 2px; }
+/* The challenge clock, while you make the thing somewhere else. */
+.timer-pill {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  justify-content: start;
+  gap: 2px 8px;
+  width: 100%;
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  text-align: left;
+  color: var(--side-ink);
+  background: color-mix(in srgb, var(--side-ink) 7%, transparent);
+  border: 0;
+  border-radius: 8px;
+  transition: background 0.15s var(--ease);
+}
+.timer-pill:hover { background: color-mix(in srgb, var(--side-ink) 12%, transparent); }
+.timer-dot { width: 7px; height: 7px; background: #e4572e; border-radius: 50%; }
+.timer-running .timer-dot { animation: pulse 1.2s ease-in-out infinite; }
+.timer-paused .timer-dot { background: var(--muted); }
+.timer-done .timer-dot { background: var(--ok); }
+.timer-clock { font-size: 15px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.timer-text { grid-column: 1 / -1; overflow: hidden; font-size: 12px; color: var(--muted); white-space: nowrap; text-overflow: ellipsis; }
+.timer-compact { display: none; }
+@keyframes pulse { 50% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { .timer-running .timer-dot { animation: none; } }
+
 .nav-sep { margin-top: 12px; padding-top: 12px; border-top: 1px solid color-mix(in srgb, var(--side-ink) 12%, transparent); }
 .nav-count { font-size: 11px; font-weight: 600; letter-spacing: 0; opacity: 0.55; font-variant-numeric: tabular-nums; }
 .nav-key { font-size: 11px; font-weight: 500; letter-spacing: 0; opacity: 0; transition: opacity 0.15s var(--ease); }
@@ -233,13 +261,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .toasts { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 60; display: grid; gap: 6px; transform: translateX(-50%); pointer-events: none; }
 .toast { padding: 9px 14px; font-size: 13px; font-weight: 600; color: var(--bg); background: var(--ink); border-radius: 7px; box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.35); animation: rise 0.2s var(--ease) both; }
 
-/* --------------------------------- soon --------------------------------- */
-.soon { max-width: 560px; padding: 40px 0; }
-.soon-line { margin: 0; font-size: clamp(26px, 3.4vw, 34px); font-weight: 800; letter-spacing: -0.035em; line-height: 1.1; }
-.soon-sub { margin: 12px 0 0; font-size: 15px; color: var(--muted); max-width: 46ch; }
-.soon-swatches { display: flex; margin: 26px 0; height: 44px; border-radius: 6px; overflow: hidden; }
-.soon-swatches i { flex: 1; }
-
 /* ------------------------------ easter eggs ----------------------------- */
 .strange .tool-body { animation: strange 5s linear both; }
 
@@ -260,6 +281,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .nav-item.on { border-bottom-color: var(--side-ink); }
   .nav-item.on span:first-child::before { content: none; }
   .nav-sep { margin: 0; padding: 0; border: 0; }
+  .timer-pill:not(.timer-compact) { display: none; }
+  .timer-compact { display: inline-flex; width: auto; margin: 0 10px 0 auto; padding: 6px 10px; gap: 6px; border-radius: 999px; }
   .nav-count { display: none; }
   .nav-key, .find, .recent, .side-foot { display: none; }
   .main { padding: 24px 16px 96px; }

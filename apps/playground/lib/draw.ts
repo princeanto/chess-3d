@@ -261,23 +261,31 @@ function strokeMarkup(stroke: Stroke, color: string): string {
 }
 
 /**
- * The drawing as SVG, over the area `box` (document units).
+ * Strokes as SVG markup, over the area `box`.
  *
  * The eraser is a mask over everything drawn before it, so it removes ink and
- * leaves the background — exactly what it did on screen.
+ * leaves the background — exactly what it did on screen. Mask ids start with
+ * `prefix`, so two drawings in one page never share one.
  */
-export function docSvg(doc: DrawDoc, box: { x: number; y: number; w: number; h: number }, pixelWidth: number = box.w): string {
+export function strokesMarkup(strokes: readonly Stroke[], box: { x: number; y: number; w: number; h: number }, prefix = 'erase'): { defs: string; body: string } {
   let body = '';
   let defs = '';
-  doc.strokes.forEach((stroke, k) => {
+  strokes.forEach((stroke, k) => {
     if (stroke.b === 'eraser') {
-      defs += `<mask id="erase${k}" maskUnits="userSpaceOnUse" x="${f(box.x)}" y="${f(box.y)}" width="${f(box.w)}" height="${f(box.h)}">` +
+      if (!body) return;
+      defs += `<mask id="${prefix}${k}" maskUnits="userSpaceOnUse" x="${f(box.x)}" y="${f(box.y)}" width="${f(box.w)}" height="${f(box.h)}">` +
         `<rect x="${f(box.x)}" y="${f(box.y)}" width="${f(box.w)}" height="${f(box.h)}" fill="#fff"/>${strokeMarkup(stroke, '#000')}</mask>`;
-      if (body) body = `<g mask="url(#erase${k})">${body}</g>`;
+      body = `<g mask="url(#${prefix}${k})">${body}</g>`;
     } else {
       body += strokeMarkup(stroke, stroke.c);
     }
   });
+  return { defs, body };
+}
+
+/** The drawing as SVG, over the area `box` (document units). */
+export function docSvg(doc: DrawDoc, box: { x: number; y: number; w: number; h: number }, pixelWidth: number = box.w): string {
+  const { defs, body } = strokesMarkup(doc.strokes, box);
   const ground = groundColor(doc);
   const ph = Math.round((pixelWidth / box.w) * box.h);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.round(pixelWidth)}" height="${ph}" viewBox="${f(box.x)} ${f(box.y)} ${f(box.w)} ${f(box.h)}">` +

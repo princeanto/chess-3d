@@ -7,8 +7,10 @@
 import { createRng } from '../lib/random';
 import { contrast } from '../lib/color';
 import {
-  ASPECTS, PATTERNS, RANGES, colorsFrom, patternCss, patternSvg, randomPattern, type PatternKind, type PatternState,
+  ASPECTS, PATTERNS, RANGES, colorsFrom, patternCss, patternLabel, patternSvg, randomPattern, type PatternKind, type PatternState,
 } from '../lib/pattern';
+import { designFor } from '../lib/generative';
+import { REPEATS, starterTile, wrapStrokes } from '../lib/tile';
 
 let passed = 0;
 let failed = 0;
@@ -92,6 +94,59 @@ console.log('\nEXPORT');
   const css = patternCss(base('dots'));
   ok('CSS carries the pattern inside it', css.includes('background-image: url("data:image/svg+xml,%3Csvg'));
   ok('CSS sets the background colour too', css.includes('background-color: #1D1B22;'));
+}
+
+console.log('\nGENERATE');
+{
+  const designs = new Set<string>();
+  const svgs = new Set<string>();
+  let clean = 0;
+  let light = 0;
+  let paletteOnly = 0;
+  let heaviest = 0;
+  const allowed = new Set(['#1D1B22', '#E4572E', '#F2C14E', '#7FB5A4']);
+  for (let seed = 1; seed <= 300; seed += 1) {
+    designs.add(JSON.stringify(designFor(seed)));
+    const state: PatternState = { ...base('generated' as PatternKind, seed), density: 50 };
+    const svg = patternSvg(state);
+    svgs.add(svg);
+    const dense = patternSvg({ ...state, density: 100, scale: 100 });
+    if (!/NaN|Infinity|undefined/.test(svg + dense)) clean += 1;
+    const count = elements(dense);
+    heaviest = Math.max(heaviest, count);
+    if (count < 7000) light += 1;
+    if ([...fills(svg)].every((c) => allowed.has(c))) paletteOnly += 1;
+  }
+  ok('300 seeds make 300 different designs', designs.size === 300, `${designs.size}`);
+  ok('…and 300 different pictures', svgs.size === 300);
+  ok('no broken numbers, even at full density', clean === 300);
+  ok('stays light enough for a phone at full density', light === 300, `heaviest ${heaviest}`);
+  ok('uses only the palette and the background', paletteOnly === 300);
+  ok('the same seed generates the same pattern', patternSvg(base('generated' as PatternKind, 42)) === patternSvg(base('generated' as PatternKind, 42)));
+  ok('a generated pattern says what it is made of', / on a /.test(patternLabel({ kind: 'generated', seed: 7 })), patternLabel({ kind: 'generated', seed: 7 }));
+  ok('Generate is not one of the random kinds', PATTERNS.every((p) => p.id !== ('generated' as unknown)));
+}
+
+console.log('\nTILE');
+{
+  const tile = starterTile(['#E4572E', '#F2C14E']);
+  const state: PatternState = { ...base('tile' as PatternKind), tile, density: 30, scale: 100, spacing: 0 };
+  const svg = patternSvg(state);
+  ok('the tile is defined once and placed by reference', (svg.match(/<g id="t839204">/g) ?? []).length === 1 && (svg.match(/<use /g) ?? []).length > 20);
+  ok('it is clipped to its square', svg.includes('clip-path="url(#t839204c)"'));
+  const wrapped = wrapStrokes([{ b: 'pencil', c: '#111111', s: 20, o: 1, p: [450, 0, 520, 0], y: 'n' }]);
+  ok('a stroke over the right edge comes back in on the left', wrapped.length === 2 && wrapped[1].p[0] === -550);
+  const corner = wrapStrokes([{ b: 'pencil', c: '#111111', s: 20, o: 1, p: [495, 495], y: 'n' }]);
+  ok('a stroke in a corner wraps into all three neighbours', corner.length === 4);
+  ok('a stroke in the middle does not wrap', wrapStrokes([{ b: 'pencil', c: '#111111', s: 10, o: 1, p: [0, 0, 10, 10], y: 'n' }]).length === 1);
+  for (const r of REPEATS) {
+    const out = patternSvg({ ...state, tile: { ...tile, repeat: r.id } });
+    ok(`repeat ${r.label} draws cleanly`, !/NaN|Infinity/.test(out) && out.includes('<use '));
+  }
+  ok('mirror flips alternate tiles', patternSvg({ ...state, tile: { ...tile, repeat: 'mirror' } }).includes('scale(-'));
+  ok('an empty tile is just the background', elements(patternSvg({ ...state, tile: { strokes: [], repeat: 'grid' } })) >= 1);
+  const erased = patternSvg({ ...state, tile: { repeat: 'grid', strokes: [...tile.strokes, { b: 'eraser', c: '#111111', s: 80, o: 1, p: [0, 0, 100, 100], y: 'n' }] } });
+  ok('the eraser works inside a tile', erased.includes('<mask id="t839204e'));
 }
 
 console.log(`\n${failed === 0 ? 'PASS' : 'FAIL'}  ${passed} passed, ${failed} failed`);

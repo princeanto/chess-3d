@@ -38,6 +38,17 @@ export default function SavedPreview({ item }: { item: Saved }) {
     return `data:image/svg+xml,${encodeURIComponent(patternSvg(recipe as unknown as PatternState, 360))}`;
   }, [item.tool, recipe]);
 
+  if (item.tool === 'make' && typeof recipe.preview === 'string') {
+    return <span style={fill} dangerouslySetInnerHTML={{ __html: recipe.preview.replace('<svg ', '<svg style="display:block;width:100%;height:100%" ') }} />;
+  }
+  if (item.tool === 'play') {
+    const text = (recipe.challenge as { text?: string } | undefined)?.text ?? '';
+    return (
+      <span style={{ ...fill, display: 'grid', placeItems: 'center', padding: '10%', boxSizing: 'border-box', background: 'var(--ink)', color: 'var(--bg)', fontWeight: 800, fontSize: 13, lineHeight: 1.15, letterSpacing: '-0.02em', textAlign: 'center' }}>
+        {text}
+      </span>
+    );
+  }
   if (item.thumb) return <img src={item.thumb} alt="" style={{ ...fill, objectFit: 'contain' }} />;
   if (pattern) return <img src={pattern} alt="" loading="lazy" style={{ ...fill, objectFit: 'cover' }} />;
   if (item.tool === 'type') return <TypePreview recipe={recipe} />;

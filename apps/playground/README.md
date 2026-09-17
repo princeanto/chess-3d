@@ -7,19 +7,19 @@ the browser and keeps working with no connection once it has loaded.
 
 ```bash
 npm install && npm run dev    # localhost:3000
-npm test                      # colour, patterns, type, saves, fonts, drawing, shortcuts
+npm test                      # colour, patterns, type, saves, fonts, drawing, posters, briefs
 npm run build                 # static export in out/, plus the service worker
 ```
 
 | Tool | Status |
 | --- | --- |
 | COLOR — palettes and gradients | Built |
-| SHAPE — thirteen seeded patterns | Built |
+| SHAPE — thirteen patterns, Generate, draw your own tile | Built |
 | TYPE — poster typography, seven presets, every Google font | Built |
 | DRAW — brushes, shapes, grid, symmetry | Built |
 | SAVED — everything kept, with backups | Built |
-| MAKE | Next |
-| PLAY | Last |
+| MAKE — posters, drag and drop, Surprise me, drafts | Built |
+| PLAY — briefs, filters, a timer that follows you | Built |
 
 ## Six tools, one playground
 
@@ -76,11 +76,9 @@ valid rather than trusting the file.
 ## Every Google font, one at a time
 
 The whole Google Fonts catalogue — 1,946 families, 15 KB gzipped — ships with
-the app (`npm run fonts` refreshes it), so browsing and search work offline.
-A font loads only when picked. The list previews each family using just the
-letters of its name, a few hundred bytes a row, and only for the rows in view.
-Fonts are registered through the FontFace API under separate names for preview
-and use, so a name-only preview can never stand in for the real font.
+the app (`npm run fonts` refreshes it), so TYPE lists every name, searchable,
+with nothing fetched. A font loads only when its name is clicked, through the
+FontFace API, and is applied once it has arrived.
 
 Picked fonts are cached by the service worker and work offline afterwards.
 Exports embed only the faces the text needs. This is the one place Playground
@@ -96,6 +94,38 @@ darken where it crosses itself or its symmetry copies. The eraser composites the
 same way, removing ink and never the background, and exports as an SVG mask
 over what came before it. Symmetry is stored per stroke. A stylus gets pressure,
 and once one is used, touches are ignored so a resting palm does not draw.
+
+## Generate, and drawing your own tile
+
+Generate does not pick one of the thirteen patterns; it invents a structure from
+the seed: a lattice (grid, brick, half-drop, hex, diamond, radial) and up to three
+layers of motif, each with its own shape, fill, rotation rule, colour rule and
+rhythm of gaps. Taste is in the constraints — layers shrink as they stack,
+truchet motifs turn in quarter steps, a lone colour gets a knockout in the
+background colour, and complex designs get fewer cells so the file stays light.
+In tests, 300 seeds give 300 different designs.
+
+Draw a tile uses DRAW's brushes in a square that wraps: a line off one edge
+comes back in on the other, on screen and in the result, so tiles join. The tile
+is written once in the SVG and placed with `<use>` in grid, brick, half-drop,
+mirror or rotate repeats.
+
+## MAKE and PLAY
+
+A MAKE poster is a template's text blocks, a layout, an alignment and a spacing,
+with any dragging kept as offsets on top, so positions are shares of the canvas
+and every format re-flows. Text is measured by the browser with the same engine
+that draws it, headlines shrink to fit, and centre lines pull dragged things into
+line. Surprise me changes layout, type pairing, colour, shape, scale, alignment
+and spacing from short curated lists, keeps your words, only picks readable
+colour pairs, and fades any shape that would sit behind text it makes hard to
+read. Duplicate makes a draft to try something different.
+
+PLAY has a hand-written deck of over a hundred briefs across eight categories,
+with a generator behind it so a narrow filter never runs dry, and a shuffle that
+keeps recent ones from repeating. The timer counts against the clock rather than
+ticks, so a background tab stays honest, and it follows you: while you make the
+thing in another tool, it sits in the sidebar and the tab title.
 
 ## Colour that looks designed
 

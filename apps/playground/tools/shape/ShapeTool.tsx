@@ -19,12 +19,26 @@ import { copyText, downloadBlob, downloadText, fileName } from '@/lib/export';
 import { svgToPng } from '@/lib/render';
 import { modLabel } from '@/lib/shortcuts';
 import {
-  ASPECTS, PATTERNS, RANGES, colorsFrom, patternCss, patternSvg, randomPattern,
-  type Aspect, type PatternKind, type PatternState,
+  ASPECTS, PATTERNS, RANGES, colorsFrom, patternCss, patternLabel, patternSvg, randomPattern,
+  type Aspect, type BaseKind, type PatternKind, type PatternState,
 } from '@/lib/pattern';
+import { starterTile, type TileSpec } from '@/lib/tile';
+import TileEditor from './TileEditor';
+import tileStyles from './tile.module.css';
 import { PickMany, PickOne } from '../ColorChips';
 import SavedStrip from '../SavedStrip';
 import SavedPalettes from '../SavedPalettes';
+
+const Sparkle = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" style={{ marginRight: 6 }}>
+    <path d="M7 0.8l1.5 4.2 4.2 1.5-4.2 1.5L7 12.2 5.5 8 1.3 6.5 5.5 5z" fill="currentColor" />
+  </svg>
+);
+const Pen = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" style={{ marginRight: 6 }} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 12l.8-2.8L9.8 2.2a1.2 1.2 0 011.7 1.7L4.5 10.9 2 12z" />
+  </svg>
+);
 
 const ASPECT_OPTIONS = (Object.keys(ASPECTS) as Aspect[]).map((id) => ({ id, label: ASPECTS[id].label }));
 const THUMB_SEED = 424242;
@@ -60,15 +74,16 @@ export default function ShapeTool() {
         density: r.density[0], scale: (r.scale[0] + r.scale[1]) / 2, spacing: r.spacing[0], rotation: 0,
         background: state.background, colors: state.colors,
       }, 64)];
-    })) as Record<PatternKind, string>,
+    })) as Record<BaseKind, string>,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [state.background, state.colors.join()],
   );
 
   const remember = () =>
-    store.remember({ tool: 'shape', kind: PATTERNS.find((p) => p.id === state.kind)?.label ?? 'Pattern', colors: [state.background, ...state.colors].slice(0, 5), recipe: { ...state } as Record<string, unknown> });
+    store.remember({ tool: 'shape', kind: state.kind === 'generated' ? 'Generated' : patternLabel(state), colors: [state.background, ...state.colors].slice(0, 5), recipe: { ...state } as Record<string, unknown> });
 
-  const kindLabel = PATTERNS.find((p) => p.id === state.kind)?.label ?? 'Pattern';
+  const label = patternLabel(state);
+  const kindLabel = state.kind === 'generated' ? 'Generated' : label;
   const savePattern = () => {
     const result = store.saveItem({ tool: 'shape', kind: kindLabel, colors: [state.background, ...state.colors].slice(0, 5), recipe: { ...state } as Record<string, unknown> });
     store.toast(!result ? 'Storage is full. Download a backup from Saved, then delete a few.' : result.repeat ? `Already saved as ${result.item.name}` : `Saved as ${result.item.name}`);
@@ -77,7 +92,24 @@ export default function ShapeTool() {
 
   const patch = (changes: Partial<PatternState>, tag?: string) => set((s) => ({ ...s, ...changes }), tag);
 
-  const randomize = () => set(randomPattern(createRng(newSeed()), store.palette, state.aspect));
+  const generate = () => {
+    set(randomPattern(createRng(newSeed()), store.palette, state.aspect, 'generated'));
+  };
+  const drawTile = () => {
+    if (state.kind === 'tile') return;
+    const r = RANGES.tile;
+    patch({ kind: 'tile', tile: state.tile ?? starterTile(state.colors), density: r.density[0] + 10, scale: 100, spacing: 0, rotation: 0 });
+  };
+  /* Space means "another one of these": a new invention, a new repeat of your tile, or any pattern. */
+  const randomize = () => {
+    const rng = createRng(newSeed());
+    if (state.kind === 'generated') return generate();
+    if (state.kind === 'tile' && state.tile) {
+      const repeats = (['grid', 'brick', 'halfdrop', 'mirror', 'rotate'] as const).filter((m) => m !== state.tile!.repeat);
+      return patch({ tile: { ...state.tile, repeat: rng.pick(repeats) }, density: rng.int(15, 50), rotation: rng.pick([0, 0, 45]) });
+    }
+    set(randomPattern(rng, store.palette, state.aspect));
+  };
   const newSeedOnly = () => patch({ seed: newSeed() });
   const chooseKind = (kind: PatternKind) => {
     if (kind === state.kind) return;
@@ -87,7 +119,15 @@ export default function ShapeTool() {
     patch({ kind, density: mid(r.density), scale: mid(r.scale), spacing: mid(r.spacing), rotation: r.rotations[0] });
   };
   const recolour = () => {
-    patch(colorsFrom(store.palette, createRng(newSeed())));
+    const next = colorsFrom(store.palette, createRng(newSeed()));
+    if (state.kind === 'tile' && state.tile) {
+      // Each colour in the tile moves to a palette colour, keeping which parts match.
+      const used = [...new Set(state.tile.strokes.map((s) => s.c))];
+      const map = new Map(used.map((c, i) => [c, next.colors[i % next.colors.length]]));
+      patch({ ...next, tile: { ...state.tile, strokes: state.tile.strokes.map((s) => ({ ...s, c: map.get(s.c) ?? s.c })) } });
+    } else {
+      patch(next);
+    }
     store.toast('Recoloured from your palette');
   };
 
@@ -128,6 +168,8 @@ export default function ShapeTool() {
 
   const commands: Command[] = [
     { id: 's-random', label: 'Randomize pattern', group: 'Shape', hint: 'Space', run: randomize },
+    { id: 's-generate', label: 'Generate a new pattern', group: 'Shape', run: generate },
+    { id: 's-tile', label: 'Draw a tile', group: 'Shape', run: drawTile },
     { id: 's-seed', label: 'New seed, same settings', group: 'Shape', run: newSeedOnly },
     { id: 's-copy-seed', label: 'Copy seed', group: 'Shape', run: copySeed },
     { id: 's-save', label: 'Save pattern', group: 'Shape', hint: '⌘S', run: savePattern },
@@ -150,6 +192,15 @@ export default function ShapeTool() {
   return (
     <div className={styles.studio}>
       <div className={styles.panel}>
+        <div className={styles.makers}>
+          <Button variant={state.kind === 'generated' ? 'solid' : 'line'} onClick={generate} title="Invent a new pattern">
+            <Sparkle /> Generate
+          </Button>
+          <Button variant={state.kind === 'tile' ? 'solid' : 'line'} onClick={drawTile} aria-pressed={state.kind === 'tile'}>
+            <Pen /> Draw a tile
+          </Button>
+        </div>
+
         <div className={styles.group}>
           <p className={styles.label} id="shape-kind">Pattern</p>
           <div className={styles.kinds} role="group" aria-labelledby="shape-kind">
@@ -170,8 +221,8 @@ export default function ShapeTool() {
         </div>
 
         <div className={styles.group}>
-          <Slider label="Density" min={0} max={100} value={state.density} onChange={(v) => patch({ density: v }, 'density')} />
-          <Slider label="Scale" min={0} max={100} value={state.scale} onChange={(v) => patch({ scale: v }, 'scale')} />
+          <Slider label={state.kind === 'tile' ? 'Tiles' : 'Density'} min={0} max={100} value={state.density} onChange={(v) => patch({ density: v }, 'density')} />
+          <Slider label={state.kind === 'tile' ? 'Drawing size' : 'Scale'} min={0} max={100} value={state.scale} onChange={(v) => patch({ scale: v }, 'scale')} />
           <Slider label="Rotation" min={0} max={360} value={state.rotation} format={(v) => `${v}°`} onChange={(v) => patch({ rotation: v }, 'rotation')} />
           <Slider label="Spacing" min={0} max={100} value={state.spacing} onChange={(v) => patch({ spacing: v }, 'spacing')} />
         </div>
@@ -205,15 +256,33 @@ export default function ShapeTool() {
       </div>
 
       <div className={styles.stage}>
-        <div
-          className={styles.frame}
-          style={{ ['--ar' as string]: w / h }}
-          role="img"
-          aria-label={`${PATTERNS.find((p) => p.id === state.kind)?.label} pattern, seed ${state.seed}`}
-          dangerouslySetInnerHTML={{ __html: svg }}
-        />
+        {state.kind === 'generated' && (
+          <p className={styles.caption}>
+            <span className={styles.captionKind}>Generated</span> {label}
+          </p>
+        )}
+        <div className={state.kind === 'tile' && state.tile ? styles.tileStage : undefined}>
+          {state.kind === 'tile' && state.tile && (
+            <TileEditor
+              tile={state.tile}
+              background={state.background}
+              colors={[...state.colors, ...store.palette.filter((c) => !state.colors.includes(c)), '#111111', '#FFFFFF']}
+              onChange={(tile: TileSpec) => patch({ tile })}
+              onUndo={() => { if (!undo()) store.toast('Nothing to undo'); }}
+            />
+          )}
+          <div
+            className={styles.frame}
+            style={{ ['--ar' as string]: w / h }}
+            role="img"
+            aria-label={`${label} pattern, seed ${state.seed}`}
+            dangerouslySetInnerHTML={{ __html: svg }}
+          />
+        </div>
         <div className={styles.bar}>
-          <Button variant="solid" onClick={randomize}>Randomize</Button>
+          {state.kind === 'generated'
+            ? <Button variant="solid" onClick={generate}><Sparkle /> Generate another</Button>
+            : <Button variant="solid" onClick={randomize}>{state.kind === 'tile' ? 'Try a repeat' : 'Randomize'}</Button>}
           <div className={styles.seed}>
             Seed:
             <input
@@ -240,7 +309,13 @@ export default function ShapeTool() {
             ]}
           />
         </div>
-        <p className={styles.hint}><b>Space</b> for a new pattern · Same seed, same settings, same pattern · <b>{modLabel()}Z</b> brings the last one back</p>
+        <p className={styles.hint}>
+          {state.kind === 'tile'
+            ? <><b>Draw in the square</b> and it repeats · Lines off one edge come back on the other · <b>{modLabel()}Z</b> undo</>
+            : state.kind === 'generated'
+              ? <><b>Space</b> invents another · Every one is new, and its seed brings it back · <b>{modLabel()}Z</b> for the last one</>
+              : <><b>Space</b> for a new pattern · Same seed, same settings, same pattern · <b>{modLabel()}Z</b> brings the last one back</>}
+        </p>
         <SavedStrip tool="shape" />
       </div>
     </div>

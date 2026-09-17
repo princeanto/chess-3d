@@ -1,0 +1,43 @@
+.editor { display: grid; gap: 12px; align-content: start; }
+.bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+.brushes { display: flex; gap: 2px; padding: 2px; background: var(--sunk); border-radius: 8px; }
+.brush {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 32px;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  transition: color 0.15s var(--ease), background 0.15s var(--ease), transform 0.12s var(--ease);
+}
+.brush:hover { color: var(--ink); }
+.brush:active { transform: scale(0.92); }
+.brush[aria-checked='true'] { color: var(--ink); background: var(--surface); box-shadow: 0 0 0 1px var(--line); }
+.brush:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.tile {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px var(--line);
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* The edges wrap: a dashed frame says so. */
+.tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px dashed currentColor;
+  opacity: 0.25;
+  pointer-events: none;
+}
+.canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.empty { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; font-size: 14px; font-weight: 600; opacity: 0.45; pointer-events: none; }
+.scroll { min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.scroll::-webkit-scrollbar { display: none; }

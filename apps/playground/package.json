@@ -10,7 +10,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "fonts": "node scripts/fetch-google-fonts.mjs",
-    "test": "npm run typecheck && tsx scripts/logic-test.ts && tsx scripts/shape-test.ts && tsx scripts/type-test.ts && tsx scripts/library-test.ts"
+    "test": "npm run typecheck && tsx scripts/logic-test.ts && tsx scripts/shape-test.ts && tsx scripts/type-test.ts && tsx scripts/library-test.ts && tsx scripts/make-play-test.ts"
   },
   "dependencies": {
     "next": "14.2.35",

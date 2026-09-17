@@ -13,12 +13,17 @@
 
 import { createRng, type Rng } from './random';
 import { contrast, luminance, readableOn } from './color';
+import { describe, designFor, generatedBody } from './generative';
+import { tileBody, type TileSpec } from './tile';
 
-export type PatternKind =
+export type BaseKind =
   | 'grid' | 'dots' | 'lines' | 'waves' | 'circles' | 'squares' | 'triangles'
   | 'blobs' | 'rings' | 'noise' | 'checkerboard' | 'geometric' | 'organic';
 
-export const PATTERNS: { id: PatternKind; label: string }[] = [
+/** The named patterns, plus one invented from the seed and one you draw. */
+export type PatternKind = BaseKind | 'generated' | 'tile';
+
+export const PATTERNS: { id: BaseKind; label: string }[] = [
   { id: 'grid', label: 'Grid' },
   { id: 'dots', label: 'Dots' },
   { id: 'lines', label: 'Lines' },
@@ -57,6 +62,15 @@ export interface PatternState {
   rotation: number;
   background: string;
   colors: string[];
+  /** Your drawn tile, for kind 'tile'. */
+  tile?: TileSpec;
+}
+
+/** What to call a pattern: its kind, or for a generated one, what it is made of. */
+export function patternLabel(state: Pick<PatternState, 'kind' | 'seed'>): string {
+  if (state.kind === 'generated') return describe(designFor(state.seed));
+  if (state.kind === 'tile') return 'Tile';
+  return PATTERNS.find((p) => p.id === state.kind)?.label ?? 'Pattern';
 }
 
 /* One decimal is plenty at these sizes, and keeps exported SVGs small. */
@@ -65,7 +79,7 @@ const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 const unit = (v: number): number => Math.min(1, Math.max(0, v / 100));
 const smooth = (t: number): number => t * t * (3 - 2 * t);
 
-interface Field {
+export interface Field {
   w: number;
   h: number;
   cx: number;
@@ -79,6 +93,7 @@ interface Field {
   scale: number;
   spacing: number;
   colors: string[];
+  background: string;
 }
 
 function cells(F: Field, fewest: number, most: number): { cols: number; cell: number } {
@@ -87,7 +102,7 @@ function cells(F: Field, fewest: number, most: number): { cols: number; cell: nu
 }
 
 /** A closed Catmull-Rom curve through the points, as cubic Béziers. */
-function smoothClosed(points: number[][]): string {
+export function smoothClosed(points: number[][]): string {
   const n = points.length;
   let d = `M${f(points[0][0])} ${f(points[0][1])}`;
   for (let i = 0; i < n; i += 1) {
@@ -100,7 +115,7 @@ function smoothClosed(points: number[][]): string {
   return `${d}Z`;
 }
 
-const GENERATORS: Record<PatternKind, (F: Field) => string> = {
+const GENERATORS: Record<BaseKind, (F: Field) => string> = {
   grid(F) {
     const { cols, cell } = cells(F, 4, 32);
     const width = Math.max(1, cell * lerp(0.02, 0.22, F.scale));
@@ -388,8 +403,11 @@ export function patternSvg(state: PatternState, pixelWidth?: number): string {
     rng: createRng(state.seed),
     density: unit(state.density), scale: unit(state.scale), spacing: unit(state.spacing),
     colors,
+    background: state.background,
   };
-  const body = GENERATORS[state.kind](field);
+  const body = state.kind === 'generated' ? generatedBody(field, state.seed)
+    : state.kind === 'tile' ? (state.tile ? tileBody(field, state.tile, `t${state.seed}`) : '')
+    : (GENERATORS[state.kind] ?? GENERATORS.grid)(field);
   const pw = pixelWidth ?? w;
   const ph = Math.round((pw / w) * h);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${pw}" height="${ph}" viewBox="0 0 ${w} ${h}">` +
@@ -439,9 +457,11 @@ export const RANGES: Record<PatternKind, { density: [number, number]; scale: [nu
   checkerboard: { density: [10, 60], scale: [70, 100], spacing: [0, 20], rotations: [0, 45] },
   geometric: { density: [20, 65], scale: [15, 55], spacing: [0, 0], rotations: [0, 0, 45] },
   organic: { density: [25, 70], scale: [40, 90], spacing: [0, 40], rotations: [0, 0, 180, 90] },
+  generated: { density: [20, 65], scale: [35, 70], spacing: [0, 25], rotations: [0, 0, 0, 45] },
+  tile: { density: [15, 45], scale: [100, 100], spacing: [0, 0], rotations: [0] },
 };
 
-export function randomPattern(rng: Rng, palette: readonly string[], aspect: Aspect, kind?: PatternKind): PatternState {
+export function randomPattern(rng: Rng, palette: readonly string[], aspect: Aspect, kind?: BaseKind | 'generated'): PatternState {
   const k = kind ?? rng.pick(PATTERNS).id;
   const r = RANGES[k];
   const { background, colors } = colorsFrom(palette, rng);
