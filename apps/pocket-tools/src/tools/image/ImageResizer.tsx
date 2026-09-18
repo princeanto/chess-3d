@@ -47,6 +47,8 @@ export default function ImageResizer() {
   const height = Math.round(Number(h.replace(/,/g, '')));
   const valid = width > 0 && height > 0 && width <= 16000 && height <= 16000;
   const ratioDiffers = image && valid && Math.abs(width / height - image.width / image.height) > 0.01;
+  // The preview frame is the shape you asked for, capped so tall sizes still fit on screen.
+  const frame = valid ? { w: width, h: height } : { w: image?.width ?? 1, h: image?.height ?? 1 };
 
   const onW = (v: string) => {
     setW(v); setPreset('custom'); setResult(null);
@@ -94,7 +96,21 @@ export default function ImageResizer() {
     <div className="image-tool">
       <div className="image-controls card stack">
         <ImageInfo image={image} onClear={clear} />
-        <Segmented label="Size" value={preset} onChange={choosePreset} options={[{ id: 'custom', label: 'Custom' }, ...PRESETS.map((p) => ({ id: p.id, label: p.label }))]} wrap />
+        <div className="field">
+          <span className="label">Size</span>
+          <div className="preset-grid" role="radiogroup" aria-label="Size preset">
+            <button type="button" role="radio" aria-checked={preset === 'custom'} className="preset" onClick={() => choosePreset('custom')}>
+              <span className="preset-name">Original</span>
+              <span className="preset-size">{number(image.width, 0)} × {number(image.height, 0)}</span>
+            </button>
+            {PRESETS.map((p) => (
+              <button key={p.id} type="button" role="radio" aria-checked={preset === p.id} className="preset" onClick={() => choosePreset(p.id)}>
+                <span className="preset-name">{p.label}</span>
+                <span className="preset-size">{p.w} × {p.h}</span>
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="grid-2 grid-keep">
           <NumberField label="Width" value={w} onChange={onW} suffix="px" inputMode="numeric" />
           <NumberField label="Height" value={h} onChange={onH} suffix="px" inputMode="numeric" />
@@ -123,7 +139,17 @@ export default function ImageResizer() {
             </div>
           </>
         ) : (
-          <div className="image-waiting"><img src={image.url} alt="Your image" />{busy && <p className="image-busy">Resizing on your device…</p>}</div>
+          <div className="image-waiting">
+            {/* The frame is the size you asked for, so you see the crop before you commit to it. */}
+            <div className="resize-preview" style={{ aspectRatio: `${frame.w} / ${frame.h}`, width: `min(100%, ${Math.round((420 * frame.w) / frame.h)}px)` }}>
+              <img src={image.url} alt="Your image" style={{ objectFit: ratioDiffers ? (fit === 'cover' ? 'cover' : fit === 'contain' ? 'contain' : 'fill') : 'contain' }} />
+            </div>
+            <p className="resize-caption">
+              {valid ? `${number(width, 0)} × ${number(height, 0)} px` : 'Add a width and height'}
+              {ratioDiffers ? ` · ${fit === 'cover' ? 'cropped to fill' : fit === 'contain' ? 'fitted inside' : 'stretched'}` : ''}
+            </p>
+            {busy && <p className="image-busy">Resizing on your device…</p>}
+          </div>
         )}
       </section>
     </div>

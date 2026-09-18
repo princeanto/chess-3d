@@ -56,7 +56,7 @@ export function ImageInfo({ image, onClear, label = 'Change image' }: { image: L
       <img src={image.url} alt="" className="image-info-thumb" />
       <div className="image-info-text">
         <p className="image-info-name" title={image.name}>{image.name}</p>
-        <p className="image-info-meta">{labelFor(image.type)} · {number(image.width, 0)} × {number(image.height, 0)} · {bytes(image.size)}</p>
+        <p className="image-info-meta"><span>{labelFor(image.type)}</span> <span>{number(image.width, 0)} × {number(image.height, 0)}</span> <span>{bytes(image.size)}</span></p>
       </div>
       <Button variant="ghost" size="sm" onClick={onClear}>{label}</Button>
     </div>

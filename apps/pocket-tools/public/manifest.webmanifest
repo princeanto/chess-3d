@@ -14,9 +14,9 @@
     { "src": "/icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
+    { "name": "Compress PDF", "url": "/tools/compress-pdf/" },
+    { "name": "Merge PDF", "url": "/tools/merge-pdf/" },
     { "name": "Image Compressor", "url": "/tools/image-compressor/" },
-    { "name": "Split Bill", "url": "/tools/split-bill/" },
-    { "name": "QR Code", "url": "/tools/qr-code/" },
-    { "name": "Unit Converter", "url": "/tools/unit-converter/" }
+    { "name": "Split Bill", "url": "/tools/split-bill/" }
   ]
 }

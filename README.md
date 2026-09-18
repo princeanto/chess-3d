@@ -12,7 +12,7 @@ subdirectories.
 | **[Spot the Lie](apps/lie)** | Four statements, one of them invented | [spot-the-lie.vercel.app](https://spot-the-lie.vercel.app) |
 | **[Mynah](apps/mynah)** | English that teaches from your mistakes | [mynah-two.vercel.app](https://mynah-two.vercel.app) |
 | **[Playground](apps/playground)** | Offline creative tools: color, type, shape, draw, make, dare | [playground-phi-orpin.vercel.app](https://playground-phi-orpin.vercel.app) |
-| **[Pocket Tools](apps/pocket-tools)** | 43 tiny everyday utilities, private and offline | [pocket-tools-seven.vercel.app](https://pocket-tools-seven.vercel.app) |
+| **[Pocket Tools](apps/pocket-tools)** | 45 everyday utilities and a full PDF workshop, private and offline | [pocket-tools-seven.vercel.app](https://pocket-tools-seven.vercel.app) |
 
 Each app is standalone: its own `package.json`, its own lockfile, its own
 `node_modules`. There is no workspace tooling, because there is nothing to
@@ -166,9 +166,14 @@ unopened ones broken offline.
 
 ### Pocket Tools — [apps/pocket-tools](apps/pocket-tools)
 
-**Small problems. Solved quickly.** 43 tiny utilities — image compressor, split bill,
-GST and EMI, unit converter, QR codes, invoices and more — that run entirely in the
-browser and keep working offline. Search understands plain requests ("split ₹4,500
-between 5 people") with local pattern matching, fills in the tool and shows the answer.
-Images are processed in a Web Worker, PDFs are written on the device, and nothing is
-ever uploaded because there is no server to upload to.
+**Small problems. Solved quickly.** 45 utilities — a seventeen-tool PDF workshop
+(merge, split, compress, sign, watermark, protect), image compressor, split bill, GST
+and EMI, unit converter, QR codes, invoices and more — that run entirely in the browser
+and keep working offline. Search understands plain requests ("split ₹4,500 between 5
+people") with local pattern matching, fills in the tool and shows the answer.
+
+Every PDF is opened, edited and saved in the tab with pdf-lib and pdf.js; images go
+through a Web Worker. A password you type to open a locked file is used there and never
+stored. Nothing is ever uploaded, because there is no server to upload to — which also
+means the conversions that genuinely need one, PDF to Word and OCR, are honestly absent
+rather than faked.

@@ -2,7 +2,7 @@
 
 /**
  * Every tool's component, each in its own chunk. Opening Split Bill loads Split
- * Bill, not the image compressor; the service worker still caches them all for
+ * Bill, not the PDF engine; the service worker still caches them all for
  * offline use.
  */
 
@@ -10,19 +10,28 @@ import dynamic from 'next/dynamic';
 import type { ComponentType } from 'react';
 
 export const TOOL_COMPONENTS: Record<string, ComponentType> = {
-  'text-cleaner': dynamic(() => import('./text/TextCleaner')),
-  'case-converter': dynamic(() => import('./text/CaseConverter')),
-  'word-counter': dynamic(() => import('./text/WordCounter')),
-  'remove-duplicates': dynamic(() => import('./text/RemoveDuplicates')),
-  'find-replace': dynamic(() => import('./text/FindReplace')),
-  extractor: dynamic(() => import('./text/Extractor')),
-  'text-sorter': dynamic(() => import('./text/TextSorter')),
+  'merge-pdf': dynamic(() => import('./pdf/MergePdf')),
+  'split-pdf': dynamic(() => import('./pdf/SplitPdf')),
+  'extract-pages': dynamic(() => import('./pdf/ExtractPages')),
+  'remove-pages': dynamic(() => import('./pdf/RemovePages')),
+  'organize-pdf': dynamic(() => import('./pdf/OrganizePdf')),
+  'rotate-pdf': dynamic(() => import('./pdf/RotatePdf')),
+  'compress-pdf': dynamic(() => import('./pdf/CompressPdf')),
+  'repair-pdf': dynamic(() => import('./pdf/RepairPdf')),
+  'pdf-to-jpg': dynamic(() => import('./pdf/PdfToJpg')),
+  'jpg-to-pdf': dynamic(() => import('./pdf/JpgToPdf')),
+  'pdf-to-text': dynamic(() => import('./pdf/PdfToText')),
+  'page-numbers': dynamic(() => import('./pdf/PageNumbers')),
+  'watermark-pdf': dynamic(() => import('./pdf/WatermarkPdf')),
+  'sign-pdf': dynamic(() => import('./pdf/SignPdf')),
+  'crop-pdf': dynamic(() => import('./pdf/CropPdf')),
+  'protect-pdf': dynamic(() => import('./pdf/ProtectPdf')),
+  'unlock-pdf': dynamic(() => import('./pdf/UnlockPdf')),
 
   'image-compressor': dynamic(() => import('./image/ImageCompressor')),
   'image-resizer': dynamic(() => import('./image/ImageResizer')),
   'image-converter': dynamic(() => import('./image/ImageConverter')),
   'image-cropper': dynamic(() => import('./image/ImageCropper')),
-  'image-to-pdf': dynamic(() => import('./image/ImageToPdf')),
 
   percentage: dynamic(() => import('./calculate/Percentage')),
   discount: dynamic(() => import('./calculate/Discount')),
@@ -31,14 +40,6 @@ export const TOOL_COMPONENTS: Record<string, ComponentType> = {
   gst: dynamic(() => import('./calculate/Gst')),
   emi: dynamic(() => import('./calculate/Emi')),
   age: dynamic(() => import('./calculate/Age')),
-
-  'date-difference': dynamic(() => import('./time/DateDifference')),
-  'days-until': dynamic(() => import('./time/DaysUntil')),
-  'add-date': dynamic(() => import('./time/AddDate')),
-  stopwatch: dynamic(() => import('./time/Stopwatch')),
-  countdown: dynamic(() => import('./time/Countdown')),
-  pomodoro: dynamic(() => import('./time/Pomodoro')),
-  'time-difference': dynamic(() => import('./time/TimeDifference')),
 
   'unit-converter': dynamic(() => import('./measure/UnitConverter')),
   'data-size': dynamic(() => import('./measure/DataSize')),

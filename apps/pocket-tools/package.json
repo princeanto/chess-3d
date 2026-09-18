@@ -2,16 +2,20 @@
   "name": "pocket-tools",
   "version": "1.0.0",
   "private": true,
-  "description": "Pocket Tools — small problems, solved quickly. Tiny utilities that run on your device.",
+  "description": "Pocket Tools — small problems, solved quickly. PDF, image and everyday tools that run on your device.",
   "scripts": {
     "dev": "next dev",
     "build": "next build && node scripts/build-sw.mjs",
     "start": "npx serve@latest out -l 3000",
     "typecheck": "tsc --noEmit",
-    "test": "npm run typecheck && tsx scripts/tools-test.ts"
+    "test": "npm run typecheck && tsx scripts/tools-test.ts && tsx scripts/pdf-test.ts",
+    "predev": "node scripts/copy-pdfjs.mjs",
+    "prebuild": "node scripts/copy-pdfjs.mjs"
   },
   "dependencies": {
+    "@cantoo/pdf-lib": "^2.11.1",
     "next": "14.2.35",
+    "pdfjs-dist": "^5.4.296",
     "qrcode-generator": "2.0.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

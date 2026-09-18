@@ -4,9 +4,8 @@
 
 import { understand } from '../src/utils/intent';
 import { parseAmount, money, bytes, parseSize, significant } from '../src/utils/format';
-import { cleanText, CLEAN_DEFAULTS, convertCase, countText, dedupeLines, findReplace, extract, sortLines } from '../src/utils/text';
 import { percentOf, whatPercent, percentChange, discount, tip, splitBill, gst, emi } from '../src/utils/money';
-import { age, addToDate, dateDiff, parseDate, parseTime, timeDiff, fromIso, toIso } from '../src/utils/dates';
+import { age, addToDate, dateDiff, parseDate, fromIso, toIso } from '../src/utils/dates';
 import { convert, parseQuantity, parseConversion, feetInches } from '../src/utils/units';
 import { aspectRatio, grid, ppi, goldenRatio } from '../src/utils/design';
 import { password, randomInt, strength, uuid } from '../src/utils/random';
@@ -32,13 +31,10 @@ const expectTool = (q: string, id: string, check?: (m: ReturnType<typeof top>) =
 };
 expectTool('I need to split ₹4,500 between 5 people', 'split-bill', (m) => m.params?.bill === '4500' && m.params?.people === '5' && m.answer === '₹900 each');
 expectTool('Make this photo less than 1MB', 'image-compressor', (m) => m.params?.target === '1000000');
-expectTool('How many days until December 25?', 'days-until', (m) => m.params?.date === '2026-12-25' && m.answer === '99 days');
 expectTool('5 feet 10 inches in cm', 'unit-converter', (m) => m.answer === '177.8 cm');
-expectTool('Turn this text uppercase', 'case-converter', (m) => m.params?.mode === 'upper');
 expectTool('Resize an image to 1MB', 'image-compressor');
 expectTool('Split ₹2,500 between 4 people', 'split-bill', (m) => m.answer === '₹625 each');
 expectTool('Convert 5 feet to cm', 'unit-converter', (m) => m.answer === '152.4 cm');
-expectTool('Remove duplicate lines', 'remove-duplicates');
 expectTool('Create a QR code', 'qr-code');
 expectTool('Calculate 18% of ₹2,500', 'percentage', (m) => m.answer === '₹450');
 expectTool('I need to reduce my photo below 1mb', 'image-compressor');
@@ -49,21 +45,37 @@ expectTool('remove 18% gst from 1180', 'gst', (m) => m.answer === '₹1,000 befo
 expectTool('100 f to c', 'unit-converter', (m) => m.answer === '37.7778 °C');
 expectTool('2 gb in mb', 'data-size', (m) => m.answer === '2,000 MB');
 expectTool('1920 x 1080 aspect ratio', 'aspect-ratio', (m) => m.answer === '16:9');
-expectTool('hours between 9am and 5:30pm', 'time-difference', (m) => m.answer === '8 h 30 min');
-expectTool('timer for 10 minutes', 'countdown', (m) => m.params?.seconds === '600');
 expectTool('roll a dice', 'dice');
 expectTool('flip a coin', 'coin-flip');
-expectTool('45 days from today', 'add-date', (m) => m.answer === 'Sunday, 1 November 2026');
 expectTool('what is 30 is what percent of 120', 'percentage', (m) => m.answer === '25%');
 expectTool('20% off 2500', 'discount', (m) => m.answer === '₹2,000 after discount');
-expectTool('how many words', 'word-counter');
 expectTool('jpg to png', 'image-converter');
 expectTool('emi for 20 lakh at 8.5% for 20 years', 'emi', (m) => m.params?.amount === '2000000' && m.params?.months === '240');
 expectTool('random number between 1 and 100', 'random-number');
 expectTool('passport photos to print', 'image-sheet');
+expectTool('16 character password', 'password', (m) => m.params?.length === '16');
 expectTool('what should i eat', 'random-picker');
 expectTool('invoice', 'invoice');
-expectTool('days between 1 jan 2026 and 15 march 2026', 'date-difference', (m) => m.answer === '73 days');
+expectTool('merge two pdfs', 'merge-pdf');
+expectTool('combine these PDF files into one', 'merge-pdf');
+expectTool('compress this pdf under 1mb', 'compress-pdf');
+expectTool('my pdf is too big to email', 'compress-pdf');
+expectTool('convert pdf to jpg', 'pdf-to-jpg');
+expectTool('jpg to pdf', 'jpg-to-pdf');
+expectTool('scan documents to pdf', 'jpg-to-pdf');
+expectTool('split a pdf into pages', 'split-pdf');
+expectTool('remove pages from pdf', 'remove-pages');
+expectTool('extract pages from a pdf', 'extract-pages');
+expectTool('rotate pdf', 'rotate-pdf');
+expectTool('add page numbers to pdf', 'page-numbers');
+expectTool('watermark my pdf', 'watermark-pdf');
+expectTool('sign a pdf', 'sign-pdf');
+expectTool('password protect a pdf', 'protect-pdf');
+expectTool('remove password from pdf', 'unlock-pdf');
+expectTool('copy text from pdf', 'pdf-to-text');
+expectTool('pdf won\'t open', 'repair-pdf');
+expectTool('crop pdf margins', 'crop-pdf');
+expectTool('reorder pdf pages', 'organize-pdf');
 ok('“smaller image” finds the image tools first', understand('smaller image', TODAY).slice(0, 2).every((m) => m.tool.category === 'image'));
 ok('nonsense finds nothing', understand('zzqx', TODAY).length === 0);
 ok('every tool can be found by its own name', TOOLS.every((t) => understand(t.name, TODAY)[0]?.tool.id === t.id),
@@ -106,8 +118,6 @@ ok('date difference', dd.days === 29 && dd.calendar.months === 1 && dd.calendar.
 ok('backwards date difference is flagged', dateDiff({ y: 2026, m: 3, d: 1 }, { y: 2026, m: 1, d: 1 }).past);
 ok('dates as people write them', toIso(parseDate('December 25', TODAY)!) === '2026-12-25' && toIso(parseDate('25th dec', TODAY)!) === '2026-12-25'
   && toIso(parseDate('1 jan', TODAY)!) === '2027-01-01' && toIso(parseDate('25/12/2027', TODAY)!) === '2027-12-25' && toIso(parseDate('christmas', TODAY)!) === '2026-12-25' && parseDate('31/02/2026', TODAY) === null);
-ok('times as people write them', parseTime('9am') === 540 && parseTime('5:30pm') === 1050 && parseTime('12am') === 0 && parseTime('12pm') === 720 && parseTime('21:15') === 1275 && parseTime('25:00') === null);
-ok('past midnight', timeDiff(22 * 60, 6 * 60).minutes === 480 && timeDiff(22 * 60, 6 * 60).overnight);
 ok('ISO dates validate', fromIso('2026-02-29') === null && fromIso('2028-02-29') !== null);
 
 console.log('\nUNITS');
@@ -122,25 +132,6 @@ ok('a pound is 0.45359237 kg', convert(1, 'weight', 'lb', 'kg') === 0.45359237);
 ok('mixing categories is refused', parseQuantity('5 kg 3 cm') === null && parseConversion('5 kg in cm') === null);
 ok('"in" as a unit and as a word', near(parseConversion('12 in in cm')?.result ?? 0, 30.48, 1e-9));
 ok('heights back to feet and inches', feetInches(1.778) === '5 ft 10 in');
-
-console.log('\nTEXT');
-ok('cleaner', cleanText('  Hello   world  ,  friend\n\n\n“quoted” text   ', CLEAN_DEFAULTS) === 'Hello world, friend\n"quoted" text', JSON.stringify(cleanText('  Hello   world  ,  friend\n\n\n“quoted” text   ', CLEAN_DEFAULTS)));
-ok('title case keeps small words small', convertCase('the lord of the rings', 'title') === 'The Lord of the Rings');
-ok('sentence case', convertCase('HELLO THERE. how ARE you? i am fine', 'sentence') === 'Hello there. How are you? I am fine');
-ok('alternating case skips non-letters', convertCase('ab c', 'alternating') === 'aB c');
-const counts = countText("It's a test.\nSecond line here.\n\nNew paragraph! 🙂");
-ok('counts', counts.words === 8 && counts.lines === 4 && counts.paragraphs === 2 && counts.sentences === 3, JSON.stringify(counts));
-ok('counts emoji as one character', countText('🙂').characters === 1);
-ok('dedupe keep first / last / case', dedupeLines('b\na\nB\nb', { keep: 'first', sort: false, ignoreCase: false, ignoreEmpty: true }).text === 'b\na\nB'
-  && dedupeLines('b\na\nb', { keep: 'last', sort: false, ignoreCase: false, ignoreEmpty: true }).text === 'a\nb'
-  && dedupeLines('b\na\nB', { keep: 'first', sort: true, ignoreCase: true, ignoreEmpty: true }).text === 'a\nb');
-const fr = findReplace('cat catalog Cat', 'cat', '$1', { caseSensitive: false, wholeWord: true, all: true });
-ok('find & replace: whole words, literal replacement', fr.text === '$1 catalog $1' && fr.count === 2);
-ok('replace first only', findReplace('a a a', 'a', 'b', { caseSensitive: true, wholeWord: false, all: false }).text === 'b a a');
-const ex = extract('Mail me at hi@example.com or visit https://pocket.tools/x). Call +91 98765 43210 on 12/05/2026.');
-ok('extractor', ex.emails[0] === 'hi@example.com' && ex.urls[0] === 'https://pocket.tools/x' && ex.phones.length === 1 && ex.phones[0] === '+91 98765 43210', JSON.stringify(ex));
-ok('numeric sort', sortLines('item 10\nitem 2\nitem 1', 'numeric', { dedupe: false }) === 'item 1\nitem 2\nitem 10');
-ok('A–Z sorts naturally', sortLines('file10\nfile2', 'az', { dedupe: false }) === 'file2\nfile10');
 
 console.log('\nDESIGN');
 ok('1920 × 1080 is 16:9', aspectRatio(1920, 1080)?.w === 16 && aspectRatio(1920, 1080)?.h === 9);

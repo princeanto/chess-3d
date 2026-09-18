@@ -5,7 +5,6 @@ import { Button, Check, Segmented, Stepper } from '@/components/ui';
 import { TextResult } from '@/components/ResultCard';
 import { useToolActions } from '@/components/AppState';
 import { lorem, type LoremUnit } from '@/utils/lorem';
-import { countText } from '@/utils/text';
 
 export default function Lorem() {
   const [count, setCount] = useState(3);
@@ -15,7 +14,7 @@ export default function Lorem() {
   const generate = useCallback(() => setText(lorem(count, unit, classic)), [count, unit, classic]);
   useEffect(() => { generate(); }, [generate]);
   useToolActions({ run: generate, copy: () => text || null });
-  const c = countText(text);
+  const c = { words: text.split(/\s+/).filter(Boolean).length, characters: text.length };
 
   return (
     <>

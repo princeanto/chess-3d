@@ -15,7 +15,7 @@ type Orientation = 'auto' | 'portrait' | 'landscape';
 type Margin = 'none' | 'small' | 'normal';
 const MARGIN: Record<Margin, number> = { none: 0, small: 18, normal: 36 };
 
-export default function ImageToPdf() {
+export default function JpgToPdf() {
   const [images, setImages] = useState<LoadedImage[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [size, setSize] = useState<Size>('a4');
@@ -70,7 +70,12 @@ export default function ImageToPdf() {
 
   return (
     <div className="stack">
-      <FileDrop accept={IMAGE_ACCEPT} multiple onFiles={add} compact={images.length > 0} title={images.length ? 'Add more images' : 'Drop photos to turn into a PDF'} />
+      <FileDrop accept={IMAGE_ACCEPT} multiple onFiles={add} compact={images.length > 0} title={images.length ? 'Add more images' : 'Drop photos to turn into a PDF'}>
+        <label className="camera">
+          <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => { const files = [...(e.target.files ?? [])]; if (files.length) add(files); e.target.value = ''; }} />
+          <span className="btn btn-secondary btn-sm">📷 Take a photo</span>
+        </label>
+      </FileDrop>
       {errors.map((e) => <Notice key={e} tone="error">{e}</Notice>)}
       {images.length > 0 && (
         <>

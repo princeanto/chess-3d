@@ -9,10 +9,10 @@ import OfflineStatus from './OfflineStatus';
 import { Kbd } from './ui';
 
 const MOBILE: { id: string; label: string }[] = [
-  { id: 'text', label: 'Text' },
+  { id: 'pdf', label: 'PDF' },
   { id: 'image', label: 'Image' },
   { id: 'calculate', label: 'Calc' },
-  { id: 'time', label: 'Time' },
+  { id: 'quick', label: 'Quick' },
 ];
 
 export default function Header({ mod }: { mod: string }) {

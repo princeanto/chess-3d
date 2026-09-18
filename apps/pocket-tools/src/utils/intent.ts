@@ -17,7 +17,7 @@ import { money, parseAmount, parseSize, bytes, round, significant, number, type 
 import { parseConversion, findUnit, convert } from './units';
 import { percentOf, whatPercent, percentChange, splitBill, gst as gstCalc, discount as discountCalc } from './money';
 import { aspectRatio } from './design';
-import { dateDiff, formatDate, parseDate, parseTime, timeDiff, minutesToText, todayYmd, toIso, addToDate, type Ymd } from './dates';
+import { parseDate, todayYmd, toIso, type Ymd } from './dates';
 
 export interface Match {
   tool: ToolInfo;
@@ -168,53 +168,34 @@ const READERS: Reader[] = [
     }
     return { tool: 'unit-converter', boost: 28, params: { q: text, to: c.to.id, category: c.quantity.category }, answer };
   },
-  // "how many days until December 25"
-  (q, today) => {
-    const m = /\b(?:days?|how long)\s+(?:until|till|til|to|before|left (?:until|till|for))\s+(.+?)\??$/i.exec(q);
-    if (!m) return null;
-    const date = parseDate(m[1], today);
-    if (!date) return { tool: 'days-until', boost: 14 };
-    const d = dateDiff(today, date);
-    return { tool: 'days-until', boost: 30, params: { date: toIso(date) }, answer: d.past ? `${d.days} days ago` : d.days === 0 ? 'Today' : `${number(d.days, 0)} days` };
-  },
-  // "days between 1 jan 2026 and 15 march 2026"
-  (q, today) => {
-    const m = /\bbetween\s+(.+?)\s+(?:and|to)\s+(.+?)\??$/i.exec(q);
-    if (!m || !/\b(days?|weeks?|months?|dates?)\b/i.test(q)) return null;
-    const a = parseDate(m[1], today);
-    const b = parseDate(m[2], today);
-    if (!a || !b) return null;
-    const d = dateDiff(a, b);
-    return { tool: 'date-difference', boost: 30, params: { a: toIso(a), b: toIso(b) }, answer: `${number(d.days, 0)} days` };
-  },
-  // "45 days from today", "3 weeks from now", "10 days ago"
-  (q, today) => {
-    const m = /\b(\d+)\s*(days?|weeks?|months?|years?)\s+(from|after|before|ago)\b/i.exec(q);
-    if (!m) return null;
-    const unit = (m[2].replace(/s$/, '') + 's') as 'days' | 'weeks' | 'months' | 'years';
-    const sign = /before|ago/i.test(m[3]) ? -1 : 1;
-    const date = addToDate(today, sign * Number(m[1]), unit);
-    return { tool: 'add-date', boost: 28, params: { amount: String(sign * Number(m[1])), unit }, answer: formatDate(date) };
-  },
-  // "hours between 9am and 5:30pm"
+  // PDFs: the verb decides which tool.
   (q) => {
-    const m = /\b(?:from|between)\s+([\d:.]+\s*(?:am|pm|a|p)?|noon|midnight)\s+(?:and|to|till|until|-)\s+([\d:.]+\s*(?:am|pm|a|p)?|noon|midnight)\b/i.exec(q);
-    if (!m || !/\b(hours?|time|minutes?|long|shift|worked)\b/i.test(q)) return null;
-    const a = parseTime(m[1]);
-    const b = parseTime(m[2]);
-    if (a === null || b === null) return null;
-    return { tool: 'time-difference', boost: 30, params: { start: m[1].trim(), end: m[2].trim() }, answer: minutesToText(timeDiff(a, b).minutes) };
-  },
-  // "timer for 10 minutes", "5 minute timer"
-  (q) => {
-    const m = /\b(\d+)\s*(?:-\s*)?(min(?:ute)?s?|hours?|hrs?|sec(?:ond)?s?)\b/i.exec(q);
-    if (!m || !/\b(timer|countdown|alarm|remind)\b/i.test(q)) return null;
-    const n = Number(m[1]);
-    const seconds = /^h/i.test(m[2]) ? n * 3600 : /^s/i.test(m[2]) ? n : n * 60;
-    return { tool: 'countdown', boost: 26, params: { seconds: String(seconds) } };
+    if (!/\bpdfs?\b/i.test(q)) return null;
+    const rules: [RegExp, string][] = [
+      [/\b(?:jpe?g|png|image|images|photo|photos|picture|scan)s?\s+(?:to|into|as)\s+(?:a\s+)?pdf\b|\bscan\b/i, 'jpg-to-pdf'],
+      [/\bpdf\s+(?:to|into|as)\s+(?:a\s+)?(?:jpe?g|png|images?|pictures?|photos?)\b/i, 'pdf-to-jpg'],
+      [/\b(?:to|into|as)\s+(?:plain\s+)?te?xt\b|\bextract\s+(?:the\s+)?text\b|\bcopy\s+(?:the\s+)?text\b/i, 'pdf-to-text'],
+      [/\b(?:unlock|decrypt|unprotect|remove\s+(?:the\s+)?password|without\s+(?:a\s+)?password)\b/i, 'unlock-pdf'],
+      [/\b(?:protect|encrypt|lock|password)\b/i, 'protect-pdf'],
+      [/\b(?:compress|reduce|smaller|shrink|optimi[sz]e|too\s+big|under|below|less\s+than)\b/i, 'compress-pdf'],
+      [/\b(?:merge|combine|join|append)\b/i, 'merge-pdf'],
+      [/\b(?:extract|pull\s+out|save)\s+(?:some\s+|the\s+)?pages?\b/i, 'extract-pages'],
+      [/\b(?:remove|delete|drop)\s+(?:some\s+|the\s+)?(?:blank\s+)?pages?\b/i, 'remove-pages'],
+      [/\b(?:split|separate|break)\b/i, 'split-pdf'],
+      [/\b(?:reorder|rearrange|organi[sz]e|move\s+pages|page\s+order)\b/i, 'organize-pdf'],
+      [/\b(?:rotate|turn|sideways|upside)\b/i, 'rotate-pdf'],
+      [/\bpage\s+numbers?\b|\bnumber\s+(?:the\s+)?pages\b/i, 'page-numbers'],
+      [/\bwatermark|\bstamp\b/i, 'watermark-pdf'],
+      [/\bsign|\bsignature\b/i, 'sign-pdf'],
+      [/\bcrop|\btrim\b|\bmargins?\b/i, 'crop-pdf'],
+      [/\b(?:repair|fix|broken|corrupt|damaged|won'?t\s+open)\b/i, 'repair-pdf'],
+    ];
+    const hit = rules.find(([pattern]) => pattern.test(q));
+    return hit ? { tool: hit[1], boost: 32 } : null;
   },
   // "compress this photo below 1mb", "image under 500kb"
   (q) => {
+    if (/\bpdfs?\b/i.test(q)) return null;
     const target = parseSize(q);
     const imagey = /\b(image|photo|picture|pic|jpg|jpeg|png|webp|selfie|scan)s?\b/i.test(q);
     const shrinky = /\b(compress|reduce|smaller|shrink|less than|under|below|within|lower|max|maximum|limit)\b/i.test(q);
@@ -244,17 +225,9 @@ const READERS: Reader[] = [
   },
   // "16 character password"
   (q) => {
-    if (!/\bpass(?:word|phrase|code)\b/i.test(q)) return null;
+    if (!/\bpass(?:word|phrase|code)\b/i.test(q) || /\bpdfs?\b/i.test(q)) return null;
     const m = /\b(\d{1,3})\s*(?:-\s*)?(?:char(?:acter)?s?|letters?|digits?|long)\b/i.exec(q);
     return { tool: 'password', boost: 18, params: m ? { length: m[1] } : {} };
-  },
-  // "turn this text uppercase"
-  (q) => {
-    const m = /\b(upper\s?case|lower\s?case|title\s?case|sentence\s?case|all caps|capitali[sz]e)\b/i.exec(q);
-    if (!m) return null;
-    const w = m[1].toLowerCase().replace(/\s/g, '');
-    const mode = w.startsWith('upper') || w === 'allcaps' ? 'upper' : w.startsWith('lower') ? 'lower' : w.startsWith('sentence') ? 'sentence' : 'title';
-    return { tool: 'case-converter', boost: 20, params: { mode } };
   },
   // "how old am i if born 12 march 1994"
   (q, today) => {

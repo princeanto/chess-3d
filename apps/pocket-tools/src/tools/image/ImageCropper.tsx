@@ -30,6 +30,8 @@ export default function ImageCropper() {
   const [ratio, setRatio] = useState('free');
   const [crop, setCrop] = useState<Rect>({ x: 0, y: 0, w: 0, h: 0 });
   const [view, setView] = useState({ w: 0, h: 0, scale: 1 });
+  // Bumped when the decoded image arrives, so the drawing effect runs then too.
+  const [ready, setReady] = useState(0);
   const canvas = useRef<HTMLCanvasElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const bitmap = useRef<ImageBitmap | null>(null);
@@ -56,6 +58,7 @@ export default function ImageCropper() {
       bitmap.current = b;
       setRotate(0); setFlipX(false); setFlipY(false); setRatio('free');
       setCrop({ x: 0, y: 0, w: b.width, h: b.height });
+      setReady((n) => n + 1);
     });
     return () => { cancelled = true; };
   }, [image]);
@@ -85,7 +88,22 @@ export default function ImageCropper() {
     const dh = rotate % 2 ? w : h;
     ctx.drawImage(b, -dw / 2, -dh / 2, dw, dh);
     setView({ w, h, scale });
-  }, [rotate, flipX, flipY, oriented.w, oriented.h, image]);
+  }, [rotate, flipX, flipY, oriented.w, oriented.h, ready]);
+
+  // Refit when the stage gets wider or narrower. Only width matters — watching
+  // height too would loop, because drawing sets the canvas height.
+  useEffect(() => {
+    const el = stage.current;
+    if (!el) return;
+    let last = el.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (el.clientWidth === last) return;
+      last = el.clientWidth;
+      setReady((n) => n + 1);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const turn = (dir: 1 | -1) => {
     setRotate((x) => (((x + dir) % 4 + 4) % 4) as 0 | 1 | 2 | 3);

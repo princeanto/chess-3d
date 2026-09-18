@@ -15,13 +15,13 @@ import { categoryById, toolHref, TOOLS, toolById, type ToolInfo } from '@/data/t
 import { useApp } from './AppState';
 
 const EXAMPLES = [
-  'Resize an image to 1MB',
+  'Make this PDF smaller',
   'Split ₹2,500 between 4 people',
+  'Merge two PDFs',
+  'Resize an image to 1MB',
   'Convert 5 feet to cm',
-  'Remove duplicate lines',
+  'Photos into one PDF',
   'Create a QR code',
-  'Calculate 18% of ₹2,500',
-  'How many days until December 25?',
   '18% GST on ₹1,000',
 ];
 
